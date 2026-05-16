@@ -93,7 +93,7 @@ When the repository is ready to become an installable Hermes skill package, conv
 
 ```text
 /skills/
-  agentic-delivery/
+  adw/
     plan-feature/
       SKILL.md
     plan-bugfix/
@@ -1398,7 +1398,7 @@ After the initial ADW Markdown skillset is reviewed, convert the flat workflow d
 
 ### Target outcomes
 
-- Every ADW workflow skill exists as `skills/agentic-delivery/<skill-name>/SKILL.md`.
+- Every ADW workflow skill exists as `skills/adw/<skill-name>/SKILL.md`.
 - Each `SKILL.md` has valid Hermes YAML frontmatter and a non-empty operational body.
 - Shared playbooks and templates are referenced consistently from each skill.
 - The parameter resolution contract is embedded in the skill definitions.
@@ -1413,15 +1413,15 @@ Each `SKILL.md` must start at byte 0 with YAML frontmatter:
 
 ```yaml
 ---
-name: agentic-delivery-plan-feature
+name: adw-plan-feature
 description: Use when planning a new feature through the Agentic Delivery Workflow. Creates or confirms plan, branch, issue, acceptance criteria, and traceability before implementation.
 version: 1.0.0
 author: Hermes Agent
 license: MIT
 metadata:
   hermes:
-    tags: [agentic-delivery, planning, github, delivery-workflow]
-    related_skills: [agentic-delivery-do-impl, agentic-delivery-test-feature]
+    tags: [adw, planning, github, delivery-workflow]
+    related_skills: [adw-do-impl, adw-test-feature]
 ---
 ```
 
@@ -1442,35 +1442,35 @@ Hard requirements:
 Use a namespace-like prefix to avoid collisions with general-purpose Hermes skills:
 
 ```text
-agentic-delivery-plan-feature
-agentic-delivery-plan-bugfix
-agentic-delivery-do-impl
-agentic-delivery-do-impl-delegate
-agentic-delivery-test-feature
-agentic-delivery-merge-feature
-agentic-delivery-rollback-deployment
-agentic-delivery-promote-release
-agentic-delivery-validate-regression
-agentic-delivery-create-adr
-agentic-delivery-audit-dependencies
-agentic-delivery-analyze-production
+adw-plan-feature
+adw-plan-bugfix
+adw-do-impl
+adw-do-impl-delegate
+adw-test-feature
+adw-merge-feature
+adw-rollback-deployment
+adw-promote-release
+adw-validate-regression
+adw-create-adr
+adw-audit-dependencies
+adw-analyze-production
 ```
 
 Directory names should be shorter but still explicit:
 
 ```text
-skills/agentic-delivery/plan-feature/SKILL.md
-skills/agentic-delivery/plan-bugfix/SKILL.md
-skills/agentic-delivery/do-impl/SKILL.md
-skills/agentic-delivery/do-impl-delegate/SKILL.md
-skills/agentic-delivery/test-feature/SKILL.md
-skills/agentic-delivery/merge-feature/SKILL.md
-skills/agentic-delivery/rollback-deployment/SKILL.md
-skills/agentic-delivery/promote-release/SKILL.md
-skills/agentic-delivery/validate-regression/SKILL.md
-skills/agentic-delivery/create-adr/SKILL.md
-skills/agentic-delivery/audit-dependencies/SKILL.md
-skills/agentic-delivery/analyze-production/SKILL.md
+skills/adw/plan-feature/SKILL.md
+skills/adw/plan-bugfix/SKILL.md
+skills/adw/do-impl/SKILL.md
+skills/adw/do-impl-delegate/SKILL.md
+skills/adw/test-feature/SKILL.md
+skills/adw/merge-feature/SKILL.md
+skills/adw/rollback-deployment/SKILL.md
+skills/adw/promote-release/SKILL.md
+skills/adw/validate-regression/SKILL.md
+skills/adw/create-adr/SKILL.md
+skills/adw/audit-dependencies/SKILL.md
+skills/adw/analyze-production/SKILL.md
 ```
 
 ### Recommended `SKILL.md` body structure
@@ -1528,18 +1528,18 @@ Each Hermes-compatible ADW skill should use this body shape:
 
 ### File migration map
 
-- `skills/plan_feature.md` → `skills/agentic-delivery/plan-feature/SKILL.md`
-- `skills/plan_bugfix.md` → `skills/agentic-delivery/plan-bugfix/SKILL.md`
-- `skills/do_impl.md` → `skills/agentic-delivery/do-impl/SKILL.md`
-- `skills/do_impl_delegate.md` → `skills/agentic-delivery/do-impl-delegate/SKILL.md`
-- `skills/test_feature.md` → `skills/agentic-delivery/test-feature/SKILL.md`
-- `skills/merge_feature.md` → `skills/agentic-delivery/merge-feature/SKILL.md`
-- `skills/rollback_deployment.md` → `skills/agentic-delivery/rollback-deployment/SKILL.md`
-- `skills/promote_release.md` → `skills/agentic-delivery/promote-release/SKILL.md`
-- `skills/validate_regression.md` → `skills/agentic-delivery/validate-regression/SKILL.md`
-- `skills/create_adr.md` → `skills/agentic-delivery/create-adr/SKILL.md`
-- `skills/audit_dependencies.md` → `skills/agentic-delivery/audit-dependencies/SKILL.md`
-- `skills/analyze_production.md` → `skills/agentic-delivery/analyze-production/SKILL.md`
+- `skills/plan_feature.md` → `skills/adw/plan-feature/SKILL.md`
+- `skills/plan_bugfix.md` → `skills/adw/plan-bugfix/SKILL.md`
+- `skills/do_impl.md` → `skills/adw/do-impl/SKILL.md`
+- `skills/do_impl_delegate.md` → `skills/adw/do-impl-delegate/SKILL.md`
+- `skills/test_feature.md` → `skills/adw/test-feature/SKILL.md`
+- `skills/merge_feature.md` → `skills/adw/merge-feature/SKILL.md`
+- `skills/rollback_deployment.md` → `skills/adw/rollback-deployment/SKILL.md`
+- `skills/promote_release.md` → `skills/adw/promote-release/SKILL.md`
+- `skills/validate_regression.md` → `skills/adw/validate-regression/SKILL.md`
+- `skills/create_adr.md` → `skills/adw/create-adr/SKILL.md`
+- `skills/audit_dependencies.md` → `skills/adw/audit-dependencies/SKILL.md`
+- `skills/analyze_production.md` → `skills/adw/analyze-production/SKILL.md`
 
 ### Shared artifact handling
 
@@ -1555,7 +1555,7 @@ Use one of these models and document the chosen model in `README.md`:
    - Example:
 
      ```text
-     skills/agentic-delivery/test-feature/
+     skills/adw/test-feature/
        SKILL.md
        references/pr-reviewing.md
        references/preview-deployments.md
@@ -1575,12 +1575,12 @@ For the next implementation stage, use central shared artifacts unless a Hermes 
 
 **Files:**
 
-- Create: `skills/agentic-delivery/*/SKILL.md` directories as listed in the naming plan.
+- Create: `skills/adw/*/SKILL.md` directories as listed in the naming plan.
 
 **Verification:**
 
 ```bash
-find skills/agentic-delivery -maxdepth 2 -type d | sort
+find skills/adw -maxdepth 2 -type d | sort
 ```
 
 Expected: every planned skill directory exists.
@@ -1593,8 +1593,8 @@ Expected: every planned skill directory exists.
 
 **Files:**
 
-- Create: `skills/agentic-delivery/plan-feature/SKILL.md`
-- Create: `skills/agentic-delivery/plan-bugfix/SKILL.md`
+- Create: `skills/adw/plan-feature/SKILL.md`
+- Create: `skills/adw/plan-bugfix/SKILL.md`
 
 **Required content:**
 
@@ -1609,10 +1609,10 @@ Expected: every planned skill directory exists.
 **Verification:**
 
 ```bash
-grep -n "^name: agentic-delivery-plan-feature" skills/agentic-delivery/plan-feature/SKILL.md
-grep -n "## Parameter Resolution" skills/agentic-delivery/plan-feature/SKILL.md
-grep -n "GitHub issue" skills/agentic-delivery/plan-feature/SKILL.md
-grep -n "suspected root cause" skills/agentic-delivery/plan-bugfix/SKILL.md
+grep -n "^name: adw-plan-feature" skills/adw/plan-feature/SKILL.md
+grep -n "## Parameter Resolution" skills/adw/plan-feature/SKILL.md
+grep -n "GitHub issue" skills/adw/plan-feature/SKILL.md
+grep -n "suspected root cause" skills/adw/plan-bugfix/SKILL.md
 ```
 
 Expected: planning skills are loadable, operational, and explicit about assumption handling.
@@ -1625,8 +1625,8 @@ Expected: planning skills are loadable, operational, and explicit about assumpti
 
 **Files:**
 
-- Create: `skills/agentic-delivery/do-impl/SKILL.md`
-- Create: `skills/agentic-delivery/do-impl-delegate/SKILL.md`
+- Create: `skills/adw/do-impl/SKILL.md`
+- Create: `skills/adw/do-impl-delegate/SKILL.md`
 
 **Required content:**
 
@@ -1640,9 +1640,9 @@ Expected: planning skills are loadable, operational, and explicit about assumpti
 **Verification:**
 
 ```bash
-grep -n "linked issue" skills/agentic-delivery/do-impl/SKILL.md
-grep -n "delegation packet" skills/agentic-delivery/do-impl-delegate/SKILL.md
-grep -n "PR" skills/agentic-delivery/do-impl/SKILL.md
+grep -n "linked issue" skills/adw/do-impl/SKILL.md
+grep -n "delegation packet" skills/adw/do-impl-delegate/SKILL.md
+grep -n "PR" skills/adw/do-impl/SKILL.md
 ```
 
 Expected: implementation skills cannot proceed without plan/issue context and produce a PR.
@@ -1655,9 +1655,9 @@ Expected: implementation skills cannot proceed without plan/issue context and pr
 
 **Files:**
 
-- Create: `skills/agentic-delivery/test-feature/SKILL.md`
-- Create: `skills/agentic-delivery/merge-feature/SKILL.md`
-- Create: `skills/agentic-delivery/rollback-deployment/SKILL.md`
+- Create: `skills/adw/test-feature/SKILL.md`
+- Create: `skills/adw/merge-feature/SKILL.md`
+- Create: `skills/adw/rollback-deployment/SKILL.md`
 
 **Required content:**
 
@@ -1670,10 +1670,10 @@ Expected: implementation skills cannot proceed without plan/issue context and pr
 **Verification:**
 
 ```bash
-grep -n "Review Gate" skills/agentic-delivery/test-feature/SKILL.md
-grep -n "Preview" skills/agentic-delivery/test-feature/SKILL.md
-grep -n "Merge Gate" skills/agentic-delivery/merge-feature/SKILL.md
-grep -n "last known-good" skills/agentic-delivery/rollback-deployment/SKILL.md
+grep -n "Review Gate" skills/adw/test-feature/SKILL.md
+grep -n "Preview" skills/adw/test-feature/SKILL.md
+grep -n "Merge Gate" skills/adw/merge-feature/SKILL.md
+grep -n "last known-good" skills/adw/rollback-deployment/SKILL.md
 ```
 
 Expected: gate-sensitive skills stop rather than bypassing review, preview, merge, deployment, or rollback safety requirements.
@@ -1686,20 +1686,20 @@ Expected: gate-sensitive skills stop rather than bypassing review, preview, merg
 
 **Files:**
 
-- Create: `skills/agentic-delivery/promote-release/SKILL.md`
-- Create: `skills/agentic-delivery/validate-regression/SKILL.md`
-- Create: `skills/agentic-delivery/create-adr/SKILL.md`
-- Create: `skills/agentic-delivery/audit-dependencies/SKILL.md`
-- Create: `skills/agentic-delivery/analyze-production/SKILL.md`
+- Create: `skills/adw/promote-release/SKILL.md`
+- Create: `skills/adw/validate-regression/SKILL.md`
+- Create: `skills/adw/create-adr/SKILL.md`
+- Create: `skills/adw/audit-dependencies/SKILL.md`
+- Create: `skills/adw/analyze-production/SKILL.md`
 
 **Verification:**
 
 ```bash
-grep -n "artifact identity" skills/agentic-delivery/promote-release/SKILL.md
-grep -n "Regression" skills/agentic-delivery/validate-regression/SKILL.md
-grep -n "Architecture Decision Record" skills/agentic-delivery/create-adr/SKILL.md
-grep -n "CVE" skills/agentic-delivery/audit-dependencies/SKILL.md
-grep -n "production feedback" skills/agentic-delivery/analyze-production/SKILL.md
+grep -n "artifact identity" skills/adw/promote-release/SKILL.md
+grep -n "Regression" skills/adw/validate-regression/SKILL.md
+grep -n "Architecture Decision Record" skills/adw/create-adr/SKILL.md
+grep -n "CVE" skills/adw/audit-dependencies/SKILL.md
+grep -n "production feedback" skills/adw/analyze-production/SKILL.md
 ```
 
 Expected: supporting workflows have clear triggers, inputs, outputs, and safety boundaries.
@@ -1712,7 +1712,7 @@ Expected: supporting workflows have clear triggers, inputs, outputs, and safety 
 
 **Files:**
 
-- Create: `skills/agentic-delivery/README.md`
+- Create: `skills/adw/README.md`
 - Modify: root `README.md`
 
 **Required content:**
@@ -1725,8 +1725,8 @@ Expected: supporting workflows have clear triggers, inputs, outputs, and safety 
 **Verification:**
 
 ```bash
-grep -n "agentic-delivery-plan-feature" skills/agentic-delivery/README.md
-grep -n "Plan → Branch → Issue" skills/agentic-delivery/README.md
+grep -n "adw-plan-feature" skills/adw/README.md
+grep -n "Plan → Branch → Issue" skills/adw/README.md
 grep -n "Chat/status updates may be localized separately" README.md
 ```
 
@@ -1748,7 +1748,7 @@ import sys
 import yaml
 
 ok = True
-for path in sorted(Path('skills/agentic-delivery').glob('*/SKILL.md')):
+for path in sorted(Path('skills/adw').glob('*/SKILL.md')):
     content = path.read_text(encoding='utf-8')
     errors = []
     if not content.startswith('---'):
@@ -1797,8 +1797,8 @@ Expected: every `SKILL.md` prints `OK`.
 **Commands:**
 
 ```bash
-grep -R "skills/.*\.md" skills/agentic-delivery README.md || true
-grep -R "TODO\|TBD" skills/agentic-delivery README.md playbooks templates adr || true
+grep -R "skills/.*\.md" skills/adw README.md || true
+grep -R "TODO\|TBD" skills/adw README.md playbooks templates adr || true
 git diff --check
 ```
 
@@ -1871,7 +1871,7 @@ Use the ADW Hermes skills to plan CSV export for invoices.
 
 **Required agent behavior:**
 
-1. Load `agentic-delivery-plan-feature`.
+1. Load `adw-plan-feature`.
 2. Inspect non-destructive context:
    - current repo
    - default branch
@@ -1914,7 +1914,7 @@ Branch: feature/invoice-csv-export
 Issue: <GitHub issue URL>
 Plan: attached to issue
 Assumptions recorded: yes
-Next: implementation with agentic-delivery-do-impl
+Next: implementation with adw-do-impl
 ```
 
 ---
@@ -1924,12 +1924,12 @@ Next: implementation with agentic-delivery-do-impl
 **Human prompt:**
 
 ```text
-Use agentic-delivery-do-impl for the CSV export issue.
+Use adw-do-impl for the CSV export issue.
 ```
 
 **Required agent behavior:**
 
-1. Load `agentic-delivery-do-impl`.
+1. Load `adw-do-impl`.
 2. Resolve missing context by inspecting the current branch and latest linked issue.
 3. If exactly one matching issue/plan exists, confirm the assumption:
 
@@ -1951,7 +1951,7 @@ Stage: Implementation complete
 Branch: feature/invoice-csv-export
 PR: <GitHub PR URL>
 Validation: local checks reported in PR
-Next: review and preview validation with agentic-delivery-test-feature
+Next: review and preview validation with adw-test-feature
 ```
 
 ---
@@ -1961,12 +1961,12 @@ Next: review and preview validation with agentic-delivery-test-feature
 **Human prompt:**
 
 ```text
-Use agentic-delivery-test-feature on the CSV export PR.
+Use adw-test-feature on the CSV export PR.
 ```
 
 **Required agent behavior:**
 
-1. Load `agentic-delivery-test-feature`.
+1. Load `adw-test-feature`.
 2. If the PR number is not provided, search for the open PR from `feature/invoice-csv-export`.
 3. If exactly one PR matches, confirm:
 
@@ -1987,7 +1987,7 @@ PR: #42
 Review: approved
 Preview: <preview URL>
 Tests: CSV export smoke passed
-Next: merge and production deployment with agentic-delivery-merge-feature
+Next: merge and production deployment with adw-merge-feature
 ```
 
 ---
@@ -1997,12 +1997,12 @@ Next: merge and production deployment with agentic-delivery-merge-feature
 **Human prompt:**
 
 ```text
-Use agentic-delivery-merge-feature for the validated CSV export PR.
+Use adw-merge-feature for the validated CSV export PR.
 ```
 
 **Required agent behavior:**
 
-1. Load `agentic-delivery-merge-feature`.
+1. Load `adw-merge-feature`.
 2. Infer candidate PR from previous stage or open PR metadata.
 3. Ask for explicit confirmation because production deployment is a side effect:
 
@@ -2282,5 +2282,5 @@ Rollback to the last known-good version and create a follow-up bug issue with th
 - This plan intentionally separates identity (`SOUL.md`) from executable workflow skills (`skills/`).
 - The expanded `description.md` should be treated as source material for the skillset, not committed as the final `SOUL.md`.
 - The initial implementation should be documentation-only and safe to review.
-- The next planned iteration converts `skills/*.md` into Hermes-compatible `SKILL.md` directories under `skills/agentic-delivery/*/SKILL.md`.
+- The next planned iteration converts `skills/*.md` into Hermes-compatible `SKILL.md` directories under `skills/adw/*/SKILL.md`.
 - Human prompts may omit parameters; skills must define when the agent may infer-and-confirm assumptions versus when it must ask for explicit human input.

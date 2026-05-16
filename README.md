@@ -31,6 +31,86 @@ Operational skills must:
 - contain a `## Required Context` section that tells the agent to load `adw-core` first;
 - resolve templates/playbooks from `adw-core`, not from repo-root directories.
 
+## Installation
+
+This repository is both a Hermes skill source and a Hermes plugin package.
+
+### One-line bootstrap
+
+After this branch is merged to the default branch:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/main/scripts/install_adw.sh | bash
+```
+
+For branch testing before merge:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/feature/initial-skills/scripts/install_adw.sh | bash
+```
+
+The installer prompts for the target Hermes profile, removes older ADW-owned skills/plugin copies, installs the current skillset and plugin, verifies the result, and prints the gateway restart command. It does not request or print secrets.
+
+### Manual skill installation
+
+```bash
+hermes skills tap add smarterworkerai/agentic-delivery
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/adw-core
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/plan-feature
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/plan-bugfix
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/do-impl
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/do-impl-delegate
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/test-feature
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/merge-feature
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/promote-release
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/rollback-deployment
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/validate-regression
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/create-adr
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/audit-dependencies
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/analyze-production
+```
+
+For a named profile, insert `--profile <profile>` after `hermes`, for example:
+
+```bash
+hermes --profile delivery skills list
+```
+
+### Manual plugin installation
+
+```bash
+hermes plugins install smarterworkerai/agentic-delivery --enable
+hermes gateway restart
+```
+
+For a named profile:
+
+```bash
+hermes --profile delivery plugins install smarterworkerai/agentic-delivery --enable
+hermes --profile delivery gateway restart
+```
+
+The plugin is intentionally thin. It only routes `/adw <workflow> <payload>` into the ADW skills; workflow policy remains in `skills/adw/*`.
+
+### `/adw` usage
+
+Send `/adw` without arguments to list supported workflow arguments and aliases with short explanations.
+
+Examples:
+
+```text
+/adw plan-feature invoice CSV export
+/adw do-impl issue #42
+/adw test-feature PR #42
+/adw merge-feature main PR #42
+```
+
+If plugin installation is unavailable, use the skill-only fallback:
+
+```text
+Use adw-core and adw-plan-feature for invoice CSV export.
+```
+
 ## Hermes-Compatible Skill Usage
 
 Load `adw-core` together with the operational ADW skill for the current delivery stage:
@@ -236,5 +316,7 @@ Run:
 
 ```bash
 python3 tools/validate_adw_skills.py
+python3 tools/validate_adw_plugin_package.py
+bash -n scripts/install_adw.sh
 git diff --check
 ```

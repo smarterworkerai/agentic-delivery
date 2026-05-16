@@ -1,0 +1,118 @@
+"""Workflow registry and parser for the ADW `/adw` command."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class WorkflowDefinition:
+    """A routable ADW workflow command."""
+
+    token: str
+    skill: str
+    skill_dir: str
+    description: str
+
+
+@dataclass(frozen=True)
+class Route:
+    """Parsed `/adw` command route."""
+
+    workflow: str
+    skill: str
+    payload: str
+
+
+WORKFLOW_DEFINITIONS: tuple[WorkflowDefinition, ...] = (
+    WorkflowDefinition("plan-feature", "adw-plan-feature", "plan-feature", "Plan a new feature: branch, implementation plan, GitHub issue, and acceptance criteria."),
+    WorkflowDefinition("plan-bugfix", "adw-plan-bugfix", "plan-bugfix", "Plan a bugfix: symptom analysis, suspected root cause, branch, issue, and verification strategy."),
+    WorkflowDefinition("do-impl", "adw-do-impl", "do-impl", "Implement the current approved plan directly, run checks, commit, and open a PR."),
+    WorkflowDefinition("do-impl-delegate", "adw-do-impl-delegate", "do-impl-delegate", "Delegate implementation to the approved sandbox/remote agent flow, then inspect and review the returned PR."),
+    WorkflowDefinition("test-feature", "adw-test-feature", "test-feature", "Review and validate a PR, including preview deployment and smoke/E2E checks when available."),
+    WorkflowDefinition("merge-feature", "adw-merge-feature", "merge-feature", "Merge a validated PR into the destination branch and trigger/report the matching deployment."),
+    WorkflowDefinition("promote-release", "adw-promote-release", "promote-release", "Promote an already validated artifact or commit across environments with traceability."),
+    WorkflowDefinition("rollback-deployment", "adw-rollback-deployment", "rollback-deployment", "Rollback a failed deployment to a known-good version and report impact/follow-up."),
+    WorkflowDefinition("validate-regression", "adw-validate-regression", "validate-regression", "Run targeted regression checks against a PR, branch, deployment, or release candidate."),
+    WorkflowDefinition("create-adr", "adw-create-adr", "create-adr", "Create an Architecture Decision Record for architectural or security-boundary changes."),
+    WorkflowDefinition("audit-dependencies", "adw-audit-dependencies", "audit-dependencies", "Audit dependency changes for security, maintenance, and release risk."),
+    WorkflowDefinition("analyze-production", "adw-analyze-production", "analyze-production", "Inspect production feedback, logs, metrics, or user reports and recommend continue/fix-forward/rollback."),
+)
+
+WORKFLOWS: dict[str, str] = {definition.token: definition.skill for definition in WORKFLOW_DEFINITIONS}
+_SKILL_DIR_BY_NAME: dict[str, str] = {"adw-core": "adw-core"} | {
+    definition.skill: definition.skill_dir for definition in WORKFLOW_DEFINITIONS
+}
+_DESCRIPTION_BY_WORKFLOW: dict[str, str] = {
+    definition.token: definition.description for definition in WORKFLOW_DEFINITIONS
+}
+
+ALIASES: dict[str, str] = {
+    "plan": "plan-feature",
+    "feature": "plan-feature",
+    "bug": "plan-bugfix",
+    "bugfix": "plan-bugfix",
+    "fix": "plan-bugfix",
+    "impl": "do-impl",
+    "implement": "do-impl",
+    "delegate": "do-impl-delegate",
+    "test": "test-feature",
+    "validate": "test-feature",
+    "merge": "merge-feature",
+    "promote": "promote-release",
+    "rollback": "rollback-deployment",
+    "regress": "validate-regression",
+    "regression": "validate-regression",
+    "adr": "create-adr",
+    "deps": "audit-dependencies",
+    "dependencies": "audit-dependencies",
+    "prod": "analyze-production",
+    "production": "analyze-production",
+}
+
+
+def normalize_token(token: str) -> str:
+    """Normalize a workflow or alias token from a slash command."""
+
+    return (token or "").strip().lower().replace("_", "-")
+
+
+def canonical_workflow(token: str) -> str | None:
+    """Resolve a workflow token or alias to a canonical workflow."""
+
+    workflow_key = normalize_token(token)
+    workflow = ALIASES.get(workflow_key, workflow_key)
+    if workflow not in WORKFLOWS:
+        return None
+    return workflow
+
+
+def parse_route(raw_args: str) -> Route | None:
+    """Parse raw `/adw` arguments into a workflow route."""
+
+    args = (raw_args or "").strip()
+    if not args:
+        return None
+    workflow_token, _, payload = args.partition(" ")
+    workflow = canonical_workflow(workflow_token)
+    if workflow is None:
+        return None
+    return Route(workflow=workflow, skill=WORKFLOWS[workflow], payload=payload.strip())
+
+
+def skill_dir_for_name(skill_name: str) -> str:
+    """Return the repository skill directory for an installed ADW skill name."""
+
+    return _SKILL_DIR_BY_NAME[skill_name]
+
+
+def workflow_description(workflow: str) -> str:
+    """Return the short help text for a canonical workflow."""
+
+    return _DESCRIPTION_BY_WORKFLOW[workflow]
+
+
+def alias_lines() -> list[str]:
+    """Return stable help lines describing aliases."""
+
+    return [f"{alias} -> {target}" for alias, target in sorted(ALIASES.items())]

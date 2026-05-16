@@ -1,6 +1,6 @@
 name: adw
 version: 0.1.0
-description: "Project-local Agentic Delivery Workflow slash command router spike."
+description: "Agentic Delivery Workflow slash command router."
 author: smarterworkerai
 kind: standalone
 platforms:

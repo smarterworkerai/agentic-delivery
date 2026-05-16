@@ -46,7 +46,7 @@ curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/ma
 For branch testing before merge:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/feature/initial-skills/scripts/install_adw.sh | bash
+curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/refs/heads/feature/initial-skills/scripts/install_adw.sh | bash
 ```
 
 The installer prompts for the target Hermes profile, removes older ADW-owned skills/plugin copies, installs the current skillset and plugin, verifies the result, and prints the gateway restart command. It does not request or print secrets.

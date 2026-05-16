@@ -1,18 +1,88 @@
-# PLAN: Hermes ADW Plugin
+# PLAN: Installable Hermes ADW Plugin + Skill Package
+
+> **Decision:** ADW stays in a single repository. `smarterworkerai/agentic-delivery` must become both a Hermes skill source and a Hermes plugin repository.
 
 ## Purpose
 
-Define a thin Hermes plugin that turns the Agentic Delivery Workflow (ADW) skill package into a deterministic command surface:
+Define how the `agentic-delivery` repository will expose the Agentic Delivery Workflow (ADW) in two installable forms:
+
+1. **Skills:** the ADW workflow knowledge and delivery gates under `skills/adw/`.
+2. **Plugin:** a thin `/adw <workflow> <payload>` Hermes command router installable from the repository root.
+
+The plugin must not reimplement delivery workflows. It only parses, normalizes, and routes commands into the ADW skills so Hermes executes the existing workflow contracts consistently across CLI and gateway platforms.
+
+## Final Packaging Decision
+
+Use the single-repository root-plugin model:
 
 ```text
-/adw <workflow> <payload>
+agentic-delivery/
+  plugin.yaml
+  __init__.py
+  adw_plugin/
+    __init__.py
+    router.py
+    prompts.py
+    registry.py
+
+  skills/
+    adw/
+      README.md
+      adw-core/
+        SKILL.md
+        references/
+        templates/
+        assets/
+      plan-feature/
+        SKILL.md
+      plan-bugfix/
+        SKILL.md
+      do-impl/
+        SKILL.md
+      do-impl-delegate/
+        SKILL.md
+      test-feature/
+        SKILL.md
+      merge-feature/
+        SKILL.md
+      promote-release/
+        SKILL.md
+      rollback-deployment/
+        SKILL.md
+      validate-regression/
+        SKILL.md
+      create-adr/
+        SKILL.md
+      audit-dependencies/
+        SKILL.md
+      analyze-production/
+        SKILL.md
+
+  scripts/
+    install_adw.sh
+
+  tools/
+    validate_adw_skills.py
+    validate_adw_plugin_spike.py
+    validate_adw_plugin_package.py
+
+  README.md
+  PLAN.md
+  PLAN_plugin.md
+  SOUL.md
 ```
 
-The plugin must not reimplement the delivery workflows. Its job is to route, normalize, and inject the correct skill context so Hermes executes the existing ADW skills consistently across CLI and gateway platforms.
+Consequences:
+
+- `hermes plugins install smarterworkerai/agentic-delivery --enable` should install the plugin from this repository root.
+- `hermes skills tap add smarterworkerai/agentic-delivery` should make the ADW skills installable from the same repository.
+- No separate `hermes-plugin-adw` repository is required for now.
+- The repository root intentionally becomes a combined Hermes package: documentation source, skill source, and plugin package.
+- Workflow rules stay in `skills/adw/*`; root plugin code stays thin.
 
 ## Current ADW Package Assumptions
 
-- The repository branch is `feature/initial-skills`.
+- Target branch: `feature/initial-skills`.
 - Shared ADW context is packaged as `skills/adw/adw-core/`.
 - Operational workflow skills live under `skills/adw/<workflow>/`.
 - Operational skills reference `adw-core` as the source of truth for shared playbooks, templates, ADRs, and diagrams.
@@ -31,22 +101,25 @@ Examples:
 
 ```text
 /adw plan-feature invoice CSV export
+/adw plan-bugfix login timeout after OAuth callback
 /adw do-impl issue #42
+/adw do-impl-delegate issue #42
 /adw test-feature PR #43
 /adw merge-feature main PR #43
+/adw promote-release demo to production PR #43
 /adw rollback-deployment production login regression
 ```
 
-The command should work the same way from:
+The command should work from:
 
 - Hermes CLI interactive sessions
 - Telegram gateway messages
-- Discord gateway slash commands, subject to platform naming and argument rules
-- Other Hermes gateway platforms that pass slash commands into the shared gateway dispatcher
+- Discord gateway slash commands, subject to platform command constraints
+- other Hermes gateway platforms that pass slash commands into the shared gateway dispatcher
 
 ## Workflow Registry
 
-The plugin should maintain an explicit registry mapping workflow tokens to skill names.
+The plugin should maintain an explicit workflow registry mapping command tokens to skill names.
 
 Canonical workflow tokens:
 
@@ -67,17 +140,24 @@ Recommended aliases:
 
 - `plan` -> `plan-feature`
 - `feature` -> `plan-feature`
+- `bug` -> `plan-bugfix`
 - `bugfix` -> `plan-bugfix`
+- `fix` -> `plan-bugfix`
 - `impl` -> `do-impl`
+- `implement` -> `do-impl`
 - `delegate` -> `do-impl-delegate`
 - `test` -> `test-feature`
+- `validate` -> `test-feature`
 - `merge` -> `merge-feature`
 - `promote` -> `promote-release`
 - `rollback` -> `rollback-deployment`
 - `regress` -> `validate-regression`
+- `regression` -> `validate-regression`
 - `adr` -> `create-adr`
 - `deps` -> `audit-dependencies`
+- `dependencies` -> `audit-dependencies`
 - `prod` -> `analyze-production`
+- `production` -> `analyze-production`
 
 ## Plugin Responsibilities
 
@@ -87,474 +167,525 @@ The plugin should:
 2. Parse the first argument as the workflow selector.
 3. Normalize aliases to canonical workflow names.
 4. Treat the remaining text as the workflow payload.
-5. Build a deterministic prompt that loads or injects:
-   - `adw-core`
-   - the selected operational skill
-6. In CLI mode, queue the generated skill invocation message into the active conversation rather than merely printing it.
-7. In gateway mode, rewrite `/adw ...` into the selected operational skill slash command, or otherwise inject a real agent message before the normal agent runner starts.
-8. Reject unknown workflows with a concise usage message.
-9. Refuse unsafe ambiguity only when the missing information affects safety or workflow gates.
-10. Keep all business workflow rules in skills, not plugin code.
+5. Build a deterministic invocation prompt that includes:
+   - the selected workflow token;
+   - the selected operational skill name;
+   - the user payload;
+   - instructions to preserve ADW gates, traceability, reviewability, and deployment safety.
+6. In CLI mode, queue the generated invocation into the active conversation using `ctx.inject_message(...)` when available.
+7. In gateway mode, rewrite valid `/adw ...` messages through the verified `pre_gateway_dispatch` hook using `{"action": "rewrite", "text": "..."}` before plugin command dispatch consumes them as direct responses.
+8. Reject unknown or incomplete workflows with concise usage output.
+9. Keep all business workflow rules in skills, not plugin code.
 
-The plugin should not:
+The plugin must not:
 
-- create branches directly
-- create issues directly
-- create PRs directly
-- merge or deploy directly
-- bypass review, preview, or validation gates
-- duplicate the content of ADW skills or playbooks
+- create branches directly;
+- create issues directly;
+- create PRs directly;
+- merge or deploy directly;
+- bypass review, preview, validation, or production safety gates;
+- duplicate ADW workflow policy except for minimal routing metadata.
 
 ## Hermes Source Findings
 
-This section records findings from the Hermes source tree inspected under:
+Hermes source inspected under:
 
 ```text
 /home/pupz/.hermes/hermes-agent
 ```
 
-### Plugin API
+### Plugin Discovery
 
-Hermes discovers plugins from four sources in `hermes_cli/plugins.py`:
+Hermes discovers plugins from:
 
-1. bundled plugins: `<hermes repo>/plugins/<name>/`
-2. user plugins: `~/.hermes/plugins/<name>/`
-3. project plugins: `./.hermes/plugins/<name>/`, gated by `HERMES_ENABLE_PROJECT_PLUGINS`
-4. pip plugins exposing the `hermes_agent.plugins` entry point group
+1. bundled plugins: `<hermes repo>/plugins/<name>/`;
+2. user plugins: `$HERMES_HOME/plugins/<name>/`;
+3. project-local plugins: `./.hermes/plugins/<name>/`, only when `HERMES_ENABLE_PROJECT_PLUGINS=1`;
+4. Python entry points in the `hermes_agent.plugins` group.
 
-A directory plugin must contain:
+A directory plugin requires:
 
-- `plugin.yaml`
-- `__init__.py`
-- a `register(ctx)` function
+- `plugin.yaml`;
+- `__init__.py`;
+- `register(ctx)`.
 
-The plugin context supports these relevant APIs:
+### Plugin Installation
 
-- `ctx.register_command(name, handler, description='', args_hint='')`
-- `ctx.register_cli_command(...)`
-- `ctx.register_tool(...)`
-- `ctx.register_hook(...)`
-- `ctx.register_skill(name, path, description='')`
-- `ctx.dispatch_tool(...)`
-- `ctx.inject_message(...)` for CLI mode only; it logs that it is not available in gateway mode when no CLI reference exists
+`hermes plugins install <identifier>` is repository-root based:
 
-For ADW, the important API is `ctx.register_command()`.
+- accepts `owner/repo`, HTTPS URLs, SSH URLs, and `file://...`;
+- clones the whole Git repository into `$HERMES_HOME/plugins/`;
+- expects `plugin.yaml` and/or `__init__.py` at the cloned repository root;
+- does not currently provide source evidence for installing a plugin from a subdirectory such as `owner/repo/path/to/plugin`;
+- plugins must be enabled with `hermes plugins enable <name>` or installed with `--enable`;
+- gateway restart is required after plugin installation or update.
+
+Implication:
+
+```text
+.hermes/plugins/adw/
+```
+
+is useful for a trusted local spike, but it is not the portable install target for `hermes plugins install smarterworkerai/agentic-delivery`. For portable install, this repository needs root-level plugin files.
 
 ### Command Registration
 
-`ctx.register_command()` registers an in-session slash command, not a terminal subcommand.
+`ctx.register_command()` registers an in-session slash command. Behavior observed from source and spike validation:
 
-Behavior observed in source:
+- command names are normalized to lowercase;
+- a leading `/` is stripped;
+- spaces become hyphens;
+- conflicts with built-in commands are rejected;
+- handler shape is `handler(raw_args: str) -> str | None`;
+- async handlers are supported;
+- registered plugin commands flow into CLI, help/autocomplete, Discord command registration, and gateway dispatch.
 
-- Command names are normalized to lowercase, stripped of a leading `/`, and spaces become hyphens.
-- Conflicts with built-in commands are rejected.
-- Handlers use this shape:
+### Prompt Injection and Gateway Rewrite
 
-```python
-def handler(raw_args: str) -> str | None:
-    ...
+A plugin command handler return value is not enough to start an agent workflow:
+
+- in CLI, the returned string is printed;
+- in gateway, the returned string is sent as a direct reply.
+
+Therefore ADW needs real injection/rewrite:
+
+- CLI path: close over `ctx` and call `ctx.inject_message(prompt, role="user")`.
+- Gateway path: register a `pre_gateway_dispatch` hook and return `{"action": "rewrite", "text": prompt}` for valid `/adw ...` commands.
+- Invalid `/adw` inputs should not be rewritten; they should fall through to the direct command handler so users get usage output.
+
+## Local Spike Results
+
+A project-local plugin spike was created under:
+
+```text
+.hermes/plugins/adw/
+  plugin.yaml
+  __init__.py
+  README.md
 ```
 
-- Async handlers are also supported.
-- Registered plugin commands appear in the shared plugin command registry used by CLI, help/autocomplete, and gateways.
+A model-free validation harness was created at:
 
-Minimal plugin skeleton:
-
-```python
-# plugin.yaml
-manifest_version: 1
-name: adw
-description: Agentic Delivery Workflow command router
-version: 0.1.0
+```text
+tools/validate_adw_plugin_spike.py
 ```
 
-```python
-# __init__.py
-from __future__ import annotations
+Validated behavior:
 
-WORKFLOWS = {
-    "plan-feature": "adw-plan-feature",
-    "plan-bugfix": "adw-plan-bugfix",
-    "do-impl": "adw-do-impl",
-    "do-impl-delegate": "adw-do-impl-delegate",
-    "test-feature": "adw-test-feature",
-    "merge-feature": "adw-merge-feature",
-    "promote-release": "adw-promote-release",
-    "rollback-deployment": "adw-rollback-deployment",
-    "validate-regression": "adw-validate-regression",
-    "create-adr": "adw-create-adr",
-    "audit-dependencies": "adw-audit-dependencies",
-    "analyze-production": "adw-analyze-production",
-}
+- `/adw` command registration through `ctx.register_command()`.
+- Workflow parsing and alias normalization.
+- Prompt construction with embedded `adw-core` and selected operational `SKILL.md` content.
+- CLI injection through `ctx.inject_message(...)` with a fake context.
+- Gateway rewrite through `pre_gateway_dispatch` returning `{"action": "rewrite", "text": ...}`.
+- Hermes project-plugin discovery using:
+  - temporary `HERMES_HOME`;
+  - `plugins.enabled: [adw]`;
+  - `HERMES_ENABLE_PROJECT_PLUGINS=1`;
+  - the Hermes venv Python interpreter.
 
-ALIASES = {
-    "plan": "plan-feature",
-    "feature": "plan-feature",
-    "bugfix": "plan-bugfix",
-    "impl": "do-impl",
-    "delegate": "do-impl-delegate",
-    "test": "test-feature",
-    "merge": "merge-feature",
-    "promote": "promote-release",
-    "rollback": "rollback-deployment",
-    "regress": "validate-regression",
-    "adr": "create-adr",
-    "deps": "audit-dependencies",
-    "prod": "analyze-production",
-}
+Validation command:
 
-
-def register(ctx):
-    ctx.register_command(
-        "adw",
-        handle_adw,
-        description="Run an Agentic Delivery Workflow",
-        args_hint="<workflow> <payload>",
-    )
-
-
-def handle_adw(raw_args: str) -> str:
-    args = (raw_args or "").strip()
-    if not args:
-        return usage()
-
-    workflow_token, _, payload = args.partition(" ")
-    workflow = ALIASES.get(workflow_token, workflow_token)
-    skill = WORKFLOWS.get(workflow)
-    if not skill:
-        return usage(f"Unknown ADW workflow: {workflow_token}")
-
-    return build_prompt(workflow, skill, payload.strip())
-
-
-def build_prompt(workflow: str, skill: str, payload: str) -> str:
-    return f"""ADW command invocation.
-
-Load and follow these skills in order:
-1. adw-core
-2. {skill}
-
-Workflow: {workflow}
-User intent: {payload or "(none provided)"}
-
-Execute the workflow according to the ADW skill contract. Preserve ADW gates, traceability, reviewability, and deployment safety.
-""".strip()
-
-
-def usage(prefix: str | None = None) -> str:
-    workflows = ", ".join(sorted(WORKFLOWS))
-    body = f"Usage: /adw <workflow> <payload>\nWorkflows: {workflows}"
-    return f"{prefix}\n\n{body}" if prefix else body
+```bash
+python3 tools/validate_adw_plugin_spike.py
 ```
 
-### Skill Preload and Prompt Injection
+Observed successful result:
 
-Hermes already has a skill slash command system in `agent/skill_commands.py`.
+```text
+Direct plugin tests OK: parse, CLI injection, and gateway rewrite
+Hermes discovery OK: /adw command registered and gateway rewrite hook works
+ADW plugin spike validation OK
+```
 
-Relevant behavior:
+Design conclusions from the spike:
 
-- Installed skills under `~/.hermes/skills/` and configured external skill dirs are scanned for `SKILL.md`.
-- A skill named `adw-plan-feature` becomes callable as `/adw-plan-feature`.
-- `build_skill_invocation_message()` formats the skill content into a prompt-like message.
-- The generated message includes:
-  - skill content
-  - absolute skill directory
-  - linked supporting files
-  - optional skill config values
-  - the user's instruction alongside the invocation
+1. The `/adw` UX is viable.
+2. Gateway support should use `pre_gateway_dispatch` rewrite, not plain handler returns.
+3. CLI support should use `ctx.inject_message(...)` when available.
+4. The packaged root plugin can reuse the spike logic, but should move reusable code into `adw_plugin/` modules.
+5. The local `.hermes/plugins/adw/` copy should remain a development spike only or be removed after the root plugin package is implemented and tested.
 
-However, plugin commands do not automatically call `build_skill_invocation_message()` for multiple skills. A plugin command handler returns a string, and that string becomes the next message/response path depending on the surface.
+## Target Repository Changes
 
-Recommended initial implementation:
-
-A plain plugin command return value is not enough to start an ADW agent turn:
-
-- In CLI mode, `cli.py` prints the plugin command result.
-- In gateway mode, `gateway/run.py` returns the plugin command result as a direct reply.
-
-Therefore the plugin should not rely on returning a normalized prompt as the final runtime mechanism.
-
-Recommended implementation:
-
-- For CLI, close over `ctx` in the `/adw` handler and call `ctx.inject_message(...)` with a generated skill invocation message. `ctx.inject_message()` is explicitly CLI-oriented and queues into the active conversation when `_cli_ref` exists.
-- For gateway, use the command hook/rewrite path or a pre-dispatch rewrite so `/adw <workflow> <payload>` becomes `/<selected-operational-skill> <payload>` before skill command dispatch. Operational skills already know to use `adw-core`.
-- For both surfaces, build the injected or rewritten content with `agent.skill_commands.build_skill_invocation_message()` where stable, and keep a fallback usage/error response for failed internal imports.
-
-This should be validated with both CLI and gateway because `build_skill_invocation_message()` is an internal helper rather than a plugin public API.
-
-### Gateway Command Compatibility
-
-The gateway dispatcher in `gateway/run.py` checks plugin-registered slash commands before skill slash commands.
-
-Relevant behavior:
-
-- Incoming slash command names are normalized by replacing underscores with hyphens.
-- `get_plugin_command_handler(command.replace("_", "-"))` is used.
-- If a plugin command handler exists, the gateway passes `event.get_command_args().strip()` as `raw_args`.
-- Coroutine handlers are awaited.
-- The returned result is sent back as text if present.
-
-This means `/adw ...` should pass through Telegram and the shared gateway dispatcher as a plugin command.
-
-Discord has additional native slash registration support in `gateway/platforms/discord.py`:
-
-- Discord imports `_iter_plugin_command_entries()` from `hermes_cli.commands`.
-- Plugin commands are automatically added to Discord's native slash picker.
-- The code comment states plugin commands are platform-agnostic and no per-platform plugin API is needed.
-- `args_hint` is used to expose an argument field where possible.
-
-Caveats:
-
-- Telegram Bot API command names do not support hyphens in the native command menu, so Hermes normalizes underscores to hyphens when dispatching. The canonical plugin command `/adw` avoids this issue.
-- Discord command names have length and character limits. `/adw` is safe.
-- Subcommand-like syntax (`/adw plan-feature ...`) is plain text arguments to Hermes, not a native Discord subcommand tree unless a future plugin implements a Discord-specific command group.
-- Returning a normal string from a plugin command is direct output, not automatic prompt injection.
-- `ctx.inject_message()` is available for CLI mode but logs that no CLI reference is available in gateway mode.
-- The safest gateway design is to rewrite `/adw <workflow> <payload>` to `/<operational-skill> <payload>` before the skill command dispatcher runs.
-- The command hook path in `gateway/run.py` supports `decision: rewrite` with `command_name` and `raw_args` for recognized commands, but this should be validated with plugin-registered `command:adw` hooks before finalizing the implementation.
-
-### Plugin Installation Model
-
-Hermes plugin install support is Git-repository based.
-
-`hermes_cli/plugins_cmd.py` shows:
-
-- `hermes plugins install <identifier>` clones a Git repo into `~/.hermes/plugins/`.
-- Accepted identifiers:
-  - `https://github.com/owner/repo.git`
-  - `git@github.com:owner/repo.git`
-  - `ssh://git@github.com/owner/repo.git`
-  - `owner/repo`, resolved to GitHub HTTPS
-  - `file://...` is accepted but warned as insecure/local
-- The installer expects `plugin.yaml` and/or `__init__.py` at the repository root after clone.
-- There is no source evidence that `hermes plugins install owner/repo/path/to/plugin` installs a subdirectory directly.
-- Plugins are opt-in after installation; they must be enabled via `hermes plugins enable <name>` or installed with `--enable`.
-- Gateway restart is required for plugin changes to take effect.
-
-Implications for this repository:
-
-1. A plugin in `agentic-delivery/plugins/adw/` is useful for development, but it is not directly installable by the current plugin installer as a subdirectory of the repo.
-2. A repo-local project plugin is possible at `./.hermes/plugins/adw/` when running Hermes from this repository with `HERMES_ENABLE_PROJECT_PLUGINS=1`, but this is a trust-gated development mode, not a portable package-manager install path.
-3. For a clean user-facing plugin install, use one of these approaches:
-   - put the plugin at the root of a dedicated repository, e.g. `smarterworkerai/hermes-plugin-adw`; or
-   - make this repository itself plugin-installable by placing `plugin.yaml` and `__init__.py` at the root, but this would mix plugin runtime files with the ADW skill package and is not recommended.
-
-Recommended packaging decision:
-
-- Keep ADW skills in `smarterworkerai/agentic-delivery`.
-- Create a separate thin plugin repository later, e.g. `smarterworkerai/hermes-plugin-adw`, if the plugin is meant to be installed via `hermes plugins install smarterworkerai/hermes-plugin-adw --enable`.
-- During development, optionally mirror the plugin under `.hermes/plugins/adw/` for repo-local testing with `HERMES_ENABLE_PROJECT_PLUGINS=1`.
-
-## Proposed Repository Additions
-
-### Option A: Development Plugin Inside This Repository
+### 1. Root Plugin Manifest
 
 Create:
 
 ```text
-.hermes/plugins/adw/
-  plugin.yaml
-  __init__.py
-  README.md
+plugin.yaml
 ```
 
-Pros:
+Purpose:
 
-- Can be tested from this repository without a second repo.
-- Does not change the root package shape.
-- Makes the plugin source colocated with the ADW skills during design.
+- make the repository installable with `hermes plugins install smarterworkerai/agentic-delivery --enable`;
+- define plugin name `adw`;
+- describe the `/adw` router;
+- identify this as a standalone Hermes plugin.
 
-Cons:
+Expected fields:
 
-- Requires `HERMES_ENABLE_PROJECT_PLUGINS=1`.
-- Not a normal `hermes plugins install owner/repo` package.
-- Hidden under `.hermes/`, which may be less discoverable.
+```yaml
+name: adw
+version: 0.1.0
+description: "Agentic Delivery Workflow slash command router."
+author: smarterworkerai
+kind: standalone
+platforms:
+  - linux
+  - macos
+  - windows
+```
 
-### Option B: Dedicated Plugin Repository
+### 2. Root Plugin Entrypoint
 
-Create a separate repository:
+Create:
 
 ```text
-smarterworkerai/hermes-plugin-adw
-  plugin.yaml
-  __init__.py
-  README.md
-  tests/
+__init__.py
 ```
 
-Pros:
+Purpose:
 
-- Directly installable with Hermes plugin manager.
-- Clear package boundary.
-- Keeps ADW skills and plugin runtime independently versionable.
+- expose `register(ctx)` from the implementation package;
+- keep root entrypoint minimal.
 
-Cons:
+Expected content shape:
 
-- Requires keeping workflow registry in sync with the ADW skill repository.
-- Needs release coordination between skill package and plugin package.
+```python
+from adw_plugin.router import register
 
-### Option C: Root-Level Plugin in This Repository
+__all__ = ["register"]
+```
 
-Create root-level plugin files:
+### 3. Plugin Implementation Package
+
+Create:
+
+```text
+adw_plugin/
+  __init__.py
+  registry.py
+  prompts.py
+  router.py
+```
+
+Responsibilities:
+
+- `registry.py`
+  - canonical workflow registry;
+  - alias registry;
+  - skill-directory mapping;
+  - route dataclass;
+  - parsing and validation helpers.
+- `prompts.py`
+  - invocation prompt builder;
+  - installed-skill-first prompt shape;
+  - fallback embedded-skill prompt shape when local repository skills are available.
+- `router.py`
+  - `register(ctx)`;
+  - `/adw` command handler;
+  - `pre_gateway_dispatch` hook;
+  - event parsing helpers;
+  - usage formatting.
+
+### 4. Package Validation
+
+Create:
+
+```text
+tools/validate_adw_plugin_package.py
+```
+
+This should validate the root-plugin package, not only the project-local spike:
+
+- root `plugin.yaml` exists and has `name: adw`;
+- root `__init__.py` exposes `register`;
+- `adw_plugin.router.register()` registers `/adw` and `pre_gateway_dispatch`;
+- every workflow registry entry maps to an existing skill directory;
+- every operational ADW skill has a registry entry or explicit exclusion;
+- aliases resolve to valid canonical workflows;
+- gateway rewrite produces a normal agent prompt, not a direct slash command echo;
+- install/discovery can be simulated with a temporary `HERMES_HOME` and `file://` or direct import path.
+
+### 5. README Installation Documentation
+
+Update:
+
+```text
+README.md
+```
+
+Add a dedicated section:
+
+```markdown
+## Installation
+```
+
+Document both install paths with Hermes commands.
+
+Skill installation documentation should include:
+
+```bash
+hermes skills tap add smarterworkerai/agentic-delivery
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/adw-core
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/plan-feature
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/plan-bugfix
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/do-impl
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/do-impl-delegate
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/test-feature
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/merge-feature
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/promote-release
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/rollback-deployment
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/validate-regression
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/create-adr
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/audit-dependencies
+hermes skills install smarterworkerai/agentic-delivery/skills/adw/analyze-production
+```
+
+If the exact tap install identifier differs after live verification, update README with the verified Hermes command form and record the reason in this plan.
+
+Plugin installation documentation should include:
+
+```bash
+hermes plugins install smarterworkerai/agentic-delivery --enable
+```
+
+Gateway note:
+
+```bash
+hermes gateway restart
+```
+
+Profile note:
+
+```bash
+hermes --profile <profile> plugins list
+hermes --profile <profile> skills list
+```
+
+Usage examples:
+
+```text
+/adw plan-feature invoice CSV export
+/adw do-impl issue #42
+/adw test-feature PR #42
+/adw merge-feature main PR #42
+```
+
+Also document the skill-only fallback:
+
+```text
+Use adw-core and adw-plan-feature for invoice CSV export.
+```
+
+### 6. One-Liner Bootstrap Installer
+
+Create:
+
+```text
+scripts/install_adw.sh
+```
+
+Purpose:
+
+- provide a one-liner bootstrap path for installing both ADW skills and the ADW plugin;
+- ask which Hermes profile should receive the install;
+- install/update skills and plugin using Hermes commands;
+- avoid storing credentials or secrets.
+
+Desired one-liner after the script is merged to the default branch:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/main/scripts/install_adw.sh | bash
+```
+
+For branch testing before merge:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/feature/initial-skills/scripts/install_adw.sh | bash
+```
+
+Script behavior:
+
+1. Verify `hermes` exists on `PATH`.
+2. Print the active Hermes version if available.
+3. Ask the user for a target profile:
+   - default profile when empty;
+   - explicit named profile when provided.
+4. Optionally list existing profiles if `hermes profile list` is available.
+5. Build a profile-aware Hermes command prefix:
+   - `hermes` for default profile;
+   - `hermes --profile <name>` for named profile.
+6. Add or update the skill tap:
+   - `hermes skills tap add smarterworkerai/agentic-delivery`.
+7. Install all ADW skills from `skills/adw/`.
+8. Install and enable the plugin:
+   - `hermes plugins install smarterworkerai/agentic-delivery --enable`.
+9. Run post-install verification:
+   - `hermes skills list` contains ADW skills;
+   - `hermes plugins list` shows `adw` enabled.
+10. Print next steps:
+   - restart gateway if using Telegram/Discord/etc.;
+   - try `/adw plan-feature <feature>`.
+
+Safety requirements:
+
+- Do not request or print secrets.
+- Use `set -euo pipefail`.
+- Quote all profile/user input.
+- Make the script idempotent where Hermes commands allow it.
+- Fail with actionable messages if tap/plugin install commands are unavailable in the user's Hermes version.
+
+### 7. Local Spike Lifecycle
+
+After the root plugin package is implemented and validated, decide whether to keep or remove:
+
+```text
+.hermes/plugins/adw/
+```
+
+Preferred final state:
+
+- remove the project-local plugin copy to avoid duplicate source of truth;
+- keep `tools/validate_adw_plugin_spike.py` only if it remains useful as a regression harness, or replace it with `tools/validate_adw_plugin_package.py`.
+
+If kept temporarily, README must state that `.hermes/plugins/adw/` is a development spike and not the normal install path.
+
+## Implementation Plan
+
+### Phase 1: Commit Research and Decision
+
+Update this `PLAN_plugin.md` with:
+
+- single-repository root-plugin decision;
+- Hermes source findings;
+- local spike validation results;
+- target root package structure;
+- README documentation requirements;
+- bootstrap installer requirements.
+
+Validation:
+
+```bash
+python3 tools/validate_adw_skills.py
+python3 tools/validate_adw_plugin_spike.py
+git diff --check
+```
+
+### Phase 2: Convert Spike to Root Plugin Package
+
+Create root plugin files and implementation package:
 
 ```text
 plugin.yaml
 __init__.py
+adw_plugin/
 ```
 
-Pros:
-
-- `hermes plugins install smarterworkerai/agentic-delivery` could work from this repository.
-
-Cons:
-
-- Mixes plugin runtime with skill package source.
-- Makes the repository root ambiguous: skill package, documentation repo, and plugin package at once.
-- Not recommended unless the repo is intentionally repositioned as a combined Hermes package.
-
-Recommended path: Option A for local spike, Option B for user-facing installation.
-
-## Implementation Plan
-
-### Phase 1: Plugin Spike
-
-Create a repo-local development plugin under:
+Move reusable logic from:
 
 ```text
-.hermes/plugins/adw/
+.hermes/plugins/adw/__init__.py
 ```
 
-Files:
+into:
 
-- `plugin.yaml`
-  - manifest version
-  - plugin name: `adw`
-  - description
-  - version
-- `__init__.py`
-  - workflow registry
-  - alias registry
-  - `/adw` command registration
-  - usage/error formatting
-  - prompt builder
-- `README.md`
-  - setup instructions
-  - command examples
-  - known gateway caveats
+```text
+adw_plugin/registry.py
+adw_plugin/prompts.py
+adw_plugin/router.py
+```
 
-### Phase 2: Prompt Injection Validation
+Acceptance criteria:
 
-Test in CLI:
+- `from adw_plugin.router import register` works;
+- root `__init__.py` exposes `register`;
+- no workflow policy is moved out of skills;
+- the root package can be discovered as a Hermes plugin.
+
+### Phase 3: Package-Level Validation
+
+Add and run:
+
+```bash
+python3 tools/validate_adw_plugin_package.py
+```
+
+Acceptance criteria:
+
+- root plugin manifest and entrypoint are valid;
+- `/adw` command registers;
+- CLI injection is model-free testable with fake context;
+- gateway rewrite is model-free testable with fake event;
+- registry and skill directories are consistent.
+
+### Phase 4: README Installation Documentation
+
+Update `README.md` with:
+
+- skill tap installation commands;
+- per-skill installation commands;
+- plugin installation command;
+- gateway restart note;
+- profile-specific examples;
+- `/adw` usage examples;
+- skill-only fallback examples;
+- bootstrap one-liner.
+
+Acceptance criteria:
+
+- README commands are copy-pasteable;
+- README clearly separates skills from plugin;
+- README states that the plugin is only a router and the skills contain workflow policy;
+- README warns to restart the gateway after plugin install/update.
+
+### Phase 5: Bootstrap Installer
+
+Create:
+
+```text
+scripts/install_adw.sh
+```
+
+Implement the interactive profile prompt and install flow described above.
+
+Acceptance criteria:
+
+- script passes `bash -n scripts/install_adw.sh`;
+- script fails safely when `hermes` is missing;
+- script prints the exact profile it will modify before installing;
+- script installs skills and plugin using Hermes commands;
+- script verifies installed artifacts after completion;
+- README contains the one-liner curl command.
+
+### Phase 6: End-to-End Install Smoke
+
+Use a temporary or disposable Hermes profile for smoke testing.
+
+Suggested commands:
+
+```bash
+hermes profile create adw-smoke
+hermes --profile adw-smoke skills tap add smarterworkerai/agentic-delivery
+hermes --profile adw-smoke skills install smarterworkerai/agentic-delivery/skills/adw/adw-core
+hermes --profile adw-smoke plugins install smarterworkerai/agentic-delivery --enable
+hermes --profile adw-smoke plugins list
+hermes --profile adw-smoke skills list
+```
+
+Then test command routing in CLI:
 
 ```text
 /adw plan-feature invoice CSV export
 ```
 
-Acceptance criteria:
-
-- `/adw` is recognized as a plugin command.
-- Unknown workflow returns usage.
-- Valid workflow queues a real agent turn through `ctx.inject_message(...)` or an equivalent verified mechanism.
-- The queued turn loads/follows `adw-core` and the selected operational skill.
-- The plugin does not bypass ADW gates.
-
-Test in Telegram gateway:
-
-```text
-/adw plan-feature invoice CSV export
-```
-
-Acceptance criteria:
-
-- Gateway recognizes `/adw`.
-- Command arguments arrive intact.
-- Result produces a real ADW agent turn, not merely a prompt string echoed to the user.
-
-If gateway only echoes the returned prompt, do not treat that as acceptable behavior. The expected gateway implementation is a rewrite/injection path that causes the normal skill command dispatcher and agent runner to execute.
-
-### Phase 3: Skill Composition Helper
-
-If Phase 2 shows that a plain returned prompt is too weak, add internal helper use:
-
-```python
-from agent.skill_commands import build_skill_invocation_message
-```
-
-Compose:
-
-```text
-build_skill_invocation_message('/adw-core', '')
-build_skill_invocation_message('/adw-plan-feature', normalized_payload)
-```
-
-Then return the combined message. Validate this in CLI and gateway.
-
-### Phase 4: Documentation Updates
-
-Update:
-
-- `README.md`
-- `skills/adw/README.md`
-- relevant operational skill usage examples
-
-Document:
-
-- canonical `/adw <workflow> <payload>` usage
-- skill-only fallback
-- local development plugin setup
-- future dedicated plugin package install path
-
-### Phase 5: Validation Tooling
-
-Extend `tools/validate_adw_skills.py` or add a new validator to check:
-
-- every workflow in plugin registry has a corresponding operational skill
-- every operational workflow skill has a registry entry or an explicit exclusion
-- aliases resolve to valid canonical workflows
-- README examples reference valid workflows
-- `adw-core` remains present
-
-### Phase 6: Dedicated Plugin Repository
-
-If the spike succeeds, create `smarterworkerai/hermes-plugin-adw` with:
-
-- plugin root files
-- tests
-- release notes
-- install docs
-
-Install command:
+Gateway smoke after installation:
 
 ```bash
-hermes plugins install smarterworkerai/hermes-plugin-adw --enable
-hermes gateway restart
+hermes --profile adw-smoke gateway restart
 ```
 
-The dedicated plugin should depend on the ADW skills being installed separately until Hermes supports bundled skill installation from plugin packages as a stable public workflow.
-
-## Test Strategy
-
-Minimum checks:
-
-```bash
-python3 tools/validate_adw_skills.py
-git diff --check
-```
-
-Plugin smoke tests:
-
-```bash
-HERMES_ENABLE_PROJECT_PLUGINS=1 hermes plugins list
-HERMES_ENABLE_PROJECT_PLUGINS=1 hermes chat -q '/adw plan-feature invoice CSV export'
-```
-
-Gateway smoke tests:
-
-```bash
-HERMES_ENABLE_PROJECT_PLUGINS=1 hermes gateway restart
-```
-
-Then from Telegram:
+Then from Telegram or another gateway platform:
 
 ```text
 /adw plan-feature invoice CSV export
@@ -562,24 +693,54 @@ Then from Telegram:
 
 Expected behavior:
 
-- no unknown-command message
-- no direct echo-only behavior
-- ADW workflow begins with plan/branch/issue gate behavior
+- no unknown-command response;
+- no direct echo-only behavior;
+- ADW workflow begins as a normal agent turn;
+- ADW response respects planning/branch/issue gates.
 
-## Risks and Open Questions
+### Phase 7: Cleanup and Source of Truth
 
-- Plugin command handlers returning strings may be treated as direct responses in gateway mode. This must be verified before relying on return-string prompt injection as the final design.
-- Direct use of `agent.skill_commands.build_skill_invocation_message()` is internal API. It is practical but should be guarded with fallback behavior.
-- Plugin-provided skills registered via `ctx.register_skill()` are explicit `plugin:skill` loads and do not appear in the normal system prompt skill index. ADW should continue to package skills as regular installed skills unless a future plugin bundle model is intentionally adopted.
-- Hermes plugin installer does not currently appear to install a plugin from a repository subdirectory. A separate plugin repository is the clean package-manager path.
-- Discord native slash UX for `/adw` is likely fine, but true nested native subcommands are not part of the generic Hermes plugin command API.
+After root plugin validation succeeds:
 
-## Recommended Next Step
+- remove or clearly mark `.hermes/plugins/adw/` as obsolete development spike;
+- ensure only one plugin source of truth remains;
+- update validators so CI/review does not depend on a hidden local plugin copy;
+- keep repository artifacts in English.
 
-Implement Option A as a local spike:
+## Test Strategy
 
-```text
-.hermes/plugins/adw/
+Minimum checks before committing plugin package work:
+
+```bash
+python3 tools/validate_adw_skills.py
+python3 tools/validate_adw_plugin_spike.py
+python3 tools/validate_adw_plugin_package.py
+bash -n scripts/install_adw.sh
+git diff --check
 ```
 
-Then validate `/adw plan-feature ...` in CLI and Telegram. If the command only echoes a prompt instead of starting an agent turn, switch the implementation to a `pre_gateway_dispatch` rewrite hook or a composed skill invocation message approach.
+If `tools/validate_adw_plugin_package.py` or `scripts/install_adw.sh` do not exist yet in an intermediate planning commit, run the available subset and document the missing checks as planned work.
+
+## Risks and Mitigations
+
+- **Root package ambiguity:** The repository root becomes documentation, skill source, and plugin package. Mitigation: keep root `__init__.py` minimal and all plugin logic under `adw_plugin/`.
+- **Plugin command direct replies:** Returning strings does not start an agent turn. Mitigation: use `ctx.inject_message(...)` for CLI and `pre_gateway_dispatch` rewrite for gateway.
+- **Internal Hermes API drift:** `ctx.inject_message` and gateway hook behavior may change. Mitigation: keep model-free validators that fail when behavior changes.
+- **Skill install identifier uncertainty:** Tap install path syntax must be verified with the current Hermes version. Mitigation: README update task includes live command verification and correction.
+- **Duplicate plugin sources:** Keeping both `.hermes/plugins/adw/` and root `adw_plugin/` can drift. Mitigation: remove or explicitly deprecate local spike after conversion.
+- **Profile targeting mistakes:** Bootstrap installer could install into the wrong Hermes profile. Mitigation: prompt for profile, print target profile, and verify with profile-aware Hermes commands.
+- **Gateway stale code:** Gateway may keep old plugin code loaded. Mitigation: README and installer output must tell users to restart the gateway after plugin changes.
+
+## Definition of Done
+
+The ADW package is complete when:
+
+- `agentic-delivery` is installable as a Hermes plugin from the repository root;
+- ADW skills are installable from the same repository as a Hermes skill tap;
+- README documents both skill and plugin installation with Hermes commands;
+- README documents profile-aware installation and gateway restart requirements;
+- `scripts/install_adw.sh` provides a one-liner bootstrap installer that prompts for target profile;
+- `/adw <workflow> <payload>` works in CLI and gateway smoke tests;
+- validators confirm registry-to-skill consistency;
+- workflow policy remains in skills, not in plugin code;
+- no secrets or credentials are committed.

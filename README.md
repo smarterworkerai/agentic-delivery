@@ -76,45 +76,6 @@ curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/re
 curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/refs/heads/feature/initial-skills/scripts/install_adw.sh | ADW_PROFILE=delivery ADW_UNINSTALL_SOUL=yes bash -s -- --uninstall
 ```
 
-### Manual skill installation
-
-```bash
-hermes skills tap add smarterworkerai/agentic-delivery
-hermes skills install smarterworkerai/agentic-delivery/skills/adw/adw-core
-hermes skills install smarterworkerai/agentic-delivery/skills/adw/plan-feature
-hermes skills install smarterworkerai/agentic-delivery/skills/adw/plan-bugfix
-hermes skills install smarterworkerai/agentic-delivery/skills/adw/do-impl
-hermes skills install smarterworkerai/agentic-delivery/skills/adw/do-impl-delegate
-hermes skills install smarterworkerai/agentic-delivery/skills/adw/test-feature
-hermes skills install smarterworkerai/agentic-delivery/skills/adw/merge-feature
-hermes skills install smarterworkerai/agentic-delivery/skills/adw/promote-release
-hermes skills install smarterworkerai/agentic-delivery/skills/adw/rollback-deployment
-hermes skills install smarterworkerai/agentic-delivery/skills/adw/validate-regression
-hermes skills install smarterworkerai/agentic-delivery/skills/adw/create-adr
-hermes skills install smarterworkerai/agentic-delivery/skills/adw/audit-dependencies
-hermes skills install smarterworkerai/agentic-delivery/skills/adw/analyze-production
-```
-
-For a named profile, insert `--profile <profile>` after `hermes`, for example:
-
-```bash
-hermes --profile delivery skills list
-```
-
-### Manual plugin installation
-
-```bash
-hermes plugins install smarterworkerai/agentic-delivery --enable
-hermes gateway restart
-```
-
-For a named profile:
-
-```bash
-hermes --profile delivery plugins install smarterworkerai/agentic-delivery --enable
-hermes --profile delivery gateway restart
-```
-
 The plugin is intentionally thin. It only routes `/adw <workflow> <payload>` into the ADW skills; workflow policy remains in `skills/adw/*`.
 
 ### `/adw` usage

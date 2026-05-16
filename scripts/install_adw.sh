@@ -139,22 +139,16 @@ fi
 case "${REMOVE_EXISTING}" in
   y|Y|yes|YES|Yes|true|TRUE|1)
     for skill in "${ADW_INSTALLED_SKILL_NAMES[@]}"; do
-      printf '+ '
-      printf '%q ' "${HERMES_CMD[@]}" skills uninstall "${skill}"
-      printf '\n'
-      if ! printf 'y\n' | "${HERMES_CMD[@]}" skills uninstall "${skill}"; then
-        warn "Command failed but is optional/idempotent: ${HERMES_CMD[*]} skills uninstall ${skill}"
-      fi
+      target="${HERMES_HOME_DIR}/skills/adw/${skill}"
+      printf '+ remove local skill %s\n' "${target}"
+      rm -rf "${target}"
     done
+    rmdir "${HERMES_HOME_DIR}/skills/adw" 2>/dev/null || true
 
     log "Removing previous ADW plugin installs (safe if not installed)"
     for plugin in "${PLUGIN_NAME}" "agentic-delivery"; do
-      printf '+ '
-      printf '%q ' "${HERMES_CMD[@]}" plugins remove "${plugin}"
-      printf '\n'
-      if ! printf 'y\n' | "${HERMES_CMD[@]}" plugins remove "${plugin}"; then
-        warn "Command failed but is optional/idempotent: ${HERMES_CMD[*]} plugins remove ${plugin}"
-      fi
+      printf '+ remove local plugin %s\n' "${HERMES_HOME_DIR}/plugins/${plugin}"
+      rm -rf "${HERMES_HOME_DIR}/plugins/${plugin}"
     done
     ;;
   *)

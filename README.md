@@ -155,58 +155,58 @@ This example shows how a human can guide an ADW agent from plan to production us
 
 ### Minimal Human Prompts
 
-Use these when repository context is clear and the agent can infer safe candidates. The agent must confirm inferred assumptions before side effects.
+Use these when repository context is clear and the agent can infer safe candidates. The agent must confirm inferred assumptions before side effects. These examples use the `/adw` plugin command and its canonical workflow tokens.
 
 1. Plan the feature:
 
 ```text
-Use adw-core and adw-plan-feature for invoice CSV export.
+/adw plan-feature invoice CSV export
 ```
 
 2. Implement the approved plan:
 
 ```text
-Use adw-core and adw-do-impl for the CSV export issue.
+/adw do-impl CSV export issue
 ```
 
 3. Validate PR and preview:
 
 ```text
-Use adw-core and adw-test-feature on the CSV export PR.
+/adw test-feature CSV export PR
 ```
 
 4. Merge and deploy after validation:
 
 ```text
-Use adw-core and adw-merge-feature for the validated CSV export PR.
+/adw merge-feature validated CSV export PR to main
 ```
 
 5. Optional promotion when environments are separated by artifact promotion:
 
 ```text
-Use adw-core and adw-promote-release to promote the validated CSV export artifact from demo to production.
+/adw promote-release validated CSV export artifact from demo to production
 ```
 
 6. Optional production analysis after deployment:
 
 ```text
-Use adw-core and adw-analyze-production for the CSV export production deployment.
+/adw analyze-production CSV export production deployment
 ```
 
 7. Emergency rollback if validation or production feedback fails:
 
 ```text
-Use adw-core and adw-rollback-deployment for the CSV export production deployment.
+/adw rollback-deployment CSV export production deployment
 ```
 
 ### Detailed Human Prompts
 
-Use these when you want to reduce inference and make the delivery path explicit.
+Use these when you want to reduce inference and make the delivery path explicit. Put the `/adw <workflow>` token on the first line, then provide the detailed context as the payload. The workflow token is the plugin argument, such as `plan-feature`; the installed Hermes skill name behind it is still `adw-plan-feature`.
 
 1. Plan:
 
 ```text
-Use adw-core and adw-plan-feature.
+/adw plan-feature
 Repository: <owner>/<repo>
 Base branch: main
 Feature: invoice CSV export
@@ -223,19 +223,23 @@ Create a feature branch and GitHub issue, then stop before implementation.
 2. Optional architecture decision:
 
 ```text
-Use adw-core and adw-create-adr if CSV export introduces a new cross-service export pattern or external storage decision. Otherwise state why ADR is not needed.
+/adw create-adr
+Context: CSV export may introduce a new cross-service export pattern or external storage decision.
+Decision request: create an ADR only if the architecture boundary changes; otherwise state why ADR is not needed.
 ```
 
 3. Optional dependency/security audit:
 
 ```text
-Use adw-core and adw-audit-dependencies for any new CSV/export dependency before implementation. Prefer no new dependency if the platform standard library is sufficient.
+/adw audit-dependencies
+Scope: any new CSV/export dependency before implementation.
+Preference: use no new dependency if the platform standard library is sufficient.
 ```
 
 4. Implementation:
 
 ```text
-Use adw-core and adw-do-impl.
+/adw do-impl
 Implement only the linked invoice CSV export plan on the current feature branch.
 Run relevant unit/integration checks.
 Open a PR targeting main using the shared PR template from adw-core.
@@ -245,7 +249,7 @@ Do not merge or deploy.
 5. Delegated implementation alternative:
 
 ```text
-Use adw-core and adw-do-impl-delegate.
+/adw do-impl-delegate
 Delegate the linked invoice CSV export plan to the approved sandbox flow.
 Require the worker to return a PR URL, commit SHA, changed-file summary, and test output.
 Review the returned PR before reporting acceptance.
@@ -254,7 +258,7 @@ Review the returned PR before reporting acceptance.
 6. Validation:
 
 ```text
-Use adw-core and adw-test-feature.
+/adw test-feature
 Validate the invoice CSV export PR.
 Check review status, review if needed, deploy the feature branch to preview if supported, run smoke/E2E checks for CSV download, and report go/no-go.
 ```
@@ -262,7 +266,7 @@ Check review status, review if needed, deploy the feature branch to preview if s
 7. Extra regression validation:
 
 ```text
-Use adw-core and adw-validate-regression.
+/adw validate-regression
 Target: invoice CSV export PR and preview URL.
 Checks: existing invoice list behavior, filtered exports, empty exports, and unauthorized access behavior.
 Attach evidence to the validation report.
@@ -271,7 +275,7 @@ Attach evidence to the validation report.
 8. Merge and production deployment:
 
 ```text
-Use adw-core and adw-merge-feature.
+/adw merge-feature
 PR: <PR URL or number>
 Destination branch: main
 Deployment target: production
@@ -281,7 +285,7 @@ Only proceed if review is approved, checks pass, preview validation is complete,
 9. Release promotion alternative:
 
 ```text
-Use adw-core and adw-promote-release.
+/adw promote-release
 Promote the exact validated invoice CSV export artifact from demo to production.
 Preserve artifact identity and verify production after deployment.
 ```
@@ -289,7 +293,7 @@ Preserve artifact identity and verify production after deployment.
 10. Production analysis:
 
 ```text
-Use adw-core and adw-analyze-production.
+/adw analyze-production
 Inspect production feedback for the invoice CSV export deployment.
 Check the deployment artifact, logs, endpoint behavior, and user-visible CSV download path.
 Recommend continue, fix-forward, or rollback.
@@ -298,7 +302,7 @@ Recommend continue, fix-forward, or rollback.
 11. Rollback:
 
 ```text
-Use adw-core and adw-rollback-deployment.
+/adw rollback-deployment
 Environment: production
 Rollback target: last known-good release before invoice CSV export
 Create a follow-up bug issue with the root-cause hypothesis and evidence.

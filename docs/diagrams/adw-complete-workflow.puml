@@ -1,0 +1,136 @@
+@startuml adw-complete-workflow
+!theme plain
+title Agentic Delivery Workflow (ADW) - Complete Skill Pipeline
+
+start
+
+partition Human {
+  :Intent: feature, bugfix, release, incident, or audit;
+}
+
+partition "ADW Agent" {
+  if (New feature?) then (yes)
+    :Load adw-plan-feature;
+    :Create/confirm plan, branch, issue, acceptance criteria;
+  elseif (Bugfix?) then (yes)
+    :Load adw-plan-bugfix;
+    :Capture symptoms, suspected root cause, regression strategy;
+  elseif (Production feedback?) then (yes)
+    :Load adw-analyze-production;
+    :Classify severity and recommend continue/fix-forward/rollback;
+    if (Rollback required?) then (yes)
+      :Load adw-rollback-deployment;
+      :Confirm rollback target explicitly;
+      :Restore last known-good deployment;
+      stop
+    else (no)
+      :Open or link follow-up work;
+    endif
+  else (supporting workflow)
+    if (Architecture decision needed?) then (yes)
+      :Load adw-create-adr;
+      :Write ADR and link issue/PR;
+    endif
+    if (Dependency/security audit needed?) then (yes)
+      :Load adw-audit-dependencies;
+      :Audit dependency/build risk;
+    endif
+  endif
+}
+
+partition GitHub {
+  :Branch linked to issue;
+  :Issue contains plan and acceptance criteria;
+}
+
+partition Human {
+  :Approve implementation path;
+  if (Delegate implementation?) then (yes)
+    :Prompt: use adw-do-impl-delegate;
+  else (no)
+    :Prompt: use adw-do-impl;
+  endif
+}
+
+partition "ADW Agent" {
+  if (Delegated?) then (yes)
+    :Load adw-do-impl-delegate;
+    :Prepare delegation packet;
+    :Receive PR, commit SHA, test output;
+    :Review returned PR;
+  else (direct)
+    :Load adw-do-impl;
+    :Implement planned scope;
+    :Run checks;
+    :Open PR;
+  endif
+}
+
+partition GitHub {
+  :PR links issue, plan, tests, deployment notes;
+}
+
+partition Human {
+  :Prompt: use adw-test-feature;
+}
+
+partition "ADW Agent" {
+  :Load adw-test-feature;
+  :Inspect PR, checks, and review status;
+  if (PR rejected?) then (yes)
+    :Stop and report remediation;
+    stop
+  else (not rejected)
+    :Deploy preview when supported;
+    :Run smoke/E2E/manual QA;
+  endif
+  if (Extra regression needed?) then (yes)
+    :Load adw-validate-regression;
+    :Run targeted regression checks;
+  endif
+  if (Validation passed?) then (yes)
+    :Report go recommendation;
+  else (no)
+    :Report no-go and remediation;
+    stop
+  endif
+}
+
+partition Human {
+  if (Promote artifact instead of branch merge?) then (yes)
+    :Prompt: use adw-promote-release;
+  else (merge)
+    :Prompt: use adw-merge-feature;
+  endif
+}
+
+partition "ADW Agent" {
+  if (Promotion flow?) then (yes)
+    :Load adw-promote-release;
+    :Confirm source, target, artifact identity;
+    :Deploy target environment;
+  else (merge flow)
+    :Load adw-merge-feature;
+    :Confirm destination branch and production impact;
+    :Merge PR;
+    :Deploy destination branch;
+  endif
+}
+
+partition Deployment {
+  :Verify artifact identity;
+  :Verify deployment status;
+  :Verify endpoint semantics and logs;
+  :Record rollback path;
+}
+
+partition Human {
+  :Prompt: use adw-analyze-production if feedback or monitoring requires follow-up;
+}
+
+partition "ADW Agent" {
+  :Final delivery report: issue, branch, PR, validation, deployment;
+}
+
+stop
+@enduml

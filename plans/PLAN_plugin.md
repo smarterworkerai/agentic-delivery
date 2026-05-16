@@ -63,12 +63,13 @@ agentic-delivery/
 
   tools/
     validate_adw_skills.py
-    validate_adw_plugin_spike.py
     validate_adw_plugin_package.py
 
+  plans/
+    PLAN.md
+    PLAN_plugin.md
+
   README.md
-  PLAN.md
-  PLAN_plugin.md
   SOUL.md
 ```
 
@@ -116,6 +117,17 @@ The command should work from:
 - Telegram gateway messages
 - Discord gateway slash commands, subject to platform command constraints
 - other Hermes gateway platforms that pass slash commands into the shared gateway dispatcher
+
+## Telegram Command Discoverability
+
+Telegram can show bot-level slash command suggestions only for registered bot commands such as `/adw`. Standard Telegram bot command suggestions do **not** provide native autocomplete for sub-arguments after the command text, so Telegram cannot automatically offer `plan-feature`, `plan-bugfix`, `do-impl`, etc. as selectable arguments when the user types `/adw `.
+
+Planned behavior:
+
+- Keep `/adw <workflow> <payload>` as the canonical cross-platform command.
+- If `/adw` is sent without a workflow, return concise usage help listing the supported workflow tokens and aliases.
+- Optionally add a Telegram-friendly helper response with inline buttons for workflow selection, if the Hermes gateway/plugin API exposes a safe way to send platform-specific reply markup. This is a convenience path, not true compose-time argument autocomplete.
+- Do not split ADW into many top-level Telegram commands by default (`/adw_plan_feature`, `/adw_test_feature`, etc.) because that weakens the single-router UX and is less portable across Hermes CLI and gateway platforms. Reconsider only if command-level Telegram suggestions become a higher priority than cross-platform consistency.
 
 ## Workflow Registry
 
@@ -303,7 +315,7 @@ Design conclusions from the spike:
 2. Gateway support should use `pre_gateway_dispatch` rewrite, not plain handler returns.
 3. CLI support should use `ctx.inject_message(...)` when available.
 4. The packaged root plugin can reuse the spike logic, but should move reusable code into `adw_plugin/` modules.
-5. The local `.hermes/plugins/adw/` copy should remain a development spike only or be removed after the root plugin package is implemented and tested.
+5. The local `.hermes/plugins/adw/` copy and spike-only validation script must be removed after the root plugin package is implemented and tested.
 
 ## Target Repository Changes
 
@@ -545,26 +557,27 @@ Safety requirements:
 - Prefer dry, parseable Hermes CLI output where available; if Hermes lacks machine-readable output for a command, use conservative text parsing and re-verify after each uninstall/install step.
 - Fail with actionable messages if tap/plugin install commands are unavailable in the user's Hermes version.
 
-### 7. Local Spike Lifecycle
+### 7. Local Spike Cleanup
 
-After the root plugin package is implemented and validated, decide whether to keep or remove:
+After the root plugin package is implemented and validated, remove the spike artifacts instead of preserving them:
 
 ```text
 .hermes/plugins/adw/
+tools/validate_adw_plugin_spike.py
 ```
 
-Preferred final state:
+Required final state:
 
-- remove the project-local plugin copy to avoid duplicate source of truth;
-- keep `tools/validate_adw_plugin_spike.py` only if it remains useful as a regression harness, or replace it with `tools/validate_adw_plugin_package.py`.
-
-If kept temporarily, README must state that `.hermes/plugins/adw/` is a development spike and not the normal install path.
+- delete the project-local plugin copy to avoid duplicate source of truth;
+- delete spike-only helper scripts once their assertions are covered by `tools/validate_adw_plugin_package.py`;
+- ensure README and validation instructions reference only the root plugin package and package-level validator;
+- keep historical spike findings documented in this plan, but do not keep executable spike artifacts in the final repository tree.
 
 ## Implementation Plan
 
 ### Phase 1: Commit Research and Decision
 
-Update this `PLAN_plugin.md` with:
+Update `plans/PLAN_plugin.md` with:
 
 - single-repository root-plugin decision;
 - Hermes source findings;
@@ -577,9 +590,10 @@ Validation:
 
 ```bash
 python3 tools/validate_adw_skills.py
-python3 tools/validate_adw_plugin_spike.py
 git diff --check
 ```
+
+During the already-completed local spike, `python3 tools/validate_adw_plugin_spike.py` was used as temporary evidence. Do not keep that script after root package validation replaces it.
 
 ### Phase 2: Convert Spike to Root Plugin Package
 
@@ -711,9 +725,10 @@ Expected behavior:
 
 After root plugin validation succeeds:
 
-- remove or clearly mark `.hermes/plugins/adw/` as obsolete development spike;
+- delete `.hermes/plugins/adw/`;
+- delete `tools/validate_adw_plugin_spike.py` after its useful assertions are covered by `tools/validate_adw_plugin_package.py`;
 - ensure only one plugin source of truth remains;
-- update validators so CI/review does not depend on a hidden local plugin copy;
+- update validators so CI/review depends only on the root plugin package;
 - keep repository artifacts in English.
 
 ## Test Strategy
@@ -722,7 +737,6 @@ Minimum checks before committing plugin package work:
 
 ```bash
 python3 tools/validate_adw_skills.py
-python3 tools/validate_adw_plugin_spike.py
 python3 tools/validate_adw_plugin_package.py
 bash -n scripts/install_adw.sh
 git diff --check
@@ -736,7 +750,7 @@ If `tools/validate_adw_plugin_package.py` or `scripts/install_adw.sh` do not exi
 - **Plugin command direct replies:** Returning strings does not start an agent turn. Mitigation: use `ctx.inject_message(...)` for CLI and `pre_gateway_dispatch` rewrite for gateway.
 - **Internal Hermes API drift:** `ctx.inject_message` and gateway hook behavior may change. Mitigation: keep model-free validators that fail when behavior changes.
 - **Skill install identifier uncertainty:** Tap install path syntax must be verified with the current Hermes version. Mitigation: README update task includes live command verification and correction.
-- **Duplicate plugin sources:** Keeping both `.hermes/plugins/adw/` and root `adw_plugin/` can drift. Mitigation: remove or explicitly deprecate local spike after conversion.
+- **Duplicate plugin sources:** Keeping both `.hermes/plugins/adw/` and root `adw_plugin/` can drift. Mitigation: delete the local spike and spike-only helper scripts after root plugin conversion.
 - **Profile targeting mistakes:** Bootstrap installer could install into the wrong Hermes profile. Mitigation: prompt for profile, print target profile, and verify with profile-aware Hermes commands.
 - **Gateway stale code:** Gateway may keep old plugin code loaded. Mitigation: README and installer output must tell users to restart the gateway after plugin changes.
 

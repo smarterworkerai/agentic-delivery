@@ -51,6 +51,31 @@ curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/re
 
 The installer prompts via the controlling terminal for the target Hermes profile, whether to install the ADW `SOUL.md` as the profile-level identity file, and cleanup of older ADW-owned skills/plugin copies. It then fetches the configured repository ref (`ADW_REF`, currently `feature/initial-skills` for branch testing), installs the selected `SOUL.md`, skillset, and plugin from that fetched source, verifies the result, and prints the gateway restart command. It does not request or print secrets. For non-interactive use, set `ADW_PROFILE=<profile>`, `ADW_INSTALL_SOUL=yes|no`, `ADW_REMOVE_EXISTING=yes|no`, and optionally `ADW_REF=<branch-or-tag>`. If `SOUL.md` installation is enabled and a different profile-level `SOUL.md` already exists, the installer creates a timestamped `SOUL.md.bak.<timestamp>` backup before replacing it.
 
+### One-line uninstall
+
+Because arguments must be passed to the shell when using `curl | bash`, use `bash -s -- --uninstall`:
+
+After this branch is merged to the default branch:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/main/scripts/install_adw.sh | bash -s -- --uninstall
+```
+
+For branch testing before merge:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/refs/heads/feature/initial-skills/scripts/install_adw.sh | bash -s -- --uninstall
+```
+
+The uninstall flow removes ADW-owned skill directories and local plugin copies from the selected Hermes profile, then prints the gateway restart command. It also attempts to disable the `adw` / `agentic-delivery` plugin names if the installed Hermes version supports plugin disabling. It leaves the profile-level `SOUL.md` unchanged by default. To remove `SOUL.md` non-interactively, set `ADW_UNINSTALL_SOUL=yes`; the script only removes it when it can verify that the current profile `SOUL.md` matches the installed ADW plugin copy, and creates a timestamped backup first.
+
+Examples:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/refs/heads/feature/initial-skills/scripts/install_adw.sh | ADW_PROFILE=delivery bash -s -- --uninstall
+curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/refs/heads/feature/initial-skills/scripts/install_adw.sh | ADW_PROFILE=delivery ADW_UNINSTALL_SOUL=yes bash -s -- --uninstall
+```
+
 ### Manual skill installation
 
 ```bash

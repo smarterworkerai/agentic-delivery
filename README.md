@@ -49,7 +49,7 @@ For branch testing before merge:
 curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/refs/heads/feature/initial-skills/scripts/install_adw.sh | bash
 ```
 
-The installer prompts via the controlling terminal for the target Hermes profile and for cleanup of older ADW-owned skills/plugin copies, then fetches the configured repository ref (`ADW_REF`, currently `feature/initial-skills` for branch testing), installs the skillset and plugin from that fetched source, verifies the result, and prints the gateway restart command. It does not request or print secrets. For non-interactive use, set `ADW_PROFILE=<profile>`, `ADW_REMOVE_EXISTING=yes|no`, and optionally `ADW_REF=<branch-or-tag>`.
+The installer prompts via the controlling terminal for the target Hermes profile, whether to install the ADW `SOUL.md` as the profile-level identity file, and cleanup of older ADW-owned skills/plugin copies. It then fetches the configured repository ref (`ADW_REF`, currently `feature/initial-skills` for branch testing), installs the selected `SOUL.md`, skillset, and plugin from that fetched source, verifies the result, and prints the gateway restart command. It does not request or print secrets. For non-interactive use, set `ADW_PROFILE=<profile>`, `ADW_INSTALL_SOUL=yes|no`, `ADW_REMOVE_EXISTING=yes|no`, and optionally `ADW_REF=<branch-or-tag>`. If `SOUL.md` installation is enabled and a different profile-level `SOUL.md` already exists, the installer creates a timestamped `SOUL.md.bak.<timestamp>` backup before replacing it.
 
 ### Manual skill installation
 

@@ -110,6 +110,15 @@ fi
 HERMES_HOME_DIR=$(cd "$(dirname "${CONFIG_PATH}")" && pwd)
 log "Target Hermes home: ${HERMES_HOME_DIR}"
 
+INSTALL_SOUL="${ADW_INSTALL_SOUL:-}"
+if [[ -z "${INSTALL_SOUL}" ]]; then
+  if confirm_from_tty "Install ADW SOUL.md into this Hermes profile? [y/N]: "; then
+    INSTALL_SOUL="yes"
+  else
+    INSTALL_SOUL="no"
+  fi
+fi
+
 run_required() {
   printf '+ '
   printf '%q ' "$@"
@@ -162,6 +171,24 @@ ADW_SOURCE_DIR="${TMP_DIR}/source"
 mkdir -p "${ADW_SOURCE_DIR}"
 run_required curl -fsSL "${ADW_ARCHIVE_URL}" -o "${TMP_DIR}/adw.tar.gz"
 run_required tar -xzf "${TMP_DIR}/adw.tar.gz" -C "${ADW_SOURCE_DIR}" --strip-components=1
+
+case "${INSTALL_SOUL}" in
+  y|Y|yes|YES|Yes|true|TRUE|1)
+    [[ -f "${ADW_SOURCE_DIR}/SOUL.md" ]] || fail "Missing SOUL.md in fetched source."
+    log "Installing ADW SOUL.md into target profile"
+    SOUL_TARGET="${HERMES_HOME_DIR}/SOUL.md"
+    if [[ -f "${SOUL_TARGET}" ]] && ! cmp -s "${ADW_SOURCE_DIR}/SOUL.md" "${SOUL_TARGET}"; then
+      SOUL_BACKUP="${SOUL_TARGET}.bak.$(date +%Y%m%d%H%M%S)"
+      printf '+ backup existing SOUL.md -> %s\n' "${SOUL_BACKUP}"
+      cp "${SOUL_TARGET}" "${SOUL_BACKUP}"
+    fi
+    printf '+ install SOUL.md -> %s\n' "${SOUL_TARGET}"
+    cp "${ADW_SOURCE_DIR}/SOUL.md" "${SOUL_TARGET}"
+    ;;
+  *)
+    warn "Skipping ADW SOUL.md install. Set ADW_INSTALL_SOUL=yes to force installation."
+    ;;
+esac
 
 log "Installing ADW skills from fetched source"
 mkdir -p "${HERMES_HOME_DIR}/skills/adw"

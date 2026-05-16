@@ -12,18 +12,30 @@ Chat/status updates may be localized separately. Repository artifacts are writte
 
 ## Repository Layout
 
-- `SOUL.md` — ADW agent identity, tone, boundaries, and assumption policy.
-- `skills/adw/*/SKILL.md` — Hermes-compatible workflow skills.
-- `playbooks/` — shared operational procedures referenced by the skills.
-- `templates/` — shared issue, PR, plan, report, and deployment templates.
-- `adr/` — workflow architecture decisions.
-- `docs/diagrams/` — PlantUML source and pre-rendered SVG diagrams.
-- `tools/validate_adw_skills.py` — local validation for skill frontmatter and expected artifacts.
+- `SOUL.md` — ADW agent identity, tone, boundaries, and assumption policy for profiles that adopt ADW.
+- `skills/adw/adw-core/SKILL.md` — package source of truth for shared ADW context.
+- `skills/adw/adw-core/references/playbooks/` — shared operational procedures referenced by workflow skills.
+- `skills/adw/adw-core/templates/` — shared issue, PR, plan, report, and deployment templates.
+- `skills/adw/adw-core/references/adr/` — workflow architecture decisions.
+- `skills/adw/adw-core/assets/diagrams/` — PlantUML source and pre-rendered SVG diagrams.
+- `skills/adw/*/SKILL.md` — Hermes-compatible operational workflow skills.
+- `tools/validate_adw_skills.py` — local validation for skill frontmatter, required `adw-core` links, and expected packaged artifacts.
+
+## Package Source of Truth
+
+`adw-core` owns all installable shared artifacts. Do not add new shared playbooks, templates, ADRs, or diagrams at repository root. Put them under `skills/adw/adw-core/` so installing the skillset into a separate Hermes profile keeps the shared context available.
+
+Operational skills must:
+
+- include `adw-core` in `metadata.hermes.related_skills`;
+- contain a `## Required Context` section that tells the agent to load `adw-core` first;
+- resolve templates/playbooks from `adw-core`, not from repo-root directories.
 
 ## Hermes-Compatible Skill Usage
 
-Load ADW skills by name when working through a delivery lifecycle:
+Load `adw-core` together with the operational ADW skill for the current delivery stage:
 
+- `adw-core` — shared gates, playbooks, templates, ADRs, and diagrams.
 - `adw-plan-feature`
 - `adw-plan-bugfix`
 - `adw-do-impl`
@@ -37,18 +49,24 @@ Load ADW skills by name when working through a delivery lifecycle:
 - `adw-audit-dependencies`
 - `adw-analyze-production`
 
-The skills are designed as one pipeline. They reference shared playbooks/templates instead of duplicating them inside every skill directory.
+Example:
+
+```text
+Use adw-core and adw-plan-feature for invoice CSV export.
+```
+
+When installing into a separate Hermes profile, install/copy the complete `skills/adw/` tree or at minimum install `adw-core` plus the operational skills you want to use. Installing only `adw-plan-feature` or another individual workflow skill is not enough because the shared artifacts live in `adw-core`.
 
 ## Complete Workflow Diagram
 
-PlantUML source: [`docs/diagrams/adw-complete-workflow.puml`](docs/diagrams/adw-complete-workflow.puml)
+PlantUML source: [`skills/adw/adw-core/assets/diagrams/adw-complete-workflow.puml`](skills/adw/adw-core/assets/diagrams/adw-complete-workflow.puml)
 
-![ADW complete workflow](docs/diagrams/adw-complete-workflow.svg)
+![ADW complete workflow](skills/adw/adw-core/assets/diagrams/adw-complete-workflow.svg)
 
 If the `.puml` file changes, regenerate and commit the matching `.svg`:
 
 ```bash
-docker run --rm -v "$PWD":/work -w /work plantuml/plantuml -tsvg docs/diagrams/adw-complete-workflow.puml
+docker run --rm -v "$PWD":/work -w /work plantuml/plantuml -tsvg skills/adw/adw-core/assets/diagrams/adw-complete-workflow.puml
 ```
 
 ## Example Application: Invoice CSV Export
@@ -62,43 +80,43 @@ Use these when repository context is clear and the agent can infer safe candidat
 1. Plan the feature:
 
 ```text
-Use adw-plan-feature for invoice CSV export.
+Use adw-core and adw-plan-feature for invoice CSV export.
 ```
 
 2. Implement the approved plan:
 
 ```text
-Use adw-do-impl for the CSV export issue.
+Use adw-core and adw-do-impl for the CSV export issue.
 ```
 
 3. Validate PR and preview:
 
 ```text
-Use adw-test-feature on the CSV export PR.
+Use adw-core and adw-test-feature on the CSV export PR.
 ```
 
 4. Merge and deploy after validation:
 
 ```text
-Use adw-merge-feature for the validated CSV export PR.
+Use adw-core and adw-merge-feature for the validated CSV export PR.
 ```
 
 5. Optional promotion when environments are separated by artifact promotion:
 
 ```text
-Use adw-promote-release to promote the validated CSV export artifact from demo to production.
+Use adw-core and adw-promote-release to promote the validated CSV export artifact from demo to production.
 ```
 
 6. Optional production analysis after deployment:
 
 ```text
-Use adw-analyze-production for the CSV export production deployment.
+Use adw-core and adw-analyze-production for the CSV export production deployment.
 ```
 
 7. Emergency rollback if validation or production feedback fails:
 
 ```text
-Use adw-rollback-deployment for the CSV export production deployment.
+Use adw-core and adw-rollback-deployment for the CSV export production deployment.
 ```
 
 ### Detailed Human Prompts
@@ -108,7 +126,7 @@ Use these when you want to reduce inference and make the delivery path explicit.
 1. Plan:
 
 ```text
-Use adw-plan-feature.
+Use adw-core and adw-plan-feature.
 Repository: <owner>/<repo>
 Base branch: main
 Feature: invoice CSV export
@@ -125,29 +143,29 @@ Create a feature branch and GitHub issue, then stop before implementation.
 2. Optional architecture decision:
 
 ```text
-Use adw-create-adr if CSV export introduces a new cross-service export pattern or external storage decision. Otherwise state why ADR is not needed.
+Use adw-core and adw-create-adr if CSV export introduces a new cross-service export pattern or external storage decision. Otherwise state why ADR is not needed.
 ```
 
 3. Optional dependency/security audit:
 
 ```text
-Use adw-audit-dependencies for any new CSV/export dependency before implementation. Prefer no new dependency if the platform standard library is sufficient.
+Use adw-core and adw-audit-dependencies for any new CSV/export dependency before implementation. Prefer no new dependency if the platform standard library is sufficient.
 ```
 
 4. Implementation:
 
 ```text
-Use adw-do-impl.
+Use adw-core and adw-do-impl.
 Implement only the linked invoice CSV export plan on the current feature branch.
 Run relevant unit/integration checks.
-Open a PR targeting main using the shared PR template.
+Open a PR targeting main using the shared PR template from adw-core.
 Do not merge or deploy.
 ```
 
 5. Delegated implementation alternative:
 
 ```text
-Use adw-do-impl-delegate.
+Use adw-core and adw-do-impl-delegate.
 Delegate the linked invoice CSV export plan to the approved sandbox flow.
 Require the worker to return a PR URL, commit SHA, changed-file summary, and test output.
 Review the returned PR before reporting acceptance.
@@ -156,7 +174,7 @@ Review the returned PR before reporting acceptance.
 6. Validation:
 
 ```text
-Use adw-test-feature.
+Use adw-core and adw-test-feature.
 Validate the invoice CSV export PR.
 Check review status, review if needed, deploy the feature branch to preview if supported, run smoke/E2E checks for CSV download, and report go/no-go.
 ```
@@ -164,7 +182,7 @@ Check review status, review if needed, deploy the feature branch to preview if s
 7. Extra regression validation:
 
 ```text
-Use adw-validate-regression.
+Use adw-core and adw-validate-regression.
 Target: invoice CSV export PR and preview URL.
 Checks: existing invoice list behavior, filtered exports, empty exports, and unauthorized access behavior.
 Attach evidence to the validation report.
@@ -173,7 +191,7 @@ Attach evidence to the validation report.
 8. Merge and production deployment:
 
 ```text
-Use adw-merge-feature.
+Use adw-core and adw-merge-feature.
 PR: <PR URL or number>
 Destination branch: main
 Deployment target: production
@@ -183,7 +201,7 @@ Only proceed if review is approved, checks pass, preview validation is complete,
 9. Release promotion alternative:
 
 ```text
-Use adw-promote-release.
+Use adw-core and adw-promote-release.
 Promote the exact validated invoice CSV export artifact from demo to production.
 Preserve artifact identity and verify production after deployment.
 ```
@@ -191,7 +209,7 @@ Preserve artifact identity and verify production after deployment.
 10. Production analysis:
 
 ```text
-Use adw-analyze-production.
+Use adw-core and adw-analyze-production.
 Inspect production feedback for the invoice CSV export deployment.
 Check the deployment artifact, logs, endpoint behavior, and user-visible CSV download path.
 Recommend continue, fix-forward, or rollback.
@@ -200,7 +218,7 @@ Recommend continue, fix-forward, or rollback.
 11. Rollback:
 
 ```text
-Use adw-rollback-deployment.
+Use adw-core and adw-rollback-deployment.
 Environment: production
 Rollback target: last known-good release before invoice CSV export
 Create a follow-up bug issue with the root-cause hypothesis and evidence.

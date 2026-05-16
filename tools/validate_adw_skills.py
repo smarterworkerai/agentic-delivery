@@ -8,6 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED = {
+    "adw-core": "skills/adw/adw-core/SKILL.md",
     "adw-plan-feature": "skills/adw/plan-feature/SKILL.md",
     "adw-plan-bugfix": "skills/adw/plan-bugfix/SKILL.md",
     "adw-do-impl": "skills/adw/do-impl/SKILL.md",
@@ -21,28 +22,36 @@ EXPECTED = {
     "adw-audit-dependencies": "skills/adw/audit-dependencies/SKILL.md",
     "adw-analyze-production": "skills/adw/analyze-production/SKILL.md",
 }
-REQUIRED_SHARED = [
+CORE_SHARED = [
+    "skills/adw/adw-core/references/playbooks/preview_deployments.md",
+    "skills/adw/adw-core/references/playbooks/pr_reviewing.md",
+    "skills/adw/adw-core/references/playbooks/release_promotion.md",
+    "skills/adw/adw-core/references/playbooks/incident_response.md",
+    "skills/adw/adw-core/references/playbooks/github_traceability.md",
+    "skills/adw/adw-core/references/playbooks/deployment_gates.md",
+    "skills/adw/adw-core/templates/implementation_plan.md",
+    "skills/adw/adw-core/templates/bugfix_plan.md",
+    "skills/adw/adw-core/templates/github_issue_feature.md",
+    "skills/adw/adw-core/templates/github_issue_bugfix.md",
+    "skills/adw/adw-core/templates/pull_request.md",
+    "skills/adw/adw-core/templates/review_report.md",
+    "skills/adw/adw-core/templates/validation_report.md",
+    "skills/adw/adw-core/templates/deployment_report.md",
+    "skills/adw/adw-core/templates/rollback_report.md",
+    "skills/adw/adw-core/references/adr/0001-agentic-delivery-workflow.md",
+    "skills/adw/adw-core/references/adr/0002-pr-as-delivery-unit.md",
+    "skills/adw/adw-core/assets/diagrams/adw-complete-workflow.puml",
+    "skills/adw/adw-core/assets/diagrams/adw-complete-workflow.svg",
+]
+REQUIRED_ROOT = [
     "SOUL.md",
     "skills/adw/README.md",
-    "playbooks/preview_deployments.md",
-    "playbooks/pr_reviewing.md",
-    "playbooks/release_promotion.md",
-    "playbooks/incident_response.md",
-    "playbooks/github_traceability.md",
-    "playbooks/deployment_gates.md",
-    "templates/implementation_plan.md",
-    "templates/bugfix_plan.md",
-    "templates/github_issue_feature.md",
-    "templates/github_issue_bugfix.md",
-    "templates/pull_request.md",
-    "templates/review_report.md",
-    "templates/validation_report.md",
-    "templates/deployment_report.md",
-    "templates/rollback_report.md",
-    "adr/0001-agentic-delivery-workflow.md",
-    "adr/0002-pr-as-delivery-unit.md",
-    "docs/diagrams/adw-complete-workflow.puml",
-    "docs/diagrams/adw-complete-workflow.svg",
+]
+OBSOLETE_ROOT_SHARED_DIRS = [
+    "playbooks",
+    "templates",
+    "adr",
+    "docs/diagrams",
 ]
 
 
@@ -88,6 +97,13 @@ def validate_skill(name: str, relpath: str) -> list[str]:
     for required in ["## Overview", "## When to Use", "## Common Pitfalls", "## Verification Checklist", "## ADW Shared Operating Contract"]:
         if required not in text:
             errors.append(f"{relpath}: missing {required}")
+    if name != "adw-core":
+        if "## Required Context" not in text:
+            errors.append(f"{relpath}: missing ## Required Context")
+        if "related_skills: [adw-core" not in text and "adw-core" not in text.split("---", 2)[1]:
+            errors.append(f"{relpath}: missing adw-core in frontmatter related_skills")
+        if "repo-root `playbooks/`, `templates/`, `adr/`, or `docs/`" not in text:
+            errors.append(f"{relpath}: missing portable install warning")
     return errors
 
 
@@ -95,20 +111,30 @@ def main() -> int:
     errors: list[str] = []
     for name, relpath in EXPECTED.items():
         errors.extend(validate_skill(name, relpath))
-    for relpath in REQUIRED_SHARED:
+    for relpath in REQUIRED_ROOT + CORE_SHARED:
         if not (ROOT / relpath).exists():
-            errors.append(f"missing shared artifact {relpath}")
-    plan_text = (ROOT / "README.md").read_text(encoding="utf-8")
-    for token in ["adw-plan-feature", "adw-do-impl", "Minimal Human Prompts", "Detailed Human Prompts"]:
-        if token not in plan_text:
+            errors.append(f"missing required artifact {relpath}")
+    for relpath in OBSOLETE_ROOT_SHARED_DIRS:
+        if (ROOT / relpath).exists():
+            errors.append(f"obsolete root shared artifact directory still exists: {relpath}")
+    readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
+    for token in [
+        "adw-core",
+        "Package Source of Truth",
+        "skills/adw/adw-core/templates/",
+        "Minimal Human Prompts",
+        "Detailed Human Prompts",
+    ]:
+        if token not in readme_text:
             errors.append(f"README missing {token}")
-    if "skills/agentic-delivery" in plan_text:
-        errors.append("README contains obsolete skills/agentic-delivery path")
+    for obsolete in ["docs/diagrams/adw-complete-workflow", "playbooks/ —", "templates/ —", "adr/ —", "skills/agentic-delivery"]:
+        if obsolete in readme_text:
+            errors.append(f"README contains obsolete reference: {obsolete}")
     if errors:
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)
         return 1
-    print(f"OK: {len(EXPECTED)} ADW skills and {len(REQUIRED_SHARED)} shared artifacts validated")
+    print(f"OK: {len(EXPECTED)} ADW skills and {len(CORE_SHARED)} adw-core shared artifacts validated")
     return 0
 
 

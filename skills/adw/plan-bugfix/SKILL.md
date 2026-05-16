@@ -7,7 +7,7 @@ license: MIT
 metadata:
   hermes:
     tags: [adw, planning, bugfix, github]
-    related_skills: [adw-do-impl, adw-test-feature]
+    related_skills: [adw-core, adw-do-impl, adw-test-feature]
 ---
 
 # ADW Plan Bugfix
@@ -22,14 +22,18 @@ Use this skill to convert a bug report or failed validation into a traceable bug
 - Monitoring, logs, or validation indicate broken behavior.
 - A PR or deployment needs a scoped fix plan.
 
+## Required Context
+
+Load `adw-core` before using this skill. It contains the shared delivery gates, templates, playbooks, ADRs, and workflow diagram. Resolve shared artifacts from the `adw-core` skill package, not from repo-root `playbooks/`, `templates/`, `adr/`, or `docs/` directories.
+
 ## Workflow
 
 1. Reproduce or document the symptom as far as possible.
 2. Inspect current branch, target branch, recent commits, logs, tests, and related issues.
 3. Identify suspected root cause and confidence level.
 4. Create or confirm `bugfix/<short-description>` branch.
-5. Draft a bugfix plan from `templates/bugfix_plan.md`.
-6. Create a GitHub issue labeled `bug` using `templates/github_issue_bugfix.md`.
+5. Draft a bugfix plan from `adw-core/templates/bugfix_plan.md`.
+6. Create a GitHub issue labeled `bug` using `adw-core/templates/github_issue_bugfix.md`.
 7. Attach repro notes, expected/actual behavior, and verification strategy.
 
 ## Required Bugfix Plan Content
@@ -69,24 +73,24 @@ Use this skill to convert a bug report or failed validation into a traceable bug
 
 ## ADW Shared Operating Contract
 
-All ADW skills belong to one pipeline and share repository artifacts rather than duplicating supporting material inside each skill directory.
+All ADW skills belong to one pipeline and share installable supporting material through `adw-core`.
 
-Shared artifacts:
+Shared artifacts are package-owned by `adw-core`:
 
-- `SOUL.md` — identity, tone, hard boundaries, and assumption policy.
-- `playbooks/` — reusable operational procedures.
-- `templates/` — canonical issue, PR, report, and plan formats.
-- `adr/` — architecture decisions for the workflow itself.
-- `docs/diagrams/` — PlantUML sources and pre-rendered local SVGs.
+- Root `SOUL.md` — identity, tone, hard boundaries, and assumption policy for profiles that adopt ADW.
+- `adw-core/references/playbooks/` — reusable operational procedures.
+- `adw-core/templates/` — canonical issue, PR, report, and plan formats.
+- `adw-core/references/adr/` — architecture decisions for the workflow itself.
+- `adw-core/assets/diagrams/` — PlantUML sources and pre-rendered local SVGs.
 
-Use shared artifacts by path. Do not copy shared playbooks/templates into individual skills unless a future packaging target explicitly requires standalone skill bundles.
+Load `adw-core` before executing this skill. Do not copy shared playbooks/templates into individual workflow skills; update the central `adw-core` artifact instead.
 
 ## Parameter Resolution
 
 Human prompts may be minimal. Resolve missing parameters in this order:
 
 1. Inspect current repository, branch, issue, PR, and deployment metadata.
-2. Check linked ADW artifacts and shared playbooks/templates.
+2. Check `adw-core` artifacts, playbooks, templates, ADRs, and the root `SOUL.md` if available.
 3. If exactly one safe candidate exists, state the inferred assumption and ask the human to confirm before proceeding.
 4. If multiple candidates exist or the consequence is unsafe, ask for explicit human input.
 5. Never treat inference as approval for merge, production deployment, rollback, secret handling, destructive infrastructure changes, or history rewrite.

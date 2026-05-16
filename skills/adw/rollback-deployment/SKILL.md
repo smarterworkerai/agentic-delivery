@@ -7,7 +7,7 @@ license: MIT
 metadata:
   hermes:
     tags: [adw, rollback, incident, deployment]
-    related_skills: [adw-analyze-production, adw-plan-bugfix]
+    related_skills: [adw-core, adw-analyze-production, adw-plan-bugfix]
 ---
 
 # ADW Rollback Deployment
@@ -23,6 +23,10 @@ Use this skill when a deployment fails or post-deploy validation identifies a cr
 - Monitoring indicates severe regression.
 - User requests rollback.
 
+## Required Context
+
+Load `adw-core` before using this skill. It contains the shared delivery gates, templates, playbooks, ADRs, and workflow diagram. Resolve shared artifacts from the `adw-core` skill package, not from repo-root `playbooks/`, `templates/`, `adr/`, or `docs/` directories.
+
 ## Workflow
 
 1. Confirm rollback target and environment with the human.
@@ -30,7 +34,7 @@ Use this skill when a deployment fails or post-deploy validation identifies a cr
 3. Assess stateful risks: migrations, data changes, volumes, external services.
 4. Execute the safest rollback path.
 5. Verify deployment health and user-facing behavior.
-6. Report impact and current status using `templates/rollback_report.md`.
+6. Report impact and current status using `adw-core/templates/rollback_report.md`.
 7. Create a follow-up bug issue if needed with `adw-plan-bugfix`.
 
 ## Safety Boundary
@@ -63,24 +67,24 @@ Rollback is destructive or high-impact. Never infer approval. Always ask for exp
 
 ## ADW Shared Operating Contract
 
-All ADW skills belong to one pipeline and share repository artifacts rather than duplicating supporting material inside each skill directory.
+All ADW skills belong to one pipeline and share installable supporting material through `adw-core`.
 
-Shared artifacts:
+Shared artifacts are package-owned by `adw-core`:
 
-- `SOUL.md` — identity, tone, hard boundaries, and assumption policy.
-- `playbooks/` — reusable operational procedures.
-- `templates/` — canonical issue, PR, report, and plan formats.
-- `adr/` — architecture decisions for the workflow itself.
-- `docs/diagrams/` — PlantUML sources and pre-rendered local SVGs.
+- Root `SOUL.md` — identity, tone, hard boundaries, and assumption policy for profiles that adopt ADW.
+- `adw-core/references/playbooks/` — reusable operational procedures.
+- `adw-core/templates/` — canonical issue, PR, report, and plan formats.
+- `adw-core/references/adr/` — architecture decisions for the workflow itself.
+- `adw-core/assets/diagrams/` — PlantUML sources and pre-rendered local SVGs.
 
-Use shared artifacts by path. Do not copy shared playbooks/templates into individual skills unless a future packaging target explicitly requires standalone skill bundles.
+Load `adw-core` before executing this skill. Do not copy shared playbooks/templates into individual workflow skills; update the central `adw-core` artifact instead.
 
 ## Parameter Resolution
 
 Human prompts may be minimal. Resolve missing parameters in this order:
 
 1. Inspect current repository, branch, issue, PR, and deployment metadata.
-2. Check linked ADW artifacts and shared playbooks/templates.
+2. Check `adw-core` artifacts, playbooks, templates, ADRs, and the root `SOUL.md` if available.
 3. If exactly one safe candidate exists, state the inferred assumption and ask the human to confirm before proceeding.
 4. If multiple candidates exist or the consequence is unsafe, ask for explicit human input.
 5. Never treat inference as approval for merge, production deployment, rollback, secret handling, destructive infrastructure changes, or history rewrite.

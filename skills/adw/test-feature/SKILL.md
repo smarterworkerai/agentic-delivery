@@ -7,7 +7,7 @@ license: MIT
 metadata:
   hermes:
     tags: [adw, review, preview, validation]
-    related_skills: [adw-do-impl, adw-merge-feature, adw-validate-regression]
+    related_skills: [adw-core, adw-do-impl, adw-merge-feature, adw-validate-regression]
 ---
 
 # ADW Test Feature
@@ -22,15 +22,19 @@ Use this skill after a PR exists and before merge. It enforces review and previe
 - Preview deployment is required before merge.
 - The PR review status is unknown.
 
+## Required Context
+
+Load `adw-core` before using this skill. It contains the shared delivery gates, templates, playbooks, ADRs, and workflow diagram. Resolve shared artifacts from the `adw-core` skill package, not from repo-root `playbooks/`, `templates/`, `adr/`, or `docs/` directories.
+
 ## Workflow
 
 1. Inspect PR state, branch, target branch, linked issue, and checks.
 2. Check whether a review already exists.
-3. Review the PR if needed using `playbooks/pr_reviewing.md`.
+3. Review the PR if needed using `adw-core/references/playbooks/pr_reviewing.md`.
 4. Stop if rejected.
-5. Deploy feature branch to preview when supported using `playbooks/preview_deployments.md`.
+5. Deploy feature branch to preview when supported using `adw-core/references/playbooks/preview_deployments.md`.
 6. Run smoke/E2E/regression checks; invoke `adw-validate-regression` if deeper coverage is needed.
-7. Write validation report using `templates/validation_report.md`.
+7. Write validation report using `adw-core/templates/validation_report.md`.
 8. Report go/no-go recommendation.
 
 ## Review Gate
@@ -67,24 +71,24 @@ Preview branch deployments are for validation only. Do not use preview as produc
 
 ## ADW Shared Operating Contract
 
-All ADW skills belong to one pipeline and share repository artifacts rather than duplicating supporting material inside each skill directory.
+All ADW skills belong to one pipeline and share installable supporting material through `adw-core`.
 
-Shared artifacts:
+Shared artifacts are package-owned by `adw-core`:
 
-- `SOUL.md` — identity, tone, hard boundaries, and assumption policy.
-- `playbooks/` — reusable operational procedures.
-- `templates/` — canonical issue, PR, report, and plan formats.
-- `adr/` — architecture decisions for the workflow itself.
-- `docs/diagrams/` — PlantUML sources and pre-rendered local SVGs.
+- Root `SOUL.md` — identity, tone, hard boundaries, and assumption policy for profiles that adopt ADW.
+- `adw-core/references/playbooks/` — reusable operational procedures.
+- `adw-core/templates/` — canonical issue, PR, report, and plan formats.
+- `adw-core/references/adr/` — architecture decisions for the workflow itself.
+- `adw-core/assets/diagrams/` — PlantUML sources and pre-rendered local SVGs.
 
-Use shared artifacts by path. Do not copy shared playbooks/templates into individual skills unless a future packaging target explicitly requires standalone skill bundles.
+Load `adw-core` before executing this skill. Do not copy shared playbooks/templates into individual workflow skills; update the central `adw-core` artifact instead.
 
 ## Parameter Resolution
 
 Human prompts may be minimal. Resolve missing parameters in this order:
 
 1. Inspect current repository, branch, issue, PR, and deployment metadata.
-2. Check linked ADW artifacts and shared playbooks/templates.
+2. Check `adw-core` artifacts, playbooks, templates, ADRs, and the root `SOUL.md` if available.
 3. If exactly one safe candidate exists, state the inferred assumption and ask the human to confirm before proceeding.
 4. If multiple candidates exist or the consequence is unsafe, ask for explicit human input.
 5. Never treat inference as approval for merge, production deployment, rollback, secret handling, destructive infrastructure changes, or history rewrite.

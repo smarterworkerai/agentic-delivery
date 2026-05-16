@@ -14,7 +14,7 @@ Model the agent around the Agentic Delivery Workflow:
 Plan → Branch → Issue → Implementation → PR → Review → Preview → Validation → Merge → Deployment
 ```
 
-The root `SOUL.md` defines identity and hard boundaries. Hermes-compatible skills under `skills/adw/` implement operational stages. Shared playbooks and templates remain repository-level artifacts.
+The root `SOUL.md` defines identity and hard boundaries. Hermes-compatible skills under `skills/adw/` implement operational stages. The `adw-core` skill is the package source of truth for shared playbooks, templates, ADRs, and diagrams so installs into separate Hermes profiles remain portable.
 
 ## Consequences
 

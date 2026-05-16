@@ -490,6 +490,7 @@ Purpose:
 
 - provide a one-liner bootstrap path for installing both ADW skills and the ADW plugin;
 - ask which Hermes profile should receive the install;
+- make repeated runs safe for updates by removing old ADW installs first;
 - install/update skills and plugin using Hermes commands;
 - avoid storing credentials or secrets.
 
@@ -516,17 +517,22 @@ Script behavior:
 5. Build a profile-aware Hermes command prefix:
    - `hermes` for default profile;
    - `hermes --profile <name>` for named profile.
-6. Add or update the skill tap:
+6. Uninstall previous ADW installation artifacts before reinstalling, so the script can be used as an update command:
+   - discover installed skills with `hermes skills list`;
+   - remove skills whose installed name starts with `adw-`;
+   - remove the existing ADW plugin if `hermes plugins list` shows `adw` or `agentic-delivery`;
+   - tolerate "not installed" / "not found" results, but fail on unexpected uninstall errors.
+7. Add or update the skill tap:
    - `hermes skills tap add smarterworkerai/agentic-delivery`.
-7. Install all ADW skills from `skills/adw/`.
-8. Install and enable the plugin:
+8. Install all ADW skills from `skills/adw/`.
+9. Install and enable the plugin:
    - `hermes plugins install smarterworkerai/agentic-delivery --enable`.
-9. Run post-install verification:
-   - `hermes skills list` contains ADW skills;
-   - `hermes plugins list` shows `adw` enabled.
-10. Print next steps:
-   - restart gateway if using Telegram/Discord/etc.;
-   - try `/adw plan-feature <feature>`.
+10. Run post-install verification:
+    - `hermes skills list` contains ADW skills;
+    - `hermes plugins list` shows `adw` enabled.
+11. Print next steps:
+    - restart gateway if using Telegram/Discord/etc.;
+    - try `/adw plan-feature <feature>`.
 
 Safety requirements:
 
@@ -534,6 +540,9 @@ Safety requirements:
 - Use `set -euo pipefail`.
 - Quote all profile/user input.
 - Make the script idempotent where Hermes commands allow it.
+- Treat update as the primary path: uninstall old `adw-*` skills and the ADW plugin before reinstalling the current repo version.
+- Scope uninstall strictly to ADW-owned artifacts; never remove non-ADW skills, plugins, taps, profiles, config, memory, sessions, credentials, or user data.
+- Prefer dry, parseable Hermes CLI output where available; if Hermes lacks machine-readable output for a command, use conservative text parsing and re-verify after each uninstall/install step.
 - Fail with actionable messages if tap/plugin install commands are unavailable in the user's Hermes version.
 
 ### 7. Local Spike Lifecycle

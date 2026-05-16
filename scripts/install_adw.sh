@@ -3,6 +3,8 @@ set -euo pipefail
 
 REPO="smarterworkerai/agentic-delivery"
 PLUGIN_NAME="adw"
+ADW_REF="${ADW_REF:-feature/initial-skills}"
+ADW_ARCHIVE_URL="https://github.com/${REPO}/archive/refs/heads/${ADW_REF}.tar.gz"
 ADW_SKILLS=(
   "adw-core"
   "plan-feature"
@@ -66,6 +68,16 @@ confirm_from_tty() {
 }
 
 command -v hermes >/dev/null 2>&1 || fail "hermes is not on PATH. Install Hermes Agent first."
+command -v curl >/dev/null 2>&1 || fail "curl is not on PATH."
+command -v tar >/dev/null 2>&1 || fail "tar is not on PATH."
+
+TMP_DIR=""
+cleanup_tmp() {
+  if [[ -n "${TMP_DIR}" && -d "${TMP_DIR}" ]]; then
+    rm -rf "${TMP_DIR}"
+  fi
+}
+trap cleanup_tmp EXIT
 
 log "Hermes version"
 hermes --version || warn "Could not read Hermes version; continuing."
@@ -90,6 +102,13 @@ if [[ -n "${PROFILE_NAME}" ]]; then
 else
   log "Target profile: default"
 fi
+
+CONFIG_PATH=$("${HERMES_CMD[@]}" config path 2>/dev/null || true)
+if [[ -z "${CONFIG_PATH}" ]]; then
+  fail "Could not resolve Hermes profile config path."
+fi
+HERMES_HOME_DIR=$(cd "$(dirname "${CONFIG_PATH}")" && pwd)
+log "Target Hermes home: ${HERMES_HOME_DIR}"
 
 run_required() {
   printf '+ '
@@ -143,16 +162,37 @@ case "${REMOVE_EXISTING}" in
     ;;
 esac
 
-log "Adding/updating ADW skill tap"
-run_optional "${HERMES_CMD[@]}" skills tap add "${REPO}"
+log "Fetching ADW source (${REPO}@${ADW_REF})"
+TMP_DIR=$(mktemp -d)
+ADW_SOURCE_DIR="${TMP_DIR}/source"
+mkdir -p "${ADW_SOURCE_DIR}"
+run_required curl -fsSL "${ADW_ARCHIVE_URL}" -o "${TMP_DIR}/adw.tar.gz"
+run_required tar -xzf "${TMP_DIR}/adw.tar.gz" -C "${ADW_SOURCE_DIR}" --strip-components=1
 
-log "Installing ADW skills"
+log "Installing ADW skills from fetched source"
+mkdir -p "${HERMES_HOME_DIR}/skills/adw"
 for skill_dir in "${ADW_SKILLS[@]}"; do
-  run_required "${HERMES_CMD[@]}" skills install --yes "${REPO}/skills/adw/${skill_dir}"
+  src="${ADW_SOURCE_DIR}/skills/adw/${skill_dir}"
+  [[ -f "${src}/SKILL.md" ]] || fail "Missing skill package: ${src}/SKILL.md"
+
+  skill_name=$(grep -m1 '^name:' "${src}/SKILL.md" | cut -d: -f2- | xargs)
+  [[ -n "${skill_name}" ]] || fail "Could not resolve skill name from ${src}/SKILL.md"
+
+  target="${HERMES_HOME_DIR}/skills/adw/${skill_name}"
+  printf '+ install skill %s -> %s\n' "${skill_name}" "${target}"
+  rm -rf "${target}"
+  mkdir -p "${target}"
+  tar -C "${src}" -cf - . | tar -C "${target}" -xf -
 done
 
-log "Installing and enabling ADW plugin"
-run_required "${HERMES_CMD[@]}" plugins install "${REPO}" --enable
+log "Installing and enabling ADW plugin from fetched source"
+mkdir -p "${HERMES_HOME_DIR}/plugins"
+PLUGIN_TARGET="${HERMES_HOME_DIR}/plugins/${PLUGIN_NAME}"
+printf '+ install plugin %s -> %s\n' "${PLUGIN_NAME}" "${PLUGIN_TARGET}"
+rm -rf "${PLUGIN_TARGET}"
+mkdir -p "${PLUGIN_TARGET}"
+tar -C "${ADW_SOURCE_DIR}" --exclude='.git' -cf - . | tar -C "${PLUGIN_TARGET}" -xf -
+run_required "${HERMES_CMD[@]}" plugins enable "${PLUGIN_NAME}"
 
 log "Post-install verification"
 SKILLS_OUTPUT=$("${HERMES_CMD[@]}" skills list || true)

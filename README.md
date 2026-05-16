@@ -49,7 +49,7 @@ For branch testing before merge:
 curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/refs/heads/feature/initial-skills/scripts/install_adw.sh | bash
 ```
 
-The installer prompts for the target Hermes profile, removes older ADW-owned skills/plugin copies, installs the current skillset and plugin, verifies the result, and prints the gateway restart command. It does not request or print secrets.
+The installer prompts via the controlling terminal for the target Hermes profile and for cleanup of older ADW-owned skills/plugin copies, then installs the current skillset and plugin, verifies the result, and prints the gateway restart command. It does not request or print secrets. For non-interactive use, set `ADW_PROFILE=<profile>` and `ADW_REMOVE_EXISTING=yes|no`.
 
 ### Manual skill installation
 

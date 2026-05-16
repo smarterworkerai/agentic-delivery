@@ -111,10 +111,6 @@ def validate_registry_and_skills() -> None:
     registry = importlib.import_module("adw_plugin.registry")
 
     assert registry.WORKFLOWS == EXPECTED_WORKFLOWS
-    for alias, canonical in registry.ALIASES.items():
-        if canonical not in registry.WORKFLOWS:
-            raise AssertionError(f"alias {alias!r} points to unknown workflow {canonical!r}")
-
     for workflow, skill_name in registry.WORKFLOWS.items():
         route = registry.parse_route(f"{workflow} payload text")
         assert route is not None
@@ -125,19 +121,6 @@ def validate_registry_and_skills() -> None:
         if not skill_path.exists():
             raise AssertionError(f"registry maps {workflow} to missing {skill_path}")
 
-    aliases_to_check = {
-        "plan": "plan-feature",
-        "bugfix": "plan-bugfix",
-        "impl": "do-impl",
-        "delegate": "do-impl-delegate",
-        "test": "test-feature",
-        "merge": "merge-feature",
-        "rollback": "rollback-deployment",
-    }
-    for alias, canonical in aliases_to_check.items():
-        route = registry.parse_route(f"{alias} example")
-        assert route is not None
-        assert route.workflow == canonical
 
     operational_dirs = {
         path.parent.name
@@ -155,7 +138,9 @@ def validate_router_behavior() -> None:
     prompts = importlib.import_module("adw_plugin.prompts")
     registry = importlib.import_module("adw_plugin.registry")
 
-    route = registry.parse_route("plan invoice CSV export")
+    assert registry.parse_route("plan invoice CSV export") is None
+
+    route = registry.parse_route("plan-feature invoice CSV export")
     assert route is not None
     prompt = prompts.build_invocation_prompt(route)
     assert not prompt.startswith("/")
@@ -174,9 +159,14 @@ def validate_router_behavior() -> None:
     assert_contains(help_text, "Usage: `/adw <workflow> <payload>`")
     assert_contains(help_text, "plan-feature")
     assert_contains(help_text, "Plan a new feature")
+    assert "Common aliases" not in help_text
     assert len(ctx.injected) == 0
 
-    result = ctx.commands["adw"]["handler"]("bug login timeout")
+    alias_result = ctx.commands["adw"]["handler"]("bug login timeout")
+    assert_contains(alias_result, "Usage: `/adw <workflow> <payload>`")
+    assert len(ctx.injected) == 0
+
+    result = ctx.commands["adw"]["handler"]("plan-bugfix login timeout")
     assert_contains(result, "Queued ADW workflow `plan-bugfix`")
     assert len(ctx.injected) == 1
     role, injected_prompt = ctx.injected[0]
@@ -184,7 +174,7 @@ def validate_router_behavior() -> None:
     assert_contains(injected_prompt, "Workflow: plan-bugfix")
     assert_contains(injected_prompt, "User payload: login timeout")
 
-    gateway_result = ctx.hooks["pre_gateway_dispatch"][0](FakeEvent("/adw merge main PR #42"))
+    gateway_result = ctx.hooks["pre_gateway_dispatch"][0](FakeEvent("/adw merge-feature main PR #42"))
     assert gateway_result is not None
     assert gateway_result["action"] == "rewrite"
     assert not gateway_result["text"].startswith("/")
@@ -231,11 +221,12 @@ assert commands['adw']['args_hint'] == '<workflow> <payload>'
 help_text = handler('')
 assert 'plan-feature' in help_text
 assert 'Plan a new feature' in help_text
+assert 'Common aliases' not in help_text
 
 class Event:
-    text = '/adw test PR #99'
+    text = '/adw test-feature PR #99'
     def get_command(self): return 'adw'
-    def get_command_args(self): return 'test PR #99'
+    def get_command_args(self): return 'test-feature PR #99'
 
 results = invoke_hook('pre_gateway_dispatch', event=Event(), gateway=None, session_store=None)
 rewrites = [r for r in results if isinstance(r, dict) and r.get('action') == 'rewrite']

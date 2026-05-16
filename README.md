@@ -94,7 +94,7 @@ The plugin is intentionally thin. It only routes `/adw <workflow> <payload>` int
 
 ### `/adw` usage
 
-Send `/adw` without arguments to list supported workflow arguments and aliases with short explanations.
+Send `/adw` without arguments to list supported workflow tokens with short explanations.
 
 Examples:
 

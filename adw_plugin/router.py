@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 from .prompts import build_invocation_prompt
-from .registry import ALIASES, WORKFLOW_DEFINITIONS, parse_route
+from .registry import WORKFLOW_DEFINITIONS, parse_route
 
 
 def register(ctx: Any) -> None:
@@ -86,13 +86,10 @@ def usage() -> str:
     workflow_lines = "\n".join(
         f"- `{definition.token}` — {definition.description}" for definition in WORKFLOW_DEFINITIONS
     )
-    alias_text = ", ".join(f"`{alias}`→`{target}`" for alias, target in sorted(ALIASES.items()))
     return (
         "Usage: `/adw <workflow> <payload>`\n\n"
         "Supported workflows:\n"
         f"{workflow_lines}\n\n"
-        "Common aliases:\n"
-        f"{alias_text}\n\n"
         "Examples:\n"
         "- `/adw plan-feature invoice CSV export`\n"
         "- `/adw do-impl issue #42`\n"

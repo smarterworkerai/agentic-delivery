@@ -47,41 +47,16 @@ _DESCRIPTION_BY_WORKFLOW: dict[str, str] = {
     definition.token: definition.description for definition in WORKFLOW_DEFINITIONS
 }
 
-ALIASES: dict[str, str] = {
-    "plan": "plan-feature",
-    "feature": "plan-feature",
-    "bug": "plan-bugfix",
-    "bugfix": "plan-bugfix",
-    "fix": "plan-bugfix",
-    "impl": "do-impl",
-    "implement": "do-impl",
-    "delegate": "do-impl-delegate",
-    "test": "test-feature",
-    "validate": "test-feature",
-    "merge": "merge-feature",
-    "promote": "promote-release",
-    "rollback": "rollback-deployment",
-    "regress": "validate-regression",
-    "regression": "validate-regression",
-    "adr": "create-adr",
-    "deps": "audit-dependencies",
-    "dependencies": "audit-dependencies",
-    "prod": "analyze-production",
-    "production": "analyze-production",
-}
-
-
 def normalize_token(token: str) -> str:
-    """Normalize a workflow or alias token from a slash command."""
+    """Normalize a workflow token from a slash command."""
 
     return (token or "").strip().lower().replace("_", "-")
 
 
 def canonical_workflow(token: str) -> str | None:
-    """Resolve a workflow token or alias to a canonical workflow."""
+    """Resolve a workflow token to a canonical workflow."""
 
-    workflow_key = normalize_token(token)
-    workflow = ALIASES.get(workflow_key, workflow_key)
+    workflow = normalize_token(token)
     if workflow not in WORKFLOWS:
         return None
     return workflow
@@ -110,9 +85,3 @@ def workflow_description(workflow: str) -> str:
     """Return the short help text for a canonical workflow."""
 
     return _DESCRIPTION_BY_WORKFLOW[workflow]
-
-
-def alias_lines() -> list[str]:
-    """Return stable help lines describing aliases."""
-
-    return [f"{alias} -> {target}" for alias, target in sorted(ALIASES.items())]

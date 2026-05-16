@@ -125,7 +125,7 @@ Telegram can show bot-level slash command suggestions only for registered bot co
 Planned behavior:
 
 - Keep `/adw <workflow> <payload>` as the canonical cross-platform command.
-- If `/adw` is sent without a workflow, return concise usage help listing the supported workflow tokens and aliases.
+- If `/adw` is sent without a workflow, return concise usage help listing the supported workflow tokens.
 - Optionally add a Telegram-friendly helper response with inline buttons for workflow selection, if the Hermes gateway/plugin API exposes a safe way to send platform-specific reply markup. This is a convenience path, not true compose-time argument autocomplete.
 - Do not split ADW into many top-level Telegram commands by default (`/adw_plan_feature`, `/adw_test_feature`, etc.) because that weakens the single-router UX and is less portable across Hermes CLI and gateway platforms. Reconsider only if command-level Telegram suggestions become a higher priority than cross-platform consistency.
 
@@ -148,36 +148,13 @@ Canonical workflow tokens:
 - `audit-dependencies` -> `adw-audit-dependencies`
 - `analyze-production` -> `adw-analyze-production`
 
-Recommended aliases:
-
-- `plan` -> `plan-feature`
-- `feature` -> `plan-feature`
-- `bug` -> `plan-bugfix`
-- `bugfix` -> `plan-bugfix`
-- `fix` -> `plan-bugfix`
-- `impl` -> `do-impl`
-- `implement` -> `do-impl`
-- `delegate` -> `do-impl-delegate`
-- `test` -> `test-feature`
-- `validate` -> `test-feature`
-- `merge` -> `merge-feature`
-- `promote` -> `promote-release`
-- `rollback` -> `rollback-deployment`
-- `regress` -> `validate-regression`
-- `regression` -> `validate-regression`
-- `adr` -> `create-adr`
-- `deps` -> `audit-dependencies`
-- `dependencies` -> `audit-dependencies`
-- `prod` -> `analyze-production`
-- `production` -> `analyze-production`
-
 ## Plugin Responsibilities
 
 The plugin should:
 
 1. Register a single slash command named `adw`.
 2. Parse the first argument as the workflow selector.
-3. Normalize aliases to canonical workflow names.
+3. Validate the workflow token against the canonical workflow registry.
 4. Treat the remaining text as the workflow payload.
 5. Build a deterministic invocation prompt that includes:
    - the selected workflow token;
@@ -285,7 +262,7 @@ tools/validate_adw_plugin_spike.py
 Validated behavior:
 
 - `/adw` command registration through `ctx.register_command()`.
-- Workflow parsing and alias normalization.
+- Workflow parsing with canonical workflow-token validation.
 - Prompt construction with embedded `adw-core` and selected operational `SKILL.md` content.
 - CLI injection through `ctx.inject_message(...)` with a fake context.
 - Gateway rewrite through `pre_gateway_dispatch` returning `{"action": "rewrite", "text": ...}`.
@@ -385,7 +362,6 @@ Responsibilities:
 
 - `registry.py`
   - canonical workflow registry;
-  - alias registry;
   - skill-directory mapping;
   - route dataclass;
   - parsing and validation helpers.
@@ -415,7 +391,7 @@ This should validate the root-plugin package, not only the project-local spike:
 - `adw_plugin.router.register()` registers `/adw` and `pre_gateway_dispatch`;
 - every workflow registry entry maps to an existing skill directory;
 - every operational ADW skill has a registry entry or explicit exclusion;
-- aliases resolve to valid canonical workflows;
+- non-canonical workflow tokens are rejected with usage help;
 - gateway rewrite produces a normal agent prompt, not a direct slash command echo;
 - install/discovery can be simulated with a temporary `HERMES_HOME` and `file://` or direct import path.
 

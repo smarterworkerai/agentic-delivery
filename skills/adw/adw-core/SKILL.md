@@ -49,6 +49,7 @@ This skill owns the shared artifacts for portable installs:
 - `templates/validation_report.md` — validation report template.
 - `templates/deployment_report.md` — deployment report template.
 - `templates/rollback_report.md` — rollback report template.
+- `templates/delegation/` — backend-neutral delegated implementation handoff/result templates.
 - `references/adr/0001-agentic-delivery-workflow.md` — ADW architecture decision.
 - `references/adr/0002-pr-as-delivery-unit.md` — PR-as-delivery-unit decision.
 - `assets/diagrams/adw-complete-workflow.puml` — workflow diagram source.
@@ -118,6 +119,7 @@ Human prompts may be minimal. Resolve missing parameters in this order:
 - [ ] `adw-core` is installed in the target Hermes profile
 - [ ] The operational `adw-*` skill lists or requires `adw-core`
 - [ ] Required playbooks/templates exist under this skill directory
+- [ ] Delegation templates exist under `templates/delegation/` when delegated implementation is enabled
 - [ ] The workflow diagram source and rendered SVG both exist
 - [ ] Root README points to `adw-core` as the package source of truth
 - [ ] `tools/validate_adw_skills.py` passes

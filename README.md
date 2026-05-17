@@ -16,6 +16,7 @@ Chat/status updates may be localized separately. Repository artifacts are writte
 - `skills/adw/adw-core/SKILL.md` — package source of truth for shared ADW context.
 - `skills/adw/adw-core/references/playbooks/` — shared operational procedures referenced by workflow skills.
 - `skills/adw/adw-core/templates/` — shared issue, PR, plan, report, and deployment templates.
+- `skills/adw/adw-core/templates/delegation/` — backend-neutral delegated implementation handoff/result templates.
 - `skills/adw/adw-core/references/adr/` — workflow architecture decisions.
 - `skills/adw/adw-core/assets/diagrams/` — PlantUML source and pre-rendered SVG diagrams.
 - `skills/adw/*/SKILL.md` — Hermes-compatible operational workflow skills.

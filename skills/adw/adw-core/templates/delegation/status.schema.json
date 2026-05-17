@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/smarterworkerai/agentic-delivery/schemas/adw-delegation-status.schema.json",
+  "title": "ADW delegation status",
+  "type": "object",
+  "required": [
+    "run_id",
+    "contract",
+    "backend",
+    "model",
+    "created_at",
+    "state",
+    "correction_rounds"
+  ],
+  "properties": {
+    "run_id": { "type": "string", "minLength": 1 },
+    "contract": { "const": "adw-delegation-v1" },
+    "backend": { "type": "string", "minLength": 1 },
+    "model": { "type": ["string", "null"] },
+    "created_at": { "type": "string" },
+    "started_at": { "type": ["string", "null"] },
+    "completed_at": { "type": ["string", "null"] },
+    "state": {
+      "type": "string",
+      "enum": [
+        "created",
+        "ready",
+        "running",
+        "review",
+        "correction_requested",
+        "done",
+        "failed"
+      ]
+    },
+    "result": { "type": ["object", "null"] },
+    "correction_rounds": { "type": "integer", "minimum": 0 }
+  },
+  "additionalProperties": true
+}

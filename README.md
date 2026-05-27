@@ -16,6 +16,9 @@ Chat/status updates may be localized separately. Repository artifacts are writte
 - `skills/adw/adw-core/SKILL.md` — package source of truth for shared ADW context.
 - `skills/adw/adw-core/references/playbooks/` — shared operational procedures referenced by workflow skills.
 - `skills/adw/adw-core/templates/` — shared issue, PR, plan, report, and deployment templates.
+- `skills/adw/adw-core/templates/project_adw_adapter.md` — generic project `.hermes/ADW.md` adapter template.
+- `skills/adw/adw-core/references/project_contexts.md` — generic project adapter and context helper resolution contract.
+- `skills/adw/adw-core/templates/delegation/` — backend-neutral delegated implementation handoff/result templates.
 - `skills/adw/adw-core/references/adr/` — workflow architecture decisions.
 - `skills/adw/adw-core/assets/diagrams/` — PlantUML source and pre-rendered SVG diagrams.
 - `skills/adw/*/SKILL.md` — Hermes-compatible operational workflow skills.
@@ -89,6 +92,8 @@ Examples:
 /adw do-impl issue #42
 /adw test-feature PR #42
 /adw merge-feature main PR #42
+/adw chain plan impl test merge invoice CSV export
+/adw self-improve require adapter-declared context helpers before deployments
 ```
 
 If plugin installation is unavailable, use the skill-only fallback:
@@ -114,6 +119,8 @@ Load `adw-core` together with the operational ADW skill for the current delivery
 - `adw-create-adr`
 - `adw-audit-dependencies`
 - `adw-analyze-production`
+- `adw-chain`
+- `adw-self-improve`
 
 Example:
 
@@ -122,6 +129,8 @@ Use adw-core and adw-plan-feature for invoice CSV export.
 ```
 
 When installing into a separate Hermes profile, install/copy the complete `skills/adw/` tree or at minimum install `adw-core` plus the operational skills you want to use. Installing only `adw-plan-feature` or another individual workflow skill is not enough because the shared artifacts live in `adw-core`.
+
+Short or context-specific commands should resolve repository details through a project adapter such as `.hermes/ADW.md` and any adapter-declared context helper. Generic ADW skills must not hard-code organization or project deployment defaults.
 
 ## Complete Workflow Diagram
 

@@ -34,6 +34,8 @@ Do not create repo-root shared artifact directories for new ADW materials. Add o
 - `adw-create-adr` — create architecture decision records.
 - `adw-audit-dependencies` — audit dependency/build-tool risk.
 - `adw-analyze-production` — inspect production feedback and route incidents.
+- `adw-chain` — coordinate a confirmed multi-stage ADW sequence through existing stage skills.
+- `adw-self-improve` — persist an explicitly requested ADW/context/project-adapter improvement through a confirm-first PR flow.
 
 ## Usage
 

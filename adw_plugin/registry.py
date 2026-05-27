@@ -37,6 +37,8 @@ WORKFLOW_DEFINITIONS: tuple[WorkflowDefinition, ...] = (
     WorkflowDefinition("create-adr", "adw-create-adr", "create-adr", "Create an Architecture Decision Record for architectural or security-boundary changes."),
     WorkflowDefinition("audit-dependencies", "adw-audit-dependencies", "audit-dependencies", "Audit dependency changes for security, maintenance, and release risk."),
     WorkflowDefinition("analyze-production", "adw-analyze-production", "analyze-production", "Inspect production feedback, logs, metrics, or user reports and recommend continue/fix-forward/rollback."),
+    WorkflowDefinition("chain", "adw-chain", "chain", "Coordinate a confirmed multi-stage ADW sequence such as plan, implement, test, merge, or deploy."),
+    WorkflowDefinition("self-improve", "adw-self-improve", "self-improve", "Persist an explicitly requested ADW/context/project-adapter improvement through a confirm-first PR-based flow."),
 )
 
 WORKFLOWS: dict[str, str] = {definition.token: definition.skill for definition in WORKFLOW_DEFINITIONS}

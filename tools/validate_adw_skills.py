@@ -21,6 +21,8 @@ EXPECTED = {
     "adw-create-adr": "skills/adw/create-adr/SKILL.md",
     "adw-audit-dependencies": "skills/adw/audit-dependencies/SKILL.md",
     "adw-analyze-production": "skills/adw/analyze-production/SKILL.md",
+    "adw-chain": "skills/adw/chain/SKILL.md",
+    "adw-self-improve": "skills/adw/self-improve/SKILL.md",
 }
 CORE_SHARED = [
     "skills/adw/adw-core/references/playbooks/preview_deployments.md",
@@ -38,6 +40,8 @@ CORE_SHARED = [
     "skills/adw/adw-core/templates/validation_report.md",
     "skills/adw/adw-core/templates/deployment_report.md",
     "skills/adw/adw-core/templates/rollback_report.md",
+    "skills/adw/adw-core/templates/project_adw_adapter.md",
+    "skills/adw/adw-core/references/project_contexts.md",
     "skills/adw/adw-core/references/adr/0001-agentic-delivery-workflow.md",
     "skills/adw/adw-core/references/adr/0002-pr-as-delivery-unit.md",
     "skills/adw/adw-core/assets/diagrams/adw-complete-workflow.puml",

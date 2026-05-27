@@ -30,6 +30,8 @@ EXPECTED_WORKFLOWS = {
     "create-adr": "adw-create-adr",
     "audit-dependencies": "adw-audit-dependencies",
     "analyze-production": "adw-analyze-production",
+    "chain": "adw-chain",
+    "self-improve": "adw-self-improve",
 }
 
 
@@ -174,6 +176,12 @@ def validate_router_behavior() -> None:
     assert_contains(injected_prompt, "Workflow: plan-bugfix")
     assert_contains(injected_prompt, "User payload: login timeout")
 
+    chain_result = ctx.commands["adw"]["handler"]("chain plan impl test merge invoice CSV export")
+    assert_contains(chain_result, "Queued ADW workflow `chain`")
+    assert len(ctx.injected) == 2
+    assert_contains(ctx.injected[1][1], "Workflow: chain")
+    assert_contains(ctx.injected[1][1], "name: adw-chain")
+
     gateway_result = ctx.hooks["pre_gateway_dispatch"][0](FakeEvent("/adw merge-feature main PR #42"))
     assert gateway_result is not None
     assert gateway_result["action"] == "rewrite"
@@ -221,6 +229,7 @@ assert commands['adw']['args_hint'] == '<workflow> <payload>'
 help_text = handler('')
 assert 'plan-feature' in help_text
 assert 'Plan a new feature' in help_text
+assert 'chain' in help_text
 assert 'Common aliases' not in help_text
 
 class Event:

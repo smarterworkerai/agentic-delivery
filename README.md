@@ -46,13 +46,13 @@ After this branch is merged to the default branch:
 curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/main/scripts/install_adw.sh | bash
 ```
 
-For branch testing before merge:
+For branch testing before merge, fetch the installer from the branch under test and set `ADW_REF` to the same branch so the downloaded installer and installed payload match:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/refs/heads/feature/initial-skills/scripts/install_adw.sh | bash
+curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/refs/heads/feature/adw-context-extension/scripts/install_adw.sh | ADW_REF=feature/adw-context-extension bash
 ```
 
-The installer prompts via the controlling terminal for the target Hermes profile, whether to install the ADW `SOUL.md` as the profile-level identity file, and cleanup of older ADW-owned skills/plugin copies. It then fetches the configured repository ref (`ADW_REF`, currently `feature/initial-skills` for branch testing), installs the selected `SOUL.md`, skillset, and plugin from that fetched source, verifies the result, and prints the gateway restart command. It does not request or print secrets. For non-interactive use, set `ADW_PROFILE=<profile>`, `ADW_INSTALL_SOUL=yes|no`, `ADW_REMOVE_EXISTING=yes|no`, and optionally `ADW_REF=<branch-or-tag>`. If `SOUL.md` installation is enabled and a different profile-level `SOUL.md` already exists, the installer creates a timestamped `SOUL.md.bak.<timestamp>` backup before replacing it.
+The installer prompts via the controlling terminal for the target Hermes profile, whether to install the ADW `SOUL.md` as the profile-level identity file, and cleanup of older ADW-owned skills/plugin copies. It then fetches the configured repository ref (`ADW_REF`, default `main`), installs the selected `SOUL.md`, skillset, and plugin from that fetched source, verifies every packaged ADW skill plus the plugin, and prints the gateway restart command. It does not request or print secrets. For non-interactive use, set `ADW_PROFILE=<profile>`, `ADW_INSTALL_SOUL=yes|no`, `ADW_REMOVE_EXISTING=yes|no`, and optionally `ADW_REF=<branch-or-tag>`. If `SOUL.md` installation is enabled and a different profile-level `SOUL.md` already exists, the installer creates a timestamped `SOUL.md.bak.<timestamp>` backup before replacing it. After installation, verify with `hermes skills list | grep adw-core`, `hermes skills list | grep adw-chain`, and `hermes plugins list | grep adw`.
 
 ### One-line uninstall
 
@@ -67,7 +67,7 @@ curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/ma
 For branch testing before merge:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/refs/heads/feature/initial-skills/scripts/install_adw.sh | bash -s -- --uninstall
+curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/refs/heads/feature/adw-context-extension/scripts/install_adw.sh | ADW_REF=feature/adw-context-extension bash -s -- --uninstall
 ```
 
 The uninstall flow removes ADW-owned skill directories and local plugin copies from the selected Hermes profile, then prints the gateway restart command. It also attempts to disable the `adw` / `agentic-delivery` plugin names if the installed Hermes version supports plugin disabling. It leaves the profile-level `SOUL.md` unchanged by default. To remove `SOUL.md` non-interactively, set `ADW_UNINSTALL_SOUL=yes`; the script only removes it when it can verify that the current profile `SOUL.md` matches the installed ADW plugin copy, and creates a timestamped backup first.
@@ -75,8 +75,8 @@ The uninstall flow removes ADW-owned skill directories and local plugin copies f
 Examples:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/refs/heads/feature/initial-skills/scripts/install_adw.sh | ADW_PROFILE=delivery bash -s -- --uninstall
-curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/refs/heads/feature/initial-skills/scripts/install_adw.sh | ADW_PROFILE=delivery ADW_UNINSTALL_SOUL=yes bash -s -- --uninstall
+curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/refs/heads/feature/adw-context-extension/scripts/install_adw.sh | ADW_PROFILE=delivery ADW_REF=feature/adw-context-extension bash -s -- --uninstall
+curl -fsSL https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/refs/heads/feature/adw-context-extension/scripts/install_adw.sh | ADW_PROFILE=delivery ADW_REF=feature/adw-context-extension ADW_UNINSTALL_SOUL=yes bash -s -- --uninstall
 ```
 
 The plugin is intentionally thin. It only routes `/adw <workflow> <payload>` into the ADW skills; workflow policy remains in `skills/adw/*`.

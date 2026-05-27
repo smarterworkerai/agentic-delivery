@@ -50,7 +50,6 @@ This skill owns the shared artifacts for portable installs:
 - `templates/deployment_report.md` — deployment report template.
 - `templates/rollback_report.md` — rollback report template.
 - `templates/project_adw_adapter.md` — generic project `.hermes/ADW.md` adapter template.
-- `templates/delegation/` — backend-neutral delegated implementation handoff/result templates.
 - `references/project_contexts.md` — generic project adapter and context helper resolution contract.
 - `references/adr/0001-agentic-delivery-workflow.md` — ADW architecture decision.
 - `references/adr/0002-pr-as-delivery-unit.md` — PR-as-delivery-unit decision.

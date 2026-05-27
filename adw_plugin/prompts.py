@@ -26,6 +26,7 @@ def build_invocation_prompt(route: Route) -> str:
 
         Execute the selected Agentic Delivery Workflow using the ADW skills below.
         Keep the workflow PR-centric, traceable, reviewable, and deployment-safe.
+        Resolve project-specific branch, deployment, validation, and admin defaults through the current repository's project adapter (for example `.hermes/ADW.md`) and any adapter-declared context helper.
         Do not bypass ADW gates. If a required artifact or safety decision is missing, stop and report the blocker.
 
         Workflow: {route.workflow}

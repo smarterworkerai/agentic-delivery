@@ -34,9 +34,10 @@ Load `adw-core` before using this skill. It contains the shared delivery gates, 
 2. Determine or confirm base branch. Default to `main` when safe.
 3. Create or confirm feature branch using `feature/<short-description>`.
 4. Draft a plan from `adw-core/templates/implementation_plan.md`.
-5. Create a GitHub issue labeled `enhancement` using `adw-core/templates/github_issue_feature.md`.
-6. Link branch, issue, plan, and expected PR target.
-7. Stop before implementation and report ready-for-implementation status.
+5. Read `adw-core/references/playbooks/github_traceability.md`, especially Markdown and Newline Hygiene, before creating or updating GitHub issue text.
+6. Create a GitHub issue labeled `enhancement` using `adw-core/templates/github_issue_feature.md`; prefer a Markdown body file and verify the posted issue renders without visible literal `\n` sequences.
+7. Link branch, issue, plan, and expected PR target.
+8. Stop before implementation and report ready-for-implementation status.
 
 ## Required Plan Content
 
@@ -69,6 +70,7 @@ Load `adw-core` before using this skill. It contains the shared delivery gates, 
 
 - [ ] Branch exists and is isolated from unrelated work
 - [ ] Issue exists and is labeled `enhancement`
+- [ ] Issue body was posted from a Markdown body file or otherwise verified to render without visible literal `\n` sequences
 - [ ] Plan includes acceptance criteria and test strategy
 - [ ] Branch ↔ issue linkage is recorded
 - [ ] Next skill is clearly identified
@@ -94,9 +96,11 @@ Human prompts may be minimal. Resolve missing parameters in this order:
 
 1. Inspect current repository, branch, issue, PR, and deployment metadata.
 2. Check `adw-core` artifacts, playbooks, templates, ADRs, and the root `SOUL.md` if available.
-3. If exactly one safe candidate exists, state the inferred assumption and ask the human to confirm before proceeding.
-4. If multiple candidates exist or the consequence is unsafe, ask for explicit human input.
-5. Never treat inference as approval for merge, production deployment, rollback, secret handling, destructive infrastructure changes, or history rewrite.
+3. Read repository-local `.hermes/ADW.md` when present.
+4. Load any adapter-declared context helper before resolving branch, validation, deployment, administration, or delegation defaults.
+5. If exactly one safe candidate exists, state the inferred assumption and ask the human to confirm before proceeding.
+6. If multiple candidates exist or the consequence is unsafe, ask for explicit human input.
+7. Never treat inference as approval for merge, production deployment, rollback, secret handling, destructive infrastructure changes, or history rewrite.
 
 ## Standard Status Report
 

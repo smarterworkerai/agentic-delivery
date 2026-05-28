@@ -122,13 +122,14 @@ A correction round is required when output is weak, incomplete, self-reported on
 3. Read `.hermes/ADW.md` when present and load any adapter-declared context helper before resolving branch, validation, deployment, administration, or delegation defaults.
 4. Resolve the delegation backend using the backend resolution order above.
 5. Create the portable handoff bundle from the templates.
-6. Launch the selected backend using that backend's documented mechanism.
-7. Receive a verifiable result: PR/MR URL, branch, commit SHA, test evidence, and summary.
-8. Inspect the returned diff and test evidence.
-9. Verify scope, non-scope, traceability, and secret hygiene in tracked files/docs/examples.
-10. Confirm no merge/deploy happened unless explicitly authorized.
-11. Request a correction round when output is weak, missing, or self-reported only.
-12. Comment on the PR or summarize the review result for the human.
+6. Load the selected backend's skill or documentation before launching (for example, load `sandbox-delegation` when `.hermes/ADW.md`, the context helper, or the human selects the sandbox backend); if no backend docs/skill are available, stop and ask instead of inventing launcher commands.
+7. Launch the selected backend using that backend's documented mechanism.
+8. Receive a verifiable result: PR/MR URL, branch, commit SHA, test evidence, and summary.
+9. Inspect the returned diff and test evidence.
+10. Verify scope, non-scope, traceability, and secret hygiene in tracked files/docs/examples.
+11. Confirm no merge/deploy happened unless explicitly authorized.
+12. Request a correction round when output is weak, missing, or self-reported only.
+13. Comment on the PR or summarize the review result for the human.
 
 ## Orchestrator Completion Gate
 
@@ -170,6 +171,7 @@ Final user-facing output should include:
 - [ ] `adw-core` was loaded first.
 - [ ] Repository-local `.hermes/ADW.md` and any adapter-declared context helper were checked before backend/default resolution.
 - [ ] Delegation backend/target was explicit, unambiguous, or confirmed by the human.
+- [ ] Selected backend skill/documentation was loaded before launcher-specific commands were used.
 - [ ] Handoff bundle includes task brief, environment, constraints, acceptance criteria, and input artifacts.
 - [ ] Worker returned PR/MR URL or patches/artifacts with a blocker explanation.
 - [ ] Worker returned branch, commit SHA, changed-file summary, and verification evidence.

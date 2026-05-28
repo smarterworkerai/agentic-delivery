@@ -323,12 +323,18 @@ tar -C "${ADW_SOURCE_DIR}" --exclude='.git' -cf - . | tar -C "${PLUGIN_TARGET}" 
 run_required "${HERMES_CMD[@]}" plugins enable "${PLUGIN_NAME}"
 
 log "Post-install verification"
-SKILLS_OUTPUT=$("${HERMES_CMD[@]}" skills list || true)
-PLUGINS_OUTPUT=$("${HERMES_CMD[@]}" plugins list || true)
-
+# Do not verify local skill installs by grepping `hermes skills list`: the Rich
+# table can truncate long names such as `adw-rollback-deployment` depending on
+# terminal width, which creates false negatives even though the skill is
+# installed and loadable. Verify the installer-owned profile files directly.
 for skill_name in "${ADW_INSTALLED_SKILL_NAMES[@]}"; do
-  printf '%s\n' "${SKILLS_OUTPUT}" | grep -q "${skill_name}" || fail "${skill_name} was not found in hermes skills list output."
+  skill_file="${HERMES_HOME_DIR}/skills/adw/${skill_name}/SKILL.md"
+  [[ -f "${skill_file}" ]] || fail "${skill_name} was not installed at ${skill_file}."
+  grep -Eq "^name:[[:space:]]*${skill_name}[[:space:]]*$" "${skill_file}" || fail "${skill_name} has an unexpected name in ${skill_file}."
 done
+
+[[ -d "${PLUGIN_TARGET}" ]] || fail "ADW plugin directory was not installed at ${PLUGIN_TARGET}."
+PLUGINS_OUTPUT=$("${HERMES_CMD[@]}" plugins list || true)
 printf '%s\n' "${PLUGINS_OUTPUT}" | grep -Eq "adw|agentic-delivery" || fail "ADW plugin was not found in hermes plugins list output."
 
 log "ADW installation complete"

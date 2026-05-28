@@ -16,6 +16,7 @@ Chat/status updates may be localized separately. Repository artifacts are writte
 - `skills/adw/adw-core/SKILL.md` — package source of truth for shared ADW context.
 - `skills/adw/adw-core/references/playbooks/` — shared operational procedures referenced by workflow skills.
 - `skills/adw/adw-core/templates/` — shared issue, PR, plan, report, and deployment templates.
+- `skills/adw/adw-core/templates/delegation/` — backend-neutral delegated implementation handoff/result templates.
 - `skills/adw/adw-core/templates/project_adw_adapter.md` — generic project `.hermes/ADW.md` adapter template.
 - `skills/adw/adw-core/references/project_contexts.md` — generic project adapter and context helper resolution contract.
 - `skills/adw/adw-core/references/adr/` — workflow architecture decisions.
@@ -237,7 +238,7 @@ Do not merge or deploy.
 
 ```text
 /adw do-impl-delegate
-Delegate the linked invoice CSV export plan to the approved sandbox flow.
+Delegate the linked invoice CSV export plan to the approved delegation backend.
 Require the worker to return a PR URL, commit SHA, changed-file summary, and test output.
 Review the returned PR before reporting acceptance.
 ```

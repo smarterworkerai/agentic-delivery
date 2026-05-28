@@ -22,7 +22,7 @@ Use this skill to implement the current ADW plan directly in the repository.
 - The branch and issue are known or can be inferred safely.
 - The user wants implementation by the current agent.
 
-Use `adw-do-impl-delegate` when implementation should run in a sandbox or remote agent.
+Use `adw-do-impl-delegate` when implementation should run through a selected delegation backend with a portable handoff/result contract.
 
 ## Required Context
 

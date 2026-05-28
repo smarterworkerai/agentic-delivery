@@ -3,8 +3,8 @@ set -euo pipefail
 
 REPO="smarterworkerai/agentic-delivery"
 PLUGIN_NAME="adw"
-ADW_REF="${ADW_REF:-feature/initial-skills}"
-ADW_ARCHIVE_URL="https://github.com/${REPO}/archive/refs/heads/${ADW_REF}.tar.gz"
+ADW_REF="${ADW_REF:-main}"
+ADW_ARCHIVE_URL="https://codeload.github.com/${REPO}/tar.gz/${ADW_REF}"
 ADW_SKILLS=(
   "adw-core"
   "plan-feature"
@@ -13,12 +13,13 @@ ADW_SKILLS=(
   "do-impl-delegate"
   "test-feature"
   "merge-feature"
-  "promote-release"
   "rollback-deployment"
   "validate-regression"
   "create-adr"
   "audit-dependencies"
   "analyze-production"
+  "chain"
+  "self-improve"
 )
 ADW_INSTALLED_SKILL_NAMES=(
   "adw-core"
@@ -28,12 +29,13 @@ ADW_INSTALLED_SKILL_NAMES=(
   "adw-do-impl-delegate"
   "adw-test-feature"
   "adw-merge-feature"
-  "adw-promote-release"
   "adw-rollback-deployment"
   "adw-validate-regression"
   "adw-create-adr"
   "adw-audit-dependencies"
   "adw-analyze-production"
+  "adw-chain"
+  "adw-self-improve"
 )
 
 log() { printf '\n==> %s\n' "$*"; }
@@ -48,7 +50,7 @@ Install options are controlled with environment variables:
   ADW_PROFILE=<profile>              Target Hermes profile; default profile when empty.
   ADW_INSTALL_SOUL=yes|no            Install ADW SOUL.md into the profile root.
   ADW_REMOVE_EXISTING=yes|no         Remove existing ADW-owned files before install.
-  ADW_REF=<branch-or-tag>            Git ref to fetch; defaults to feature/initial-skills.
+  ADW_REF=<branch-or-tag>            Git ref to fetch; defaults to main.
 
 Uninstall options:
   --uninstall                        Remove ADW-owned skills and plugin files.
@@ -324,8 +326,9 @@ log "Post-install verification"
 SKILLS_OUTPUT=$("${HERMES_CMD[@]}" skills list || true)
 PLUGINS_OUTPUT=$("${HERMES_CMD[@]}" plugins list || true)
 
-printf '%s\n' "${SKILLS_OUTPUT}" | grep -q "adw-core" || fail "adw-core was not found in hermes skills list output."
-printf '%s\n' "${SKILLS_OUTPUT}" | grep -q "adw-plan-feature" || fail "adw-plan-feature was not found in hermes skills list output."
+for skill_name in "${ADW_INSTALLED_SKILL_NAMES[@]}"; do
+  printf '%s\n' "${SKILLS_OUTPUT}" | grep -q "${skill_name}" || fail "${skill_name} was not found in hermes skills list output."
+done
 printf '%s\n' "${PLUGINS_OUTPUT}" | grep -Eq "adw|agentic-delivery" || fail "ADW plugin was not found in hermes plugins list output."
 
 log "ADW installation complete"

@@ -6,3 +6,5 @@
 - Do not merge or deploy unless the human explicitly requested it for this delegation.
 - Record important commands in `11-commands.md`.
 - Keep generated artifacts under `result/` or the backend-equivalent artifact location.
+
+- When producing GitHub issue, PR, review, or comment text, use readable Markdown with real newline characters; do not emit visible literal `\n` sequences unless documenting an escape sequence.

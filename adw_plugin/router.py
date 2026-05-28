@@ -94,5 +94,6 @@ def usage() -> str:
         "- `/adw plan-feature invoice CSV export`\n"
         "- `/adw do-impl issue #42`\n"
         "- `/adw test-feature PR #42`\n"
-        "- `/adw merge-feature main PR #42`"
+        "- `/adw merge-feature main PR #42`\n"
+        "- `/adw chain plan impl test merge invoice CSV export`"
     )

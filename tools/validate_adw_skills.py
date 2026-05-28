@@ -2,6 +2,7 @@
 """Validate the ADW Hermes-compatible skill package."""
 from __future__ import annotations
 
+import ast
 import re
 import sys
 from pathlib import Path
@@ -16,16 +17,17 @@ EXPECTED = {
     "adw-test-feature": "skills/adw/test-feature/SKILL.md",
     "adw-merge-feature": "skills/adw/merge-feature/SKILL.md",
     "adw-rollback-deployment": "skills/adw/rollback-deployment/SKILL.md",
-    "adw-promote-release": "skills/adw/promote-release/SKILL.md",
     "adw-validate-regression": "skills/adw/validate-regression/SKILL.md",
     "adw-create-adr": "skills/adw/create-adr/SKILL.md",
     "adw-audit-dependencies": "skills/adw/audit-dependencies/SKILL.md",
     "adw-analyze-production": "skills/adw/analyze-production/SKILL.md",
+    "adw-chain": "skills/adw/chain/SKILL.md",
+    "adw-self-improve": "skills/adw/self-improve/SKILL.md",
 }
 CORE_SHARED = [
     "skills/adw/adw-core/references/playbooks/preview_deployments.md",
     "skills/adw/adw-core/references/playbooks/pr_reviewing.md",
-    "skills/adw/adw-core/references/playbooks/release_promotion.md",
+    "skills/adw/adw-core/references/playbooks/branch_environment_releases.md",
     "skills/adw/adw-core/references/playbooks/incident_response.md",
     "skills/adw/adw-core/references/playbooks/github_traceability.md",
     "skills/adw/adw-core/references/playbooks/deployment_gates.md",
@@ -45,6 +47,8 @@ CORE_SHARED = [
     "skills/adw/adw-core/templates/delegation/input_artifacts.md",
     "skills/adw/adw-core/templates/delegation/output_summary.md",
     "skills/adw/adw-core/templates/delegation/status.schema.json",
+    "skills/adw/adw-core/templates/project_adw_adapter.md",
+    "skills/adw/adw-core/references/project_contexts.md",
     "skills/adw/adw-core/references/adr/0001-agentic-delivery-workflow.md",
     "skills/adw/adw-core/references/adr/0002-pr-as-delivery-unit.md",
     "skills/adw/adw-core/assets/diagrams/adw-complete-workflow.puml",
@@ -111,6 +115,48 @@ def validate_skill(name: str, relpath: str) -> list[str]:
             errors.append(f"{relpath}: missing adw-core in frontmatter related_skills")
         if "repo-root `playbooks/`, `templates/`, `adr/`, or `docs/`" not in text:
             errors.append(f"{relpath}: missing portable install warning")
+        if "`.hermes/ADW.md`" not in text or "context helper" not in text:
+            errors.append(f"{relpath}: missing project adapter/context helper loading guidance")
+    return errors
+
+
+def extract_bash_array(script_text: str, name: str) -> list[str]:
+    match = re.search(rf"^{name}=\(\n(?P<body>.*?)^\)", script_text, re.MULTILINE | re.DOTALL)
+    if not match:
+        raise ValueError(f"missing bash array {name}")
+    values: list[str] = []
+    for line in match.group("body").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        values.append(ast.literal_eval(line))
+    return values
+
+
+def validate_installer() -> list[str]:
+    errors: list[str] = []
+    script_path = ROOT / "scripts/install_adw.sh"
+    if not script_path.exists():
+        return ["missing scripts/install_adw.sh"]
+    script_text = script_path.read_text(encoding="utf-8")
+    if 'ADW_REF="${ADW_REF:-main}"' not in script_text:
+        errors.append("scripts/install_adw.sh: ADW_REF default must be main")
+    if "refs/heads/${ADW_REF}" in script_text:
+        errors.append("scripts/install_adw.sh: archive URL must support tags, not only branch heads")
+    try:
+        skill_dirs = extract_bash_array(script_text, "ADW_SKILLS")
+        installed_names = extract_bash_array(script_text, "ADW_INSTALLED_SKILL_NAMES")
+    except ValueError as exc:
+        return [f"scripts/install_adw.sh: {exc}"]
+    expected_dirs = [Path(relpath).parent.name for relpath in EXPECTED.values()]
+    expected_names = list(EXPECTED)
+    if skill_dirs != expected_dirs:
+        errors.append(f"scripts/install_adw.sh: ADW_SKILLS mismatch; expected {expected_dirs}, got {skill_dirs}")
+    if installed_names != expected_names:
+        errors.append(f"scripts/install_adw.sh: ADW_INSTALLED_SKILL_NAMES mismatch; expected {expected_names}, got {installed_names}")
+    verification_section = script_text.split('log "Post-install verification"', 1)[-1]
+    if "ADW_INSTALLED_SKILL_NAMES" not in verification_section or 'grep -q "${skill_name}"' not in verification_section:
+        errors.append("scripts/install_adw.sh: post-install verification must iterate over every ADW_INSTALLED_SKILL_NAMES entry")
     return errors
 
 
@@ -134,9 +180,10 @@ def main() -> int:
     ]:
         if token not in readme_text:
             errors.append(f"README missing {token}")
-    for obsolete in ["docs/diagrams/adw-complete-workflow", "playbooks/ —", "templates/ —", "adr/ —", "skills/agentic-delivery"]:
+    for obsolete in ["docs/diagrams/adw-complete-workflow", "playbooks/ —", "templates/ —", "adr/ —", "skills/agentic-delivery", "feature/initial-skills"]:
         if obsolete in readme_text:
             errors.append(f"README contains obsolete reference: {obsolete}")
+    errors.extend(validate_installer())
     if errors:
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)

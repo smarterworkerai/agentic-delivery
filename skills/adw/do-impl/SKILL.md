@@ -22,11 +22,11 @@ Use this skill to implement the current ADW plan directly in the repository.
 - The branch and issue are known or can be inferred safely.
 - The user wants implementation by the current agent.
 
-Use `adw-do-impl-delegate` when implementation should run in a sandbox or remote agent.
+Use `adw-do-impl-delegate` when implementation should run through a selected delegation backend with a portable handoff/result contract.
 
 ## Required Context
 
-Load `adw-core` before using this skill. It contains the shared delivery gates, templates, playbooks, ADRs, and workflow diagram. Resolve shared artifacts from the `adw-core` skill package, not from repo-root `playbooks/`, `templates/`, `adr/`, or `docs/` directories.
+Load `adw-core` before using this skill. It contains the shared delivery gates, templates, playbooks, ADRs, and workflow diagram. Resolve shared artifacts from the `adw-core` skill package, not from repo-root `playbooks/`, `templates/`, `adr/`, or `docs/` directories. If the current repository contains `.hermes/ADW.md`, read it before acting and load any adapter-declared context helper before resolving branch, validation, deployment, or administration defaults.
 
 ## Workflow
 

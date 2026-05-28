@@ -28,15 +28,16 @@ WORKFLOW_DEFINITIONS: tuple[WorkflowDefinition, ...] = (
     WorkflowDefinition("plan-feature", "adw-plan-feature", "plan-feature", "Plan a new feature: branch, implementation plan, GitHub issue, and acceptance criteria."),
     WorkflowDefinition("plan-bugfix", "adw-plan-bugfix", "plan-bugfix", "Plan a bugfix: symptom analysis, suspected root cause, branch, issue, and verification strategy."),
     WorkflowDefinition("do-impl", "adw-do-impl", "do-impl", "Implement the current approved plan directly, run checks, commit, and open a PR."),
-    WorkflowDefinition("do-impl-delegate", "adw-do-impl-delegate", "do-impl-delegate", "Delegate implementation to the approved sandbox/remote agent flow, then inspect and review the returned PR."),
+    WorkflowDefinition("do-impl-delegate", "adw-do-impl-delegate", "do-impl-delegate", "Delegate implementation to the approved delegation backend using the portable handoff/result contract, then inspect and review the returned PR."),
     WorkflowDefinition("test-feature", "adw-test-feature", "test-feature", "Review and validate a PR, including preview deployment and smoke/E2E checks when available."),
     WorkflowDefinition("merge-feature", "adw-merge-feature", "merge-feature", "Merge a validated PR into the destination branch and trigger/report the matching deployment."),
-    WorkflowDefinition("promote-release", "adw-promote-release", "promote-release", "Promote an already validated artifact or commit across environments with traceability."),
     WorkflowDefinition("rollback-deployment", "adw-rollback-deployment", "rollback-deployment", "Rollback a failed deployment to a known-good version and report impact/follow-up."),
     WorkflowDefinition("validate-regression", "adw-validate-regression", "validate-regression", "Run targeted regression checks against a PR, branch, deployment, or release candidate."),
     WorkflowDefinition("create-adr", "adw-create-adr", "create-adr", "Create an Architecture Decision Record for architectural or security-boundary changes."),
     WorkflowDefinition("audit-dependencies", "adw-audit-dependencies", "audit-dependencies", "Audit dependency changes for security, maintenance, and release risk."),
     WorkflowDefinition("analyze-production", "adw-analyze-production", "analyze-production", "Inspect production feedback, logs, metrics, or user reports and recommend continue/fix-forward/rollback."),
+    WorkflowDefinition("chain", "adw-chain", "chain", "Coordinate a confirmed multi-stage ADW sequence such as plan, implement, test, merge, or deploy."),
+    WorkflowDefinition("self-improve", "adw-self-improve", "self-improve", "Persist an explicitly requested ADW/context/project-adapter improvement through a confirm-first PR-based flow."),
 )
 
 WORKFLOWS: dict[str, str] = {definition.token: definition.skill for definition in WORKFLOW_DEFINITIONS}

@@ -25,3 +25,6 @@ No merge or deployment was performed. If this is not true, explain the explicit 
 
 ## Correction rounds
 - `0` unless correction was requested. If non-zero, summarize each correction round.
+
+## Markdown hygiene
+- GitHub-ready summaries/comments must use real Markdown line breaks, headings, bullets, and code fences. Do not include visible literal `\n` sequences unless intentionally documenting an escape sequence.

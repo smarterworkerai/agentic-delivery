@@ -31,7 +31,7 @@ Use `adw-do-impl` instead when the current agent should implement directly in th
 
 ## Required Context
 
-Load `adw-core` before using this skill. It contains the shared delivery gates, templates, playbooks, ADRs, and workflow diagram. Resolve shared artifacts from the `adw-core` skill package, not from repo-root `playbooks/`, `templates/`, `adr/`, or `docs/` directories.
+Load `adw-core` before using this skill. It contains the shared delivery gates, templates, playbooks, ADRs, and workflow diagram. Resolve shared artifacts from the `adw-core` skill package, not from repo-root `playbooks/`, `templates/`, `adr/`, or `docs/` directories. If the current repository contains `.hermes/ADW.md`, read it before acting and load any adapter-declared context helper before resolving branch, validation, deployment, or administration defaults.
 
 For delegation, also resolve templates from `skills/adw/adw-core/templates/delegation/`:
 
@@ -45,12 +45,13 @@ For delegation, also resolve templates from `skills/adw/adw-core/templates/deleg
 
 ## Backend Resolution
 
-Resolve the delegation backend in this order:
+Resolve the delegation backend only after loading the project context. Read repository-local `.hermes/ADW.md` when present and load any adapter-declared context helper before choosing defaults. Then resolve the backend in this order:
 
 1. Use the backend or target explicitly named by the human.
-2. Use the backend or target clearly implied by the current project/profile context.
-3. Use a project/profile-specific delegation convention only when it is unambiguous.
-4. Otherwise ask the human which delegation target/backend to use before launching.
+2. Use the backend or target declared by `.hermes/ADW.md` or its context helper.
+3. Use the backend or target clearly implied by the current project/profile context.
+4. Use a project/profile-specific delegation convention only when it is unambiguous.
+5. Otherwise ask the human which delegation target/backend to use before launching.
 
 Do not introduce or require a mandatory `adw-delegation-adapter` skill. The selected backend may be a sandbox worker, local worktree agent, MCP worker, `delegate_task`, Claude Code, Codex, or another mechanism.
 
@@ -118,15 +119,16 @@ A correction round is required when output is weak, incomplete, self-reported on
 
 1. Load `adw-core` and the relevant delegation templates.
 2. Inspect current repository, branch, issue, PR, and plan state.
-3. Resolve the delegation backend using the backend resolution order above.
-4. Create the portable handoff bundle from the templates.
-5. Launch the selected backend using that backend's documented mechanism.
-6. Receive a verifiable result: PR/MR URL, branch, commit SHA, test evidence, and summary.
-7. Inspect the returned diff and test evidence.
-8. Verify scope, non-scope, traceability, and secret hygiene in tracked files/docs/examples.
-9. Confirm no merge/deploy happened unless explicitly authorized.
-10. Request a correction round when output is weak, missing, or self-reported only.
-11. Comment on the PR or summarize the review result for the human.
+3. Read `.hermes/ADW.md` when present and load any adapter-declared context helper before resolving branch, validation, deployment, administration, or delegation defaults.
+4. Resolve the delegation backend using the backend resolution order above.
+5. Create the portable handoff bundle from the templates.
+6. Launch the selected backend using that backend's documented mechanism.
+7. Receive a verifiable result: PR/MR URL, branch, commit SHA, test evidence, and summary.
+8. Inspect the returned diff and test evidence.
+9. Verify scope, non-scope, traceability, and secret hygiene in tracked files/docs/examples.
+10. Confirm no merge/deploy happened unless explicitly authorized.
+11. Request a correction round when output is weak, missing, or self-reported only.
+12. Comment on the PR or summarize the review result for the human.
 
 ## Orchestrator Completion Gate
 
@@ -139,6 +141,7 @@ Do not report delegation success until the orchestrator has verified:
 - Tracked files and docs/examples do not contain real-looking secrets.
 - No merge or deployment happened unless the human explicitly authorized it.
 - Remaining risks and blockers are documented.
+- Any GitHub issue/PR body/comment text uses real Markdown newlines, not visible literal `\n` sequences.
 
 ## Output
 
@@ -165,6 +168,7 @@ Final user-facing output should include:
 ## Verification Checklist
 
 - [ ] `adw-core` was loaded first.
+- [ ] Repository-local `.hermes/ADW.md` and any adapter-declared context helper were checked before backend/default resolution.
 - [ ] Delegation backend/target was explicit, unambiguous, or confirmed by the human.
 - [ ] Handoff bundle includes task brief, environment, constraints, acceptance criteria, and input artifacts.
 - [ ] Worker returned PR/MR URL or patches/artifacts with a blocker explanation.
@@ -173,6 +177,7 @@ Final user-facing output should include:
 - [ ] Secret hygiene was checked in tracked files and docs/examples.
 - [ ] No merge/deploy happened during delegation unless explicitly authorized.
 - [ ] Correction round was requested for weak or incomplete output.
+- [ ] GitHub issue/PR/comment markdown uses real newlines rather than escaped `\n` sequences.
 
 ## ADW Shared Operating Contract
 
@@ -194,9 +199,11 @@ Human prompts may be minimal. Resolve missing parameters in this order:
 
 1. Inspect current repository, branch, issue, PR, and deployment metadata.
 2. Check `adw-core` artifacts, playbooks, templates, ADRs, and the root `SOUL.md` if available.
-3. If exactly one safe candidate exists, state the inferred assumption and ask the human to confirm before proceeding.
-4. If multiple candidates exist or the consequence is unsafe, ask for explicit human input.
-5. Never treat inference as approval for merge, production deployment, rollback, secret handling, destructive infrastructure changes, history rewrite, or an unspecified delegation backend.
+3. Read repository-local `.hermes/ADW.md` when present.
+4. Load any adapter-declared context helper before resolving branch, validation, deployment, administration, or delegation defaults.
+5. If exactly one safe candidate exists, state the inferred assumption and ask the human to confirm before proceeding.
+6. If multiple candidates exist or the consequence is unsafe, ask for explicit human input.
+7. Never treat inference as approval for merge, production deployment, rollback, secret handling, destructive infrastructure changes, history rewrite, or an unspecified delegation backend.
 
 ## Standard Status Report
 

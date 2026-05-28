@@ -1,13 +1,13 @@
 ---
 name: adw-core
-description: Use before any Agentic Delivery Workflow skill. Provides the shared delivery contract, playbooks, templates, ADRs, and workflow diagrams used by all adw-* skills.
+description: Use before any Agentic Delivery Workflow skill. Provides the shared delivery contract, project/context resolution rules, playbooks, templates, ADRs, and workflow diagrams used by all adw-* skills.
 version: 1.0.0
 author: Hermes Agent
 license: MIT
 metadata:
   hermes:
     tags: [adw, core, delivery-workflow, playbooks, templates]
-    related_skills: [adw-plan-feature, adw-plan-bugfix, adw-do-impl, adw-test-feature, adw-merge-feature]
+    related_skills: [adw-plan-feature, adw-plan-bugfix, adw-do-impl, adw-test-feature, adw-merge-feature, adw-validate-regression, adw-chain, adw-self-improve]
 ---
 
 # ADW Core
@@ -39,7 +39,7 @@ This skill owns the shared artifacts for portable installs:
 - `references/playbooks/incident_response.md` — production incident response flow.
 - `references/playbooks/pr_reviewing.md` — review expectations and rejection handling.
 - `references/playbooks/preview_deployments.md` — preview deployment safety model.
-- `references/playbooks/release_promotion.md` — artifact promotion across environments.
+- `references/playbooks/branch_environment_releases.md` — branch-to-environment release mapping and deployment closure rules.
 - `templates/implementation_plan.md` — feature implementation plan template.
 - `templates/bugfix_plan.md` — bugfix plan template.
 - `templates/github_issue_feature.md` — feature issue template.
@@ -50,6 +50,8 @@ This skill owns the shared artifacts for portable installs:
 - `templates/deployment_report.md` — deployment report template.
 - `templates/rollback_report.md` — rollback report template.
 - `templates/delegation/` — backend-neutral delegated implementation handoff/result templates.
+- `templates/project_adw_adapter.md` — generic project `.hermes/ADW.md` adapter template.
+- `references/project_contexts.md` — generic project adapter and context helper resolution contract.
 - `references/adr/0001-agentic-delivery-workflow.md` — ADW architecture decision.
 - `references/adr/0002-pr-as-delivery-unit.md` — PR-as-delivery-unit decision.
 - `assets/diagrams/adw-complete-workflow.puml` — workflow diagram source.
@@ -64,6 +66,7 @@ The root `SOUL.md` remains the agent identity file for profiles that adopt ADW. 
 3. Load exactly one operational `adw-*` skill for the next workflow step.
 4. Keep generated delivery artifacts linked to branch, issue, PR, preview, merge, and deployment state.
 5. Report status using the ADW status/final report format.
+6. For short or context-specific human commands, resolve project/environment details through a repository adapter such as `.hermes/ADW.md` and any adapter-declared context helper. Do not hard-code organization or project defaults into generic ADW skills.
 
 Example:
 
@@ -93,6 +96,7 @@ Use the package paths below:
 - Templates: `skills/adw/adw-core/templates/`
 - ADRs: `skills/adw/adw-core/references/adr/`
 - Diagrams: `skills/adw/adw-core/assets/diagrams/`
+- Project/context resolution: `skills/adw/adw-core/references/project_contexts.md`
 
 When installed into a Hermes profile, these files travel with the `adw-core` skill directory.
 
@@ -102,9 +106,11 @@ Human prompts may be minimal. Resolve missing parameters in this order:
 
 1. Inspect current repository, branch, issue, PR, and deployment metadata.
 2. Check `adw-core` playbooks, templates, ADRs, and the root `SOUL.md` if available.
-3. If exactly one safe candidate exists, state the inferred assumption and ask the human to confirm before proceeding.
-4. If multiple candidates exist or the consequence is unsafe, ask for explicit human input.
-5. Never treat inference as approval for merge, production deployment, rollback, secret handling, destructive infrastructure changes, or history rewrite.
+3. Read the repository-local project adapter when present, for example `.hermes/ADW.md`.
+4. Load or inspect any context helper declared by the adapter.
+5. If exactly one safe candidate exists, state the inferred assumption and ask the human to confirm before proceeding.
+6. If multiple candidates exist or the consequence is unsafe, ask for explicit human input.
+7. Never treat inference as approval for merge, production deployment, rollback, secret handling, destructive infrastructure changes, or history rewrite.
 
 ## Common Pitfalls
 
@@ -113,6 +119,7 @@ Human prompts may be minimal. Resolve missing parameters in this order:
 3. Duplicating templates into individual workflow skills. Update the central `adw-core` artifact instead.
 4. Editing a `.puml` diagram without regenerating and committing the matching `.svg`.
 5. Using an operational skill without first checking review, preview, merge, or deployment gates from the shared playbooks.
+6. Putting project-specific defaults into generic ADW skills instead of a project adapter or context helper.
 
 ## Verification Checklist
 
@@ -120,6 +127,7 @@ Human prompts may be minimal. Resolve missing parameters in this order:
 - [ ] The operational `adw-*` skill lists or requires `adw-core`
 - [ ] Required playbooks/templates exist under this skill directory
 - [ ] Delegation templates exist under `templates/delegation/` when delegated implementation is enabled
+- [ ] Project adapter template and context-resolution reference exist under `adw-core`
 - [ ] The workflow diagram source and rendered SVG both exist
 - [ ] Root README points to `adw-core` as the package source of truth
 - [ ] `tools/validate_adw_skills.py` passes

@@ -25,15 +25,16 @@ Do not create repo-root shared artifact directories for new ADW materials. Add o
 - `adw-plan-feature` — plan a new feature and create traceability artifacts.
 - `adw-plan-bugfix` — plan a bugfix from symptoms and suspected root cause.
 - `adw-do-impl` — implement a planned change directly and open a PR.
-- `adw-do-impl-delegate` — delegate implementation to a sandboxed/remote agent and review the returned PR.
+- `adw-do-impl-delegate` — delegate implementation through a selected backend using the portable handoff/result contract, then review the returned PR.
 - `adw-test-feature` — review, preview deploy, and validate a PR before merge.
 - `adw-merge-feature` — merge a validated PR and deploy the destination branch.
 - `adw-rollback-deployment` — roll back a failed deployment and create follow-up work.
-- `adw-promote-release` — promote a validated artifact across environments.
 - `adw-validate-regression` — run targeted/broad regression validation.
 - `adw-create-adr` — create architecture decision records.
 - `adw-audit-dependencies` — audit dependency/build-tool risk.
 - `adw-analyze-production` — inspect production feedback and route incidents.
+- `adw-chain` — coordinate a confirmed multi-stage ADW sequence through existing stage skills.
+- `adw-self-improve` — persist an explicitly requested ADW/context/project-adapter improvement through a confirm-first PR flow.
 
 ## Usage
 

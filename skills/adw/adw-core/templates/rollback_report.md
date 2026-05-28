@@ -2,24 +2,42 @@
 
 ## Environment
 
-<environment>
+<environment and owning branch>
 
-## From
+## Failed State
 
-<failed artifact/deployment>
+- Branch head: <failed branch SHA>
+- Artifact/image: <failed artifact/image identity>
+- Deployment: <failed deployment ID/status>
+- Evidence: <non-sensitive symptoms, logs, endpoint or E2E failures>
 
-## To
+## Bugfix Tracking
 
-<last known-good artifact/deployment>
+- Bug issue: <issue URL or ID>
+- Bugfix branch: <branch created from failed state, or existing linked branch>
 
-## Impact
+## Restored State
 
-<user/system impact>
+- Last known-good SHA/tree: <good SHA>
+- Restore commit: <rollback/restore commit SHA>
+- Artifact/image after restore: <restored artifact/image identity>
+
+## Stateful Risk Review
+
+<migrations, data, volumes, external services, compose/env contract, and decisions>
+
+## Deployment Recovery
+
+<Dokploy/raw compose/env sync, deployment ID/status, domain/route checked>
 
 ## Verification
 
-<checks run>
+<checks run: status, endpoint semantics, logs or compensated evidence, revision parity, smoke/E2E/regression>
+
+## Impact
+
+<user/system impact and recovery status>
 
 ## Follow-up
 
-<bug issue or action item>
+<fix-forward plan, bug issue status, owner/next action>

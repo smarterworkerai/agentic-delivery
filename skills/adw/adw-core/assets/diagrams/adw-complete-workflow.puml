@@ -20,8 +20,11 @@ partition "ADW Agent" {
     :Classify severity and recommend continue/fix-forward/rollback;
     if (Rollback required?) then (yes)
       :Load adw-rollback-deployment;
-      :Confirm rollback target explicitly;
-      :Restore last known-good deployment;
+      :Confirm environment branch and good SHA;
+      :Create/link bug issue and bugfix branch from failed state;
+      :Restore owning branch to last known-good tree;
+      :Deploy restored branch through normal gates;
+      :Update rollback report and bug issue;
       stop
     else (no)
       :Open or link follow-up work;

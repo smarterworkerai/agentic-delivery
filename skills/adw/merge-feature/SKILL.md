@@ -36,7 +36,7 @@ Load `adw-core` before using this skill. It contains the shared delivery gates, 
 6. Before deploying, update every affected deployment target with the merged configuration required by its environment. For Dokploy targets, update the target environment's compose file and environment variables/settings first; do not rely on the preview/feature deployment being current.
 7. Deploy the destination branch using `adw-core/references/playbooks/deployment_gates.md`.
 8. Verify deployment status, logs, endpoint, and rollback path.
-9. Close or update linked issue if appropriate.
+9. If the PR was merged into a non-feature/non-bugfix destination branch, close the linked issue after deployment verification. Add a closing issue comment that links the merged PR, destination branch/SHA, validation/deployment evidence, final status, and any known follow-up or rollback note. If the PR was merged into another feature or bugfix branch, update the issue with an intermediate merge-status comment instead of closing it.
 10. Report final delivery status.
 
 ## Merge Gate
@@ -75,6 +75,7 @@ Before merge, confirm:
 - [ ] Target deployment configuration updated before deployment, including Dokploy compose and environment variables/settings when Dokploy is used
 - [ ] Merge completed and destination SHA is recorded
 - [ ] Deployment status verified
+- [ ] Linked issue closed with a final evidence comment when the PR merged into a non-feature/non-bugfix branch, or updated with intermediate merge status when merged into another work branch
 - [ ] Rollback path is documented
 
 

@@ -33,10 +33,11 @@ Load `adw-core` before using this skill. It contains the shared delivery gates, 
 3. Stop if PR is rejected, checks are unresolved, or target is ambiguous.
 4. Merge PR using the repository's merge policy.
 5. Verify destination branch SHA.
-6. Deploy the destination branch using `adw-core/references/playbooks/deployment_gates.md`.
-7. Verify deployment status, logs, endpoint, and rollback path.
-8. Close or update linked issue if appropriate.
-9. Report final delivery status.
+6. Before deploying, update every affected deployment target with the merged configuration required by its environment. For Dokploy targets, update the target environment's compose file and environment variables/settings first; do not rely on the preview/feature deployment being current.
+7. Deploy the destination branch using `adw-core/references/playbooks/deployment_gates.md`.
+8. Verify deployment status, logs, endpoint, and rollback path.
+9. Close or update linked issue if appropriate.
+10. Report final delivery status.
 
 ## Merge Gate
 
@@ -47,6 +48,7 @@ Before merge, confirm:
 - required checks passed or failures are explicitly accepted
 - preview validation is complete when applicable
 - environment/config parity is checked: relevant `.env.example`, compose, deployment, and environment-variable mappings are up to date for every affected target environment, not only the preview/feature deployment
+- deployment target configuration is updated before deployment; for Dokploy targets, the target environment compose and environment variables/settings have been updated from the verified parity check
 - deployment consequences are understood
 
 ## Output
@@ -70,6 +72,7 @@ Before merge, confirm:
 - [ ] Human explicitly approved merge/deploy target
 - [ ] Review and preview gates satisfied
 - [ ] `.env.example` / compose / deployment / environment-variable parity checked for all relevant target environments
+- [ ] Target deployment configuration updated before deployment, including Dokploy compose and environment variables/settings when Dokploy is used
 - [ ] Merge completed and destination SHA is recorded
 - [ ] Deployment status verified
 - [ ] Rollback path is documented

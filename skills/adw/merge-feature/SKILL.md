@@ -46,6 +46,7 @@ Before merge, confirm:
 - PR is not rejected
 - required checks passed or failures are explicitly accepted
 - preview validation is complete when applicable
+- environment/config parity is checked: relevant `.env.example`, compose, deployment, and environment-variable mappings are up to date for every affected target environment, not only the preview/feature deployment
 - deployment consequences are understood
 
 ## Output
@@ -68,6 +69,7 @@ Before merge, confirm:
 
 - [ ] Human explicitly approved merge/deploy target
 - [ ] Review and preview gates satisfied
+- [ ] `.env.example` / compose / deployment / environment-variable parity checked for all relevant target environments
 - [ ] Merge completed and destination SHA is recorded
 - [ ] Deployment status verified
 - [ ] Rollback path is documented

@@ -113,7 +113,6 @@ Load `adw-core` together with the operational ADW skill for the current delivery
 - `adw-test-feature`
 - `adw-merge-feature`
 - `adw-rollback-deployment`
-- `adw-promote-release`
 - `adw-validate-regression`
 - `adw-create-adr`
 - `adw-audit-dependencies`
@@ -169,25 +168,19 @@ Use these when repository context is clear and the agent can infer safe candidat
 /adw test-feature CSV export PR
 ```
 
-4. Merge and deploy after validation:
+4. Merge and deploy after validation. The destination branch determines the target environment (`main` -> production, `demo` -> demo):
 
 ```text
 /adw merge-feature validated CSV export PR to main
 ```
 
-5. Optional promotion when environments are separated by artifact promotion:
-
-```text
-/adw promote-release validated CSV export artifact from demo to production
-```
-
-6. Optional production analysis after deployment:
+5. Optional production analysis after deployment:
 
 ```text
 /adw analyze-production CSV export production deployment
 ```
 
-7. Emergency rollback if validation or production feedback fails:
+6. Emergency rollback if validation or production feedback fails:
 
 ```text
 /adw rollback-deployment CSV export production deployment
@@ -274,17 +267,10 @@ PR: <PR URL or number>
 Destination branch: main
 Deployment target: production
 Only proceed if review is approved, checks pass, preview validation is complete, and I explicitly confirm the production deployment.
+After deploy, verify production endpoint semantics, logs, artifact/revision parity, and target E2E/regression evidence.
 ```
 
-9. Release promotion alternative:
-
-```text
-/adw promote-release
-Promote the exact validated invoice CSV export artifact from demo to production.
-Preserve artifact identity and verify production after deployment.
-```
-
-10. Production analysis:
+9. Production analysis:
 
 ```text
 /adw analyze-production
@@ -293,7 +279,7 @@ Check the deployment artifact, logs, endpoint behavior, and user-visible CSV dow
 Recommend continue, fix-forward, or rollback.
 ```
 
-11. Rollback:
+10. Rollback:
 
 ```text
 /adw rollback-deployment

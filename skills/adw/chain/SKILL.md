@@ -23,7 +23,7 @@ This skill must not encode organization, repository, deployment, branch, environ
 Use this skill when:
 
 - the user asks for multiple ADW stages in one request;
-- the request includes stage words such as `plan`, `impl`, `test`, `merge`, `deploy`, `promote`, or `rollback`;
+- the request includes stage words such as `plan`, `impl`, `test`, `merge`, `deploy`, or `rollback`;
 - the user expects phase-boundary status updates and one coordinated delivery path;
 - the underlying work still belongs in the normal PR-centric ADW pipeline.
 
@@ -43,7 +43,7 @@ Also load any project context helper explicitly declared by the repository adapt
 
 1. Parse the requested stage sequence and free-text work description.
 2. Inspect the repository, current branch, existing issue/PR state, and any project adapter such as `.hermes/ADW.md`.
-3. Classify the work as feature, bugfix, regression validation, release promotion, rollback, or incident analysis.
+3. Classify the work as feature, bugfix, regression validation, release-branch merge/deploy, rollback, or incident analysis.
 4. Build a chain plan that lists each stage, the ADW skill that will own it, expected side effects, required confirmations, and blockers.
 5. Stop and ask the human to approve the chain plan before creating branches, issues, commits, PRs, deployments, merges, or persistent changes.
 6. After approval, execute one stage at a time using the existing ADW operational skill for that stage.
@@ -59,7 +59,7 @@ Before any side effect, report:
 ### ADW Chain Proposal
 
 Requested stages: <parsed sequence>
-Work classification: <feature|bugfix|validation|release|incident|unknown>
+Work classification: <feature|bugfix|validation|release-branch-merge|incident|unknown>
 Repository context: <current repo/branch/adapter status>
 
 ### Planned Stage Owners
@@ -84,8 +84,8 @@ Use these generic mappings unless a project adapter declares stricter routing:
 - `impl` / `implement` -> `adw-do-impl` or `adw-do-impl-delegate` depending on explicit delegation policy.
 - `test` / `validate` -> `adw-test-feature` or `adw-validate-regression`.
 - `merge` -> `adw-merge-feature` after review and validation gates pass.
-- `deploy` -> the deployment phase owned by `adw-merge-feature`, `adw-promote-release`, or the project adapter's release flow.
-- `promote` -> `adw-promote-release`.
+- `deploy` -> the deployment phase owned by `adw-merge-feature` or the project adapter's release flow.
+- `promote` -> treat as a release-branch merge/deploy request and route to `adw-merge-feature` unless the project adapter defines a different explicit workflow.
 - `rollback` -> `adw-rollback-deployment`.
 
 If a word is ambiguous, report the ambiguity in the proposal and ask for confirmation before acting.

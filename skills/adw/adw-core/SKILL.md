@@ -7,7 +7,7 @@ license: MIT
 metadata:
   hermes:
     tags: [adw, core, delivery-workflow, playbooks, templates]
-    related_skills: [adw-plan-feature, adw-plan-bugfix, adw-do-impl, adw-test-feature, adw-merge-feature, adw-chain, adw-self-improve]
+    related_skills: [adw-plan-feature, adw-plan-bugfix, adw-do-impl, adw-test-feature, adw-merge-feature, adw-validate-regression, adw-chain, adw-self-improve]
 ---
 
 # ADW Core
@@ -39,7 +39,7 @@ This skill owns the shared artifacts for portable installs:
 - `references/playbooks/incident_response.md` — production incident response flow.
 - `references/playbooks/pr_reviewing.md` — review expectations and rejection handling.
 - `references/playbooks/preview_deployments.md` — preview deployment safety model.
-- `references/playbooks/release_promotion.md` — artifact promotion across environments.
+- `references/playbooks/branch_environment_releases.md` — branch-to-environment release mapping and deployment closure rules.
 - `templates/implementation_plan.md` — feature implementation plan template.
 - `templates/bugfix_plan.md` — bugfix plan template.
 - `templates/github_issue_feature.md` — feature issue template.

@@ -5,7 +5,7 @@ title Agentic Delivery Workflow (ADW) - Complete Skill Pipeline
 start
 
 partition Human {
-  :Intent: feature, bugfix, release, incident, or audit;
+  :Intent: feature, bugfix, release-branch deploy, incident, or audit;
 }
 
 partition "ADW Agent" {
@@ -97,31 +97,36 @@ partition "ADW Agent" {
 }
 
 partition Human {
-  if (Promote artifact instead of branch merge?) then (yes)
-    :Prompt: use adw-promote-release;
-  else (merge)
-    :Prompt: use adw-merge-feature;
-  endif
+  :Prompt: use adw-merge-feature;
+  :Confirm destination branch;
 }
 
 partition "ADW Agent" {
-  if (Promotion flow?) then (yes)
-    :Load adw-promote-release;
-    :Confirm source, target, artifact identity;
-    :Deploy target environment;
-  else (merge flow)
-    :Load adw-merge-feature;
-    :Confirm destination branch and production impact;
-    :Merge PR;
-    :Deploy destination branch;
+  :Load adw-merge-feature;
+  :Resolve branch -> environment;
+  if (Destination branch?) then (main)
+    :Target production;
+  elseif (demo)
+    :Target demo;
+  else (feature/bugfix)
+    :Target preview only when explicitly selected;
   endif
+  :Merge PR or update destination branch;
+  :Verify destination SHA;
+  :Update target raw compose/env if needed;
+  :Deploy matching environment;
 }
 
 partition Deployment {
-  :Verify artifact identity;
+  :Verify artifact/revision parity;
   :Verify deployment status;
   :Verify endpoint semantics and logs;
+  :Run target smoke/E2E/regression;
   :Record rollback path;
+}
+
+partition GitHub {
+  :Close/update linked issue with evidence;
 }
 
 partition Human {

@@ -31,7 +31,6 @@ WORKFLOW_DEFINITIONS: tuple[WorkflowDefinition, ...] = (
     WorkflowDefinition("do-impl-delegate", "adw-do-impl-delegate", "do-impl-delegate", "Delegate implementation to the approved sandbox/remote agent flow, then inspect and review the returned PR."),
     WorkflowDefinition("test-feature", "adw-test-feature", "test-feature", "Review and validate a PR, including preview deployment and smoke/E2E checks when available."),
     WorkflowDefinition("merge-feature", "adw-merge-feature", "merge-feature", "Merge a validated PR into the destination branch and trigger/report the matching deployment."),
-    WorkflowDefinition("promote-release", "adw-promote-release", "promote-release", "Promote an already validated artifact or commit across environments with traceability."),
     WorkflowDefinition("rollback-deployment", "adw-rollback-deployment", "rollback-deployment", "Rollback a failed deployment to a known-good version and report impact/follow-up."),
     WorkflowDefinition("validate-regression", "adw-validate-regression", "validate-regression", "Run targeted regression checks against a PR, branch, deployment, or release candidate."),
     WorkflowDefinition("create-adr", "adw-create-adr", "create-adr", "Create an Architecture Decision Record for architectural or security-boundary changes."),

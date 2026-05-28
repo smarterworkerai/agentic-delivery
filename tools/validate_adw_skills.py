@@ -17,7 +17,6 @@ EXPECTED = {
     "adw-test-feature": "skills/adw/test-feature/SKILL.md",
     "adw-merge-feature": "skills/adw/merge-feature/SKILL.md",
     "adw-rollback-deployment": "skills/adw/rollback-deployment/SKILL.md",
-    "adw-promote-release": "skills/adw/promote-release/SKILL.md",
     "adw-validate-regression": "skills/adw/validate-regression/SKILL.md",
     "adw-create-adr": "skills/adw/create-adr/SKILL.md",
     "adw-audit-dependencies": "skills/adw/audit-dependencies/SKILL.md",
@@ -28,7 +27,7 @@ EXPECTED = {
 CORE_SHARED = [
     "skills/adw/adw-core/references/playbooks/preview_deployments.md",
     "skills/adw/adw-core/references/playbooks/pr_reviewing.md",
-    "skills/adw/adw-core/references/playbooks/release_promotion.md",
+    "skills/adw/adw-core/references/playbooks/branch_environment_releases.md",
     "skills/adw/adw-core/references/playbooks/incident_response.md",
     "skills/adw/adw-core/references/playbooks/github_traceability.md",
     "skills/adw/adw-core/references/playbooks/deployment_gates.md",

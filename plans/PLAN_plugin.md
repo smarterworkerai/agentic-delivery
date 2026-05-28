@@ -45,8 +45,6 @@ agentic-delivery/
         SKILL.md
       merge-feature/
         SKILL.md
-      promote-release/
-        SKILL.md
       rollback-deployment/
         SKILL.md
       validate-regression/
@@ -107,7 +105,6 @@ Examples:
 /adw do-impl-delegate issue #42
 /adw test-feature PR #43
 /adw merge-feature main PR #43
-/adw promote-release demo to production PR #43
 /adw rollback-deployment production login regression
 ```
 
@@ -141,7 +138,6 @@ Canonical workflow tokens:
 - `do-impl-delegate` -> `adw-do-impl-delegate`
 - `test-feature` -> `adw-test-feature`
 - `merge-feature` -> `adw-merge-feature`
-- `promote-release` -> `adw-promote-release`
 - `rollback-deployment` -> `adw-rollback-deployment`
 - `validate-regression` -> `adw-validate-regression`
 - `create-adr` -> `adw-create-adr`
@@ -422,7 +418,6 @@ hermes skills install smarterworkerai/agentic-delivery/skills/adw/do-impl
 hermes skills install smarterworkerai/agentic-delivery/skills/adw/do-impl-delegate
 hermes skills install smarterworkerai/agentic-delivery/skills/adw/test-feature
 hermes skills install smarterworkerai/agentic-delivery/skills/adw/merge-feature
-hermes skills install smarterworkerai/agentic-delivery/skills/adw/promote-release
 hermes skills install smarterworkerai/agentic-delivery/skills/adw/rollback-deployment
 hermes skills install smarterworkerai/agentic-delivery/skills/adw/validate-regression
 hermes skills install smarterworkerai/agentic-delivery/skills/adw/create-adr

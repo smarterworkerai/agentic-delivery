@@ -39,7 +39,7 @@ skills/adw/adw-core/
       incident_response.md
       pr_reviewing.md
       preview_deployments.md
-      release_promotion.md
+      branch_environment_releases.md
     adr/
       0001-agentic-delivery-workflow.md
       0002-pr-as-delivery-unit.md
@@ -79,8 +79,6 @@ Required operational skills:
   - Verify review/check/preview gates, merge a validated PR, deploy the destination branch, and report final delivery state.
 - `adw-rollback-deployment`
   - Identify last known-good version, roll back safely, verify health, report impact, and create follow-up bug work if needed.
-- `adw-promote-release`
-  - Promote an already validated artifact across environments while preserving artifact identity and verification evidence.
 - `adw-validate-regression`
   - Run targeted or broad regression checks against a PR, preview, branch, or deployment.
 - `adw-create-adr`

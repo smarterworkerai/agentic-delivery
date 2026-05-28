@@ -29,7 +29,6 @@ Do not create repo-root shared artifact directories for new ADW materials. Add o
 - `adw-test-feature` — review, preview deploy, and validate a PR before merge.
 - `adw-merge-feature` — merge a validated PR and deploy the destination branch.
 - `adw-rollback-deployment` — roll back a failed deployment and create follow-up work.
-- `adw-promote-release` — promote a validated artifact across environments.
 - `adw-validate-regression` — run targeted/broad regression validation.
 - `adw-create-adr` — create architecture decision records.
 - `adw-audit-dependencies` — audit dependency/build-tool risk.

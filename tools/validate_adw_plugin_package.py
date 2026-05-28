@@ -24,7 +24,6 @@ EXPECTED_WORKFLOWS = {
     "do-impl-delegate": "adw-do-impl-delegate",
     "test-feature": "adw-test-feature",
     "merge-feature": "adw-merge-feature",
-    "promote-release": "adw-promote-release",
     "rollback-deployment": "adw-rollback-deployment",
     "validate-regression": "adw-validate-regression",
     "create-adr": "adw-create-adr",

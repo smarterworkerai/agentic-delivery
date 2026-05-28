@@ -155,8 +155,12 @@ def validate_installer() -> list[str]:
     if installed_names != expected_names:
         errors.append(f"scripts/install_adw.sh: ADW_INSTALLED_SKILL_NAMES mismatch; expected {expected_names}, got {installed_names}")
     verification_section = script_text.split('log "Post-install verification"', 1)[-1]
-    if "ADW_INSTALLED_SKILL_NAMES" not in verification_section or 'grep -q "${skill_name}"' not in verification_section:
+    if "ADW_INSTALLED_SKILL_NAMES" not in verification_section:
         errors.append("scripts/install_adw.sh: post-install verification must iterate over every ADW_INSTALLED_SKILL_NAMES entry")
+    if 'skill_file="${HERMES_HOME_DIR}/skills/adw/${skill_name}/SKILL.md"' not in verification_section:
+        errors.append("scripts/install_adw.sh: post-install verification must inspect each installed skill file")
+    if 'grep -Eq "^name:[[:space:]]*${skill_name}[[:space:]]*$"' not in verification_section:
+        errors.append("scripts/install_adw.sh: post-install verification must validate installed skill names from SKILL.md")
     return errors
 
 

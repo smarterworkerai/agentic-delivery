@@ -45,7 +45,7 @@ For delegation, also resolve templates from `skills/adw/adw-core/templates/deleg
 
 ## Backend Resolution
 
-Resolve the delegation backend only after loading the project context. Read repository-local `.hermes/ADW.md` when present and load any adapter-declared context helper before choosing defaults. Then resolve the backend in this order:
+Resolve the delegation backend only after loading the project context. Read repository-local `.hermes/ADW.md` when present and load any adapter-declared context helper before choosing defaults. A context helper may provide the delegation backend skill and target alias; do not require the repository-local `.hermes/ADW.md` adapter to repeat backend defaults when the loaded context helper owns them. Then resolve the backend in this order:
 
 1. Use the backend or target explicitly named by the human.
 2. Use the backend or target declared by `.hermes/ADW.md` or its context helper.
@@ -53,7 +53,7 @@ Resolve the delegation backend only after loading the project context. Read repo
 4. Use a project/profile-specific delegation convention only when it is unambiguous.
 5. Otherwise ask the human which delegation target/backend to use before launching.
 
-Do not introduce or require a mandatory `adw-delegation-adapter` skill. The selected backend may be a sandbox worker, local worktree agent, MCP worker, `delegate_task`, Claude Code, Codex, or another mechanism.
+Do not introduce or require a mandatory `adw-delegation-adapter` skill. The selected backend may be a sandbox worker, local worktree agent, MCP worker, `delegate_task`, Claude Code, Codex, or another mechanism. If the loaded context helper selects a backend skill, load that backend skill before creating the handoff bundle or launching the worker.
 
 ## Portable Delegation Contract
 

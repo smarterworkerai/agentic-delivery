@@ -35,8 +35,8 @@ Load `adw-core` before using this skill. It contains the shared delivery gates, 
 5. Verify destination branch SHA and resolve the deployment environment from the branch (`main` -> production, `demo` -> demo, explicitly selected feature/bugfix branch -> preview).
 6. Before deploying, update every affected deployment target with the merged configuration required by its environment. For Dokploy targets, update the target environment's compose file and environment variables/settings first; do not rely on the preview/feature deployment being current.
 7. Deploy the destination branch using `adw-core/references/playbooks/deployment_gates.md`.
-8. Verify deployment status, logs, endpoint semantics, artifact/revision parity, rollback path, and target-environment smoke/E2E/regression checks. Load `adw-validate-regression` when the adapter requires deeper or component-specific coverage.
-9. If the PR was merged into a non-feature/non-bugfix destination branch, close the linked issue after deployment verification. Add a closing issue comment that links the merged PR, destination branch/SHA, validation/deployment evidence, final status, and any known follow-up or rollback note. If the PR was merged into another feature or bugfix branch, update the issue with an intermediate merge-status comment instead of closing it.
+8. Verify deployment status, logs, endpoint semantics, artifact/revision parity, rollback path, and target-environment smoke/E2E/regression checks. Persistent services require write-path validation or an explicit blocker/waiver. Load `adw-validate-regression` when the adapter requires deeper or component-specific coverage.
+9. If the PR was merged into a non-feature/non-bugfix destination branch, close the linked issue after deployment verification. Add a closing issue comment that links the merged PR, destination branch/SHA, validation/deployment evidence, final status, and any known follow-up or rollback note. Use `adw-core/references/playbooks/github_traceability.md` and file-backed Markdown for the comment. If the PR was merged into another feature or bugfix branch, update the issue with an intermediate merge-status comment instead of closing it.
 10. Report final delivery status.
 
 ## Merge Gate
@@ -51,6 +51,7 @@ Before merge, confirm:
 - deployment target configuration is updated before deployment; for Dokploy targets, the target environment compose and environment variables/settings have been updated from the verified parity check
 - deployment consequences are understood
 - target-environment smoke/E2E/regression requirements are known from the project adapter or explicitly documented as unavailable
+- persistent write-path validation requirements are known for services with databases, filesystem storage, mounted volumes, queues, or external side effects
 
 ## Output
 
@@ -67,6 +68,8 @@ Before merge, confirm:
 2. Merging without preview validation when the app supports preview.
 3. Deploying mutable tags before build/image publication completes.
 4. Closing issues while deployment is still unverified.
+5. Treating a green deploy plus HTTP 200 as sufficient when persistent write paths were not exercised.
+6. Posting closing/deployment comments with visible backslash-n escape sequences instead of file-backed Markdown.
 
 ## Verification Checklist
 
@@ -76,7 +79,9 @@ Before merge, confirm:
 - [ ] Target deployment configuration updated before deployment, including Dokploy compose and environment variables/settings when Dokploy is used
 - [ ] Merge completed and destination SHA is recorded
 - [ ] Deployment status, endpoint semantics, artifact/revision parity, and target-environment smoke/E2E/regression verified
+- [ ] Persistent services include write-path validation, or a blocker/waiver is recorded
 - [ ] Linked issue closed with a final evidence comment when the PR merged into a non-feature/non-bugfix branch, or updated with intermediate merge status when merged into another work branch
+- [ ] GitHub issue/PR comments use readable Markdown with real line breaks
 - [ ] Rollback path is documented
 
 

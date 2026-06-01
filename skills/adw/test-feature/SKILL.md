@@ -33,8 +33,8 @@ Load `adw-core` before using this skill. It contains the shared delivery gates, 
 3. Review the PR if needed using `adw-core/references/playbooks/pr_reviewing.md`.
 4. Stop if rejected.
 5. Deploy feature branch to preview when supported using `adw-core/references/playbooks/preview_deployments.md`.
-6. Run smoke/E2E/regression checks; invoke `adw-validate-regression` if deeper coverage is needed.
-7. Write validation report using `adw-core/templates/validation_report.md`.
+6. Run smoke/E2E/regression checks; invoke `adw-validate-regression` if deeper coverage is needed. For persistent services, include a write-path smoke or document why it is blocked/unavailable.
+7. Write validation report using `adw-core/templates/validation_report.md` and the Markdown/newline hygiene rules from `adw-core/references/playbooks/github_traceability.md`.
 8. Report go/no-go recommendation.
 
 ## Review Gate
@@ -49,7 +49,9 @@ Preview branch deployments are for validation only. Do not use preview as produc
 
 - PR review status
 - Preview URL or reason preview is not applicable
+- Artifact identity and runtime revision/digest parity when preview is deployed
 - Test result
+- Write-path smoke result for persistent services, or documented blocker/waiver
 - Manual QA notes if applicable
 - Go/no-go recommendation
 
@@ -59,6 +61,8 @@ Preview branch deployments are for validation only. Do not use preview as produc
 2. Deploying rejected work to preview.
 3. Reporting HTTP 200 as success without validating response semantics.
 4. Skipping manual QA notes for user-visible changes.
+5. Redeploying a stale preview image because a newly added workflow is not yet visible on the default branch.
+6. Posting structured PR comments with visible backslash-n escape sequences instead of real Markdown line breaks.
 
 ## Verification Checklist
 
@@ -66,7 +70,9 @@ Preview branch deployments are for validation only. Do not use preview as produc
 - [ ] Review status known
 - [ ] Rejection blocks further workflow
 - [ ] Preview URL and deployment status recorded when applicable
-- [ ] Smoke/E2E/manual validation result documented
+- [ ] Artifact identity and runtime revision/digest parity recorded when applicable
+- [ ] Smoke/E2E/manual validation result documented, including write-path checks for persistent services
+- [ ] Validation report/comment follows GitHub traceability Markdown hygiene
 
 
 ## ADW Shared Operating Contract

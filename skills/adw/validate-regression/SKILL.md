@@ -30,14 +30,16 @@ Load `adw-core` before using this skill. It contains the shared delivery gates, 
 
 1. Identify validation target: PR, branch, deployment URL, or artifact.
 2. Select checks based on risk: unit, integration, E2E, API contract, visual, performance baseline.
-3. Run exact commands or manual steps.
-4. Capture evidence and failures.
-5. Report pass/fail with remediation recommendations.
+3. Run exact commands or manual steps. For persistent services, include write-path validation when deployment/runtime behavior is in scope.
+4. Capture evidence, artifact identity, runtime environment, and failures.
+5. Report pass/fail with remediation recommendations using `adw-core/references/playbooks/github_traceability.md` for file-backed Markdown when posting to GitHub.
 
 ## Output
 
 - Target under test
+- Artifact/deployment identity when runtime validation is in scope
 - Check list and command evidence
+- Write-path evidence for persistent services, or a documented blocker/waiver
 - Pass/fail result
 - Risks and recommended next action
 
@@ -46,13 +48,18 @@ Load `adw-core` before using this skill. It contains the shared delivery gates, 
 1. Running generic tests that do not cover the changed behavior.
 2. Hiding flaky or inconclusive results.
 3. Forgetting to document environment and artifact identity.
+4. Treating liveness or HTTP 200 checks as enough for database/filesystem-backed services.
+5. Posting multiline validation results with visible backslash-n escape sequences.
 
 ## Verification Checklist
 
 - [ ] Target identity recorded
 - [ ] Checks are risk-based
+- [ ] Runtime/artifact identity recorded when applicable
+- [ ] Persistent write-path checks run or blocker/waiver documented
 - [ ] Evidence is concrete
 - [ ] Failures produce a bugfix or remediation path
+- [ ] GitHub-facing reports use readable Markdown with real line breaks
 
 
 ## ADW Shared Operating Contract

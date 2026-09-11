@@ -18,10 +18,11 @@ Do not create repo-root shared artifact directories for new ADW materials. Add o
 - `adw-core/templates/`
 - `adw-core/references/adr/`
 - `adw-core/assets/diagrams/`
+- `adw-core/assets/mise/v1/`
 
 ## Skill Index
 
-- `adw-core` — shared gates, playbooks, templates, ADRs, and diagrams. Load before any other ADW skill.
+- `adw-core` — shared gates, playbooks, templates, ADRs, diagrams, and the versioned mise task contract. Load before any other ADW skill.
 - `adw-plan-feature` — plan a new feature and create traceability artifacts.
 - `adw-plan-bugfix` — plan a bugfix from symptoms and suspected root cause.
 - `adw-do-impl` — implement a planned change directly and open a PR.

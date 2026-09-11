@@ -14,7 +14,7 @@ metadata:
 
 ## Overview
 
-Use this skill to merge a validated PR and deploy the destination branch. The destination branch is the environment source of truth: feature/bugfix branches map to preview when explicitly selected, `demo` maps to demo, and `main` maps to production.
+Use this skill to merge a validated PR and deploy the destination branch. The repository adapter and task manifest define the branch-to-environment mapping; generic ADW treats environment names as opaque.
 
 ## When to Use
 
@@ -32,10 +32,10 @@ Load `adw-core` before using this skill. It contains the shared delivery gates, 
 2. Confirm destination branch and deployment consequence with the human.
 3. Stop if PR is rejected, checks are unresolved, or target is ambiguous.
 4. Merge PR using the repository's merge policy.
-5. Verify destination branch SHA and resolve the deployment environment from the branch (`main` -> production, `demo` -> demo, explicitly selected feature/bugfix branch -> preview).
-6. Before deploying, update every affected deployment target with the merged configuration required by its environment. For Dokploy targets, update the target environment's compose file and environment variables/settings first; do not rely on the preview/feature deployment being current.
-7. Deploy the destination branch using `adw-core/references/playbooks/deployment_gates.md`.
-8. Verify deployment status, logs, endpoint semantics, artifact/revision parity, rollback path, and target-environment smoke/E2E/regression checks. Persistent services require write-path validation or an explicit blocker/waiver. Load `adw-validate-regression` when the adapter requires deeper or component-specific coverage.
+5. Verify destination branch SHA and resolve its deployment environment through the repository adapter and manifest. Run `mise run adw:check` and `mise run adw:describe`; do not infer an environment name.
+6. Run `mise run adw:deploy:config:pull <environment>` and `mise run adw:deploy:config:plan <environment>`. Inspect the plan and, after the external deployment approval gate, apply it with `mise run adw:deploy:config:apply <environment>`.
+7. Deploy with `mise run adw:deploy:apply <environment>` and inspect `mise run adw:deploy:status <environment>` evidence.
+8. Verify artifact/revision identity and runtime behavior with `mise run adw:health <environment>`, `mise run adw:readiness <environment>`, `mise run adw:e2e <environment>`, and `mise run adw:validate-deployment <environment>` according to manifest support. Persistent services require write-path validation or an explicit blocker/waiver. Load `adw-validate-regression` for deeper coverage.
 9. If the PR was merged into a non-feature/non-bugfix destination branch, close the linked issue after deployment verification. Add a closing issue comment that links the merged PR, destination branch/SHA, validation/deployment evidence, final status, and any known follow-up or rollback note. Use `adw-core/references/playbooks/github_traceability.md` and file-backed Markdown for the comment. If the PR was merged into another feature or bugfix branch, update the issue with an intermediate merge-status comment instead of closing it.
 10. Report final delivery status.
 
@@ -47,8 +47,8 @@ Before merge, confirm:
 - PR is not rejected
 - required checks passed or failures are explicitly accepted
 - preview validation is complete when applicable
-- environment/config parity is checked: relevant `.env.example`, compose, deployment, and environment-variable mappings are up to date for every affected target environment, not only the preview/feature deployment
-- deployment target configuration is updated before deployment; for Dokploy targets, the target environment compose and environment variables/settings have been updated from the verified parity check
+- deployment configuration parity is proven by `adw:deploy:config:pull` and `adw:deploy:config:plan` evidence for every affected target environment
+- the approved plan is applied with `adw:deploy:config:apply` before deployment
 - deployment consequences are understood
 - target-environment smoke/E2E/regression requirements are known from the project adapter or explicitly documented as unavailable
 - persistent write-path validation requirements are known for services with databases, filesystem storage, mounted volumes, queues, or external side effects
@@ -75,8 +75,8 @@ Before merge, confirm:
 
 - [ ] Human explicitly approved merge/deploy target
 - [ ] Review and preview gates satisfied
-- [ ] `.env.example` / compose / deployment / environment-variable parity checked for all relevant target environments
-- [ ] Target deployment configuration updated before deployment, including Dokploy compose and environment variables/settings when Dokploy is used
+- [ ] Configuration plan covers all changed runtime configuration for relevant target environments
+- [ ] Deployment configuration pull/plan/apply evidence recorded for all relevant environments
 - [ ] Merge completed and destination SHA is recorded
 - [ ] Deployment status, endpoint semantics, artifact/revision parity, and target-environment smoke/E2E/regression verified
 - [ ] Persistent services include write-path validation, or a blocker/waiver is recorded

@@ -8,7 +8,7 @@ Verify deployments before declaring delivery complete.
 
 1. Deployment target and environment are explicit.
 2. Build/image/artifact exists for the intended commit. Prefer immutable artifact identity such as image digest, revision label, release version, or `sha-<short-sha>` tag.
-3. Environment/config parity has been applied to the target before deployment. For Dokploy/raw-compose targets, update the target environment's compose file and environment variables/settings before starting the deployment; the preview/feature deployment state is not sufficient evidence that production/demo/staging targets are current.
+3. Deployment configuration plan/apply evidence exists for the target environment and preserves secret values.
 4. Deployment platform reports success.
 5. Public/internal endpoint responds with correct semantics. Validate body/content-type/business behavior, not only HTTP 200.
 6. Target-environment smoke/E2E/regression checks have run according to the project adapter, or an explicit blocker/waiver is recorded.

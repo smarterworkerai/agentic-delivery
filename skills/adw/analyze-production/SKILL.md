@@ -29,12 +29,13 @@ Load `adw-core` before using this skill. It contains the shared delivery gates, 
 
 ## Workflow
 
-1. Identify environment, deployment, commit/image, time window, and reported symptom.
-2. Collect non-sensitive logs, metrics, traces, and endpoint evidence.
-3. Classify severity and user impact.
-4. Recommend continue, fix-forward, rollback, or deeper investigation.
-5. If bugfix is needed, hand off to `adw-plan-bugfix`.
-6. If rollback is needed, hand off to `adw-rollback-deployment`.
+1. Identify the manifest environment, deployment, commit/image, time window, and reported symptom.
+2. Run `mise run adw:check` and `mise run adw:describe`, then collect `mise run adw:deploy:status <environment>`, `mise run adw:health <environment>`, and `mise run adw:readiness <environment>` evidence when supported.
+3. Collect additional non-sensitive project-owned logs, metrics, traces, and endpoint evidence without bypassing the canonical task results.
+4. Classify severity and user impact.
+5. Recommend continue, fix-forward, rollback, or deeper investigation.
+6. If bugfix is needed, hand off to `adw-plan-bugfix`.
+7. If rollback is needed, hand off to `adw-rollback-deployment`.
 
 ## Output
 

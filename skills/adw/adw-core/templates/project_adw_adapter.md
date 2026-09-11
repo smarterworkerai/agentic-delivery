@@ -7,6 +7,15 @@
 - Declared context helper: `<none|context-helper-skill-or-repo>`
 - Required generic ADW skills: `adw-core` plus the operational `adw-*` skill for the current stage.
 
+## Machine-Readable Operation Contract
+
+- Manifest: `.hermes/adw-task-manifest.json`
+- Contract range: `<accepted-semver-range>`
+- Vendored generic source: `<40-character-commit-sha-and-sha256>`
+- Vendored context source: `<40-character-commit-sha-and-sha256-or-none>`
+
+This file is narrative. Do not duplicate capability states, environment enums, task source paths, or checksums from the manifest.
+
 ## Project Identity
 
 - Repository: `<owner>/<repo>`
@@ -29,21 +38,20 @@ List deployment tools, environments, services, domains, and rollback expectation
 
 List approved non-secret handles such as host aliases, port labels, username/key names, token variable names, and file-exchange paths. Do not include credentials or private key material.
 
-## Compose / Environment / Runtime Sync
+## Deployment Configuration
 
-Document where configuration examples live, how live secrets are preserved, and which config changes require deployment verification.
+Document configuration ownership, live-secret preservation rules, and which manifest-declared config tasks are supported. Provider methods and file formats belong in project-owned mise helpers, not generic ADW.
 
 ## Validation Matrix
 
-- Unit/build:
-- Integration:
-- Smoke/API/UI:
-- E2E/regression:
-- Logs/metrics:
+- Minimal local gate: `adw:verify:minimal`
+- Full local gate: `adw:verify:full`
+- Deployment validation: `adw:health`, `adw:readiness`, `adw:e2e`, `adw:validate-deployment`
+- Logs/metrics: `<project-owned observation source or blocker>`
 
 ## Command Expansions
 
-Map short, context-specific human commands to ADW skills plus concrete project checks.
+Map short, context-specific human commands to ADW skills and canonical `adw:*` tasks. Concrete commands remain encapsulated in project-owned mise task definitions/helpers.
 
 ## Admin Closure
 
@@ -58,5 +66,6 @@ List project-specific pitfalls that should not be baked into generic ADW.
 - [ ] Context helper declaration is current.
 - [ ] Branch/environment mapping is explicit.
 - [ ] Deployment targets use non-secret identifiers only.
-- [ ] Validation matrix has exact commands or documented blockers.
+- [ ] Manifest exists and passes `mise run adw:check`.
+- [ ] Validation matrix references canonical tasks or documented blockers.
 - [ ] Secret handling rules preserve live credentials and never store placeholder secrets over real values.

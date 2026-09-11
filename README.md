@@ -21,6 +21,7 @@ Chat/status updates may be localized separately. Repository artifacts are writte
 - `skills/adw/adw-core/references/project_contexts.md` — generic project adapter and context helper resolution contract.
 - `skills/adw/adw-core/references/adr/` — workflow architecture decisions.
 - `skills/adw/adw-core/assets/diagrams/` — PlantUML source and pre-rendered SVG diagrams.
+- `skills/adw/adw-core/assets/mise/v1/` — versioned ADW mise task contract, validator, schemas, templates, and fixtures.
 - `skills/adw/*/SKILL.md` — Hermes-compatible operational workflow skills.
 - `tools/validate_adw_skills.py` — local validation for skill frontmatter, required `adw-core` links, and expected packaged artifacts.
 
@@ -33,6 +34,14 @@ Operational skills must:
 - include `adw-core` in `metadata.hermes.related_skills`;
 - contain a `## Required Context` section that tells the agent to load `adw-core` first;
 - resolve templates/playbooks from `adw-core`, not from repo-root directories.
+
+## Deterministic Project Task Contract
+
+Post-implementation ADW stages call the fixed `adw:*` mise task ABI instead of choosing package-manager, test, deployment-provider, or REST commands ad hoc. Each project owns its concrete task implementations and `.hermes/adw-task-manifest.json`; optional context snapshots supply only proven shared tasks and non-secret variables.
+
+The v1 contract is packaged under `skills/adw/adw-core/assets/mise/v1/`. It includes the canonical generic stub snapshot, a standard-library validator/runner, JSON Schemas, variable/config templates, contrasting fixtures, and an AI-facing generator guide. The generated project config uses a hard mise minimum (`2026.9.5` for this contract snapshot), while project tools are pinned with exact declarations and `mise.lock`.
+
+When a project manifest is absent, deterministic execution is blocked and ADW offers a reviewable adapter diff. Generation may automatically run only `mise run adw:check`; there is no ad-hoc fallback and no automatic build, test, deployment, E2E, hotfix, or context sync.
 
 ## Installation
 
@@ -302,6 +311,8 @@ Run:
 ```bash
 python3 tools/validate_adw_skills.py
 python3 tools/validate_adw_plugin_package.py
+python3 -m unittest discover -s tests -v
+python3 -m py_compile skills/adw/adw-core/assets/mise/v1/adw_contract.py tests/test_adw_contract.py tests/test_distribution.py
 bash -n scripts/install_adw.sh
 git diff --check
 ```

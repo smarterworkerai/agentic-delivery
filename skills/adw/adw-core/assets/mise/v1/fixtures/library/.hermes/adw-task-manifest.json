@@ -1,0 +1,284 @@
+{
+  "capabilities": {
+    "adw:build": {
+      "environments": [],
+      "side_effect": "local-write",
+      "source": {
+        "checksum": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "layer": "project",
+        "path": "mise-helper/tasks.toml",
+        "ref": "HEAD"
+      },
+      "status": "supported"
+    },
+    "adw:check": {
+      "environments": [],
+      "side_effect": "read-only",
+      "source": {
+        "checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "layer": "generic",
+        "path": "mise-helper/vendor/agentic-delivery/tasks.toml",
+        "ref": "1111111111111111111111111111111111111111"
+      },
+      "status": "supported"
+    },
+    "adw:context:check": {
+      "environments": [],
+      "side_effect": "read-only",
+      "source": {
+        "checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "layer": "generic",
+        "path": "mise-helper/vendor/agentic-delivery/tasks.toml",
+        "ref": "1111111111111111111111111111111111111111"
+      },
+      "status": "unsupported"
+    },
+    "adw:context:sync": {
+      "environments": [],
+      "side_effect": "local-write",
+      "source": {
+        "checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "layer": "generic",
+        "path": "mise-helper/vendor/agentic-delivery/tasks.toml",
+        "ref": "1111111111111111111111111111111111111111"
+      },
+      "status": "unsupported"
+    },
+    "adw:deploy:apply": {
+      "environments": [],
+      "side_effect": "remote-write",
+      "source": {
+        "checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "layer": "generic",
+        "path": "mise-helper/vendor/agentic-delivery/tasks.toml",
+        "ref": "1111111111111111111111111111111111111111"
+      },
+      "status": "unsupported"
+    },
+    "adw:deploy:config:apply": {
+      "environments": [],
+      "side_effect": "remote-write",
+      "source": {
+        "checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "layer": "generic",
+        "path": "mise-helper/vendor/agentic-delivery/tasks.toml",
+        "ref": "1111111111111111111111111111111111111111"
+      },
+      "status": "unsupported"
+    },
+    "adw:deploy:config:plan": {
+      "environments": [],
+      "side_effect": "read-only",
+      "source": {
+        "checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "layer": "generic",
+        "path": "mise-helper/vendor/agentic-delivery/tasks.toml",
+        "ref": "1111111111111111111111111111111111111111"
+      },
+      "status": "unsupported"
+    },
+    "adw:deploy:config:pull": {
+      "environments": [],
+      "side_effect": "local-write",
+      "source": {
+        "checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "layer": "generic",
+        "path": "mise-helper/vendor/agentic-delivery/tasks.toml",
+        "ref": "1111111111111111111111111111111111111111"
+      },
+      "status": "unsupported"
+    },
+    "adw:deploy:status": {
+      "environments": [],
+      "side_effect": "read-only",
+      "source": {
+        "checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "layer": "generic",
+        "path": "mise-helper/vendor/agentic-delivery/tasks.toml",
+        "ref": "1111111111111111111111111111111111111111"
+      },
+      "status": "unsupported"
+    },
+    "adw:describe": {
+      "environments": [],
+      "side_effect": "read-only",
+      "source": {
+        "checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "layer": "generic",
+        "path": "mise-helper/vendor/agentic-delivery/tasks.toml",
+        "ref": "1111111111111111111111111111111111111111"
+      },
+      "status": "supported"
+    },
+    "adw:e2e": {
+      "environments": [],
+      "side_effect": "remote-write",
+      "source": {
+        "checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "layer": "generic",
+        "path": "mise-helper/vendor/agentic-delivery/tasks.toml",
+        "ref": "1111111111111111111111111111111111111111"
+      },
+      "status": "unsupported"
+    },
+    "adw:health": {
+      "environments": [],
+      "side_effect": "read-only",
+      "source": {
+        "checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "layer": "generic",
+        "path": "mise-helper/vendor/agentic-delivery/tasks.toml",
+        "ref": "1111111111111111111111111111111111111111"
+      },
+      "status": "unsupported"
+    },
+    "adw:hotfix:apply": {
+      "environments": [],
+      "side_effect": "remote-write",
+      "source": {
+        "checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "layer": "generic",
+        "path": "mise-helper/vendor/agentic-delivery/tasks.toml",
+        "ref": "1111111111111111111111111111111111111111"
+      },
+      "status": "unsupported"
+    },
+    "adw:install": {
+      "environments": [],
+      "side_effect": "local-write",
+      "source": {
+        "checksum": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "layer": "project",
+        "path": "mise-helper/tasks.toml",
+        "ref": "HEAD"
+      },
+      "status": "supported"
+    },
+    "adw:lint": {
+      "environments": [],
+      "side_effect": "local-write",
+      "source": {
+        "checksum": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "layer": "project",
+        "path": "mise-helper/tasks.toml",
+        "ref": "HEAD"
+      },
+      "status": "supported"
+    },
+    "adw:readiness": {
+      "environments": [],
+      "side_effect": "read-only",
+      "source": {
+        "checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "layer": "generic",
+        "path": "mise-helper/vendor/agentic-delivery/tasks.toml",
+        "ref": "1111111111111111111111111111111111111111"
+      },
+      "status": "unsupported"
+    },
+    "adw:static-analysis": {
+      "environments": [],
+      "side_effect": "local-write",
+      "source": {
+        "checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "layer": "generic",
+        "path": "mise-helper/vendor/agentic-delivery/tasks.toml",
+        "ref": "1111111111111111111111111111111111111111"
+      },
+      "status": "unsupported"
+    },
+    "adw:test:integration": {
+      "environments": [],
+      "side_effect": "local-write",
+      "source": {
+        "checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "layer": "generic",
+        "path": "mise-helper/vendor/agentic-delivery/tasks.toml",
+        "ref": "1111111111111111111111111111111111111111"
+      },
+      "status": "unsupported"
+    },
+    "adw:test:unit": {
+      "environments": [],
+      "side_effect": "local-write",
+      "source": {
+        "checksum": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "layer": "project",
+        "path": "mise-helper/tasks.toml",
+        "ref": "HEAD"
+      },
+      "status": "supported"
+    },
+    "adw:validate-deployment": {
+      "environments": [],
+      "side_effect": "remote-write",
+      "source": {
+        "checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "layer": "generic",
+        "path": "mise-helper/vendor/agentic-delivery/tasks.toml",
+        "ref": "1111111111111111111111111111111111111111"
+      },
+      "status": "unsupported"
+    },
+    "adw:verify:full": {
+      "environments": [],
+      "side_effect": "local-write",
+      "source": {
+        "checksum": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "layer": "project",
+        "path": "mise-helper/tasks.toml",
+        "ref": "HEAD"
+      },
+      "status": "supported"
+    },
+    "adw:verify:minimal": {
+      "environments": [],
+      "side_effect": "local-write",
+      "source": {
+        "checksum": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "layer": "project",
+        "path": "mise-helper/tasks.toml",
+        "ref": "HEAD"
+      },
+      "status": "supported"
+    }
+  },
+  "contract": {
+    "compatible": ">=1.0.0,<2.0.0",
+    "name": "adw-mise-task-contract",
+    "version": "1.0.0"
+  },
+  "environments": [],
+  "evidence": {
+    "root": ".hermes/evidence"
+  },
+  "project": {
+    "id": "fixture/library"
+  },
+  "required_secret_env": [],
+  "schema_version": "1.0.0",
+  "sources": [
+    {
+      "checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "layer": "generic",
+      "path": "mise-helper/vendor/agentic-delivery/tasks.toml",
+      "ref": "1111111111111111111111111111111111111111"
+    },
+    {
+      "checksum": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "layer": "project",
+      "path": "mise-helper/tasks.toml",
+      "ref": "HEAD"
+    }
+  ],
+  "verification": {
+    "full": [
+      "adw:build",
+      "adw:lint",
+      "adw:test:unit"
+    ],
+    "minimal": [
+      "adw:build"
+    ]
+  }
+}

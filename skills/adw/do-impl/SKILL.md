@@ -34,7 +34,7 @@ Load `adw-core` before using this skill. It contains the shared delivery gates, 
 2. Verify branch, working tree, and PR target.
 3. Confirm no secrets or unrelated changes are present.
 4. Implement only planned scope.
-5. Run relevant tests/checks and record exact commands/results.
+5. Run `mise run adw:check`, then `mise run adw:verify:minimal`; record task evidence and exact results. If the project manifest is absent, stop as blocked and offer the `adw-core` adapter generator. Do not substitute package-manager or inferred project commands.
 6. Commit changes with scoped messages.
 7. Open a PR using `adw-core/templates/pull_request.md`.
 8. Report changed files, validation status, PR link, and remaining risks.
@@ -43,8 +43,8 @@ Load `adw-core` before using this skill. It contains the shared delivery gates, 
 
 Before PR creation, confirm:
 
-- code compiles/builds where applicable
-- obvious lint/type errors are handled
+- code compiles/builds where applicable, proven by `adw:verify:minimal` evidence
+- obvious lint/type errors required by the manifest's minimal graph are handled
 - implementation matches plan
 - no unrelated changes were introduced
 - secrets are not committed

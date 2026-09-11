@@ -28,7 +28,7 @@
 
 ## Deployment Recovery
 
-<Dokploy/raw compose/env sync, deployment ID/status, domain/route checked>
+<configuration task evidence, deployment ID/status, route checked>
 
 ## Verification
 

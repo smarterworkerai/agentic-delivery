@@ -125,7 +125,7 @@ A correction round is required when output is weak, incomplete, self-reported on
 6. Load the selected backend's skill or documentation before launching (for example, load `sandbox-delegation` when `.hermes/ADW.md`, the context helper, or the human selects the sandbox backend); if no backend docs/skill are available, stop and ask instead of inventing launcher commands.
 7. Launch the selected backend using that backend's documented mechanism.
 8. Receive a verifiable result: PR/MR URL, branch, commit SHA, test evidence, and summary.
-9. Inspect the returned diff and test evidence.
+9. Inspect the returned diff and evidence, then independently run `mise run adw:check` and `mise run adw:verify:minimal` in the returned revision when accessible. If the manifest is absent, return the work for an adapter-generation correction instead of substituting ad-hoc commands.
 10. Verify scope, non-scope, traceability, and secret hygiene in tracked files/docs/examples.
 11. Confirm no merge/deploy happened unless explicitly authorized.
 12. Request a correction round when output is weak, missing, or self-reported only.

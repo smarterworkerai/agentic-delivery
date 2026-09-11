@@ -32,10 +32,12 @@ Load `adw-core` before using this skill. It contains the shared delivery gates, 
 2. Check whether a review already exists.
 3. Review the PR if needed using `adw-core/references/playbooks/pr_reviewing.md`.
 4. Stop if rejected.
-5. Deploy feature branch to preview when supported using `adw-core/references/playbooks/preview_deployments.md`.
-6. Run smoke/E2E/regression checks; invoke `adw-validate-regression` if deeper coverage is needed. For persistent services, include a write-path smoke or document why it is blocked/unavailable.
-7. Write validation report using `adw-core/templates/validation_report.md` and the Markdown/newline hygiene rules from `adw-core/references/playbooks/github_traceability.md`.
-8. Report go/no-go recommendation.
+5. Resolve the preview environment from the manifest, then run `mise run adw:check` and `mise run adw:describe`. Stop if the required deployment capabilities are unsupported or the environment is not in their declared scope.
+6. When deployment configuration changes, run `mise run adw:deploy:config:pull <environment>` and `mise run adw:deploy:config:plan <environment>`. Inspect the plan; after the external ADW approval gate is satisfied, apply it with `mise run adw:deploy:config:apply <environment>`.
+7. Deploy with `mise run adw:deploy:apply <environment>` and inspect `mise run adw:deploy:status <environment>` evidence.
+8. Validate with `mise run adw:health <environment>`, `mise run adw:readiness <environment>`, `mise run adw:e2e <environment>`, and `mise run adw:validate-deployment <environment>` according to the manifest. Invoke `adw-validate-regression` for deeper coverage. Persistent services require a write-path smoke or a documented blocker/waiver.
+9. Write validation report using `adw-core/templates/validation_report.md` and the Markdown/newline hygiene rules from `adw-core/references/playbooks/github_traceability.md`.
+10. Report go/no-go recommendation.
 
 ## Review Gate
 

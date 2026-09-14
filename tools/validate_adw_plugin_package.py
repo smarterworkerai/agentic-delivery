@@ -212,6 +212,10 @@ def hermes_python() -> str:
     if not hermes:
         return sys.executable
     try:
+        resolved = Path(hermes).resolve()
+        sibling_python = resolved.with_name("python3")
+        if sibling_python.is_file():
+            return str(sibling_python)
         first_line = Path(hermes).read_text(encoding="utf-8").splitlines()[0]
     except OSError:
         return sys.executable

@@ -91,9 +91,9 @@ def usage() -> str:
         "Supported workflows:\n"
         f"{workflow_lines}\n\n"
         "Examples:\n"
-        "- `/adw plan-feature invoice CSV export`\n"
+        "- `/adw plan-feature describe the requested feature`\n"
         "- `/adw do-impl issue #42`\n"
         "- `/adw test-feature PR #42`\n"
-        "- `/adw merge-feature main PR #42`\n"
-        "- `/adw chain plan impl test merge invoice CSV export`"
+        "- `/adw merge-feature PR #42 to <approved-target>`\n"
+        "- `/adw chain plan impl test merge <scope>`"
     )

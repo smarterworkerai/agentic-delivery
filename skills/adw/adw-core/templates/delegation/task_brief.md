@@ -15,11 +15,15 @@
 - Out of scope: `<explicit non-scope>`
 
 ## Required deliverable
-Prefer a PR/MR for code changes.
+
+- Delivery mode: `<approved PR/MR | local commit | patch/artifacts>`
+- Approved PR/MR source/target/replacement route: `<exact route | not approved>`
+
+Open a PR/MR only when the exact route above is approved. Otherwise return a local commit or reviewable patches/artifacts.
 
 Required result fields:
 
-- PR/MR URL
+- approved PR/MR URL, or local commit/patch artifact reference and no-PR reason
 - implementation branch
 - commit SHA
 - changed-file summary
@@ -27,7 +31,7 @@ Required result fields:
 - blockers / remaining risks
 - explicit statement that no merge/deploy was performed
 
-If a PR/MR cannot be opened, explain why and provide patches/artifacts under `result/`.
+If PR/MR creation is not approved or cannot be performed, state that explicitly and provide the local commit or patches/artifacts under `result/`.
 
 ## Context summary
 <Concise context needed by the worker. Prefer summarized markdown over raw dumps.>

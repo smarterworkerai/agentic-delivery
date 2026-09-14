@@ -1,79 +1,57 @@
 # Project Context and Adapter Resolution
 
-Generic ADW skills are intentionally project-agnostic. When a short human command depends on branch policy, deployment tooling, artifact names, validation suites, or admin closure rules, resolve those details through an explicit lower layer instead of baking them into generic ADW.
+Generic ADW skills are project-agnostic. Repository policy, opaque environment values, capability support, deployment topology, and current runtime facts must come from explicit lower layers rather than generic defaults.
 
-## Layer Order
+## Responsibility Layers
 
-1. **Generic ADW skill** — owns workflow mechanics, safety gates, templates, and report shape.
-2. **Project adapter** — usually `.hermes/ADW.md` in the target repository. It declares concrete project facts and may declare a context helper.
-3. **Context helper** — optional organization/team/user environment policy shared by compatible repositories.
-4. **Live inspection** — current git, issue, PR, CI, deployment, and runtime state.
-5. **Human confirmation** — required for unsafe or ambiguous choices.
+1. **Generic ADW package** — owns workflow mechanics, safety gates, shared templates, and the canonical `adw:*` ABI.
+2. **Optional context snapshot** — owns proven shared task definitions and non-secret variables for compatible repositories. One immutable context pin controls both.
+3. **Project-local adapter** — owns concrete task implementations, local overrides, `.hermes/adw-task-manifest.json`, and narrative `.hermes/ADW.md` policy.
+4. **Live inspection** — verifies current Git, issue, PR, CI, deployment, and runtime state.
+5. **Human confirmation** — authorizes unsafe or ambiguous choices.
 
-## Project Adapter Contract
+Mise include precedence is generic ADW → optional context → project-local override. Shared generic/context sources are pinned to immutable Git commit SHAs and verified by SHA-256; normal execution uses reviewed local or vendored content rather than depending on a mutable remote include.
 
-A repository-local adapter should answer:
+## Machine-Readable Contract
 
-- project identity and repo path;
-- context helper to load, if any;
-- branch and environment map;
-- deployable units and artifacts;
-- validation matrix;
-- issue/PR/admin conventions;
+`.hermes/adw-task-manifest.json` is the machine-readable source of truth for:
+
+- contract compatibility;
+- source provenance and checksums;
+- canonical capability support;
+- fixed side-effect classes;
+- opaque environment values;
+- verification graphs;
+- required secret environment-variable names, never values.
+
+Missing or invalid manifests block deterministic project operations. Generic ADW must not substitute package-manager, provider, or infrastructure commands.
+
+## Narrative Project Adapter
+
+Repository-local `.hermes/ADW.md` explains facts that require human or agent interpretation:
+
+- project and repository identity;
+- declared context snapshot, if any;
+- branch/release policy when the project uses one;
+- deployable units and artifact identity;
+- meanings of opaque environment values;
+- validation and approval policy;
 - deployment and rollback expectations;
-- secret-handling rules;
+- non-secret access aliases;
 - project-specific pitfalls.
 
-The adapter may point to context helper skills or repositories, but the generic ADW skill should not know their concrete names in advance.
+It documents the manifest and adapter; it does not redefine canonical task semantics or embed secret values.
 
-## Context Helper Contract
+## Context Snapshot Boundary
 
-A context helper may answer:
+A context snapshot may supply organization/team conventions, reusable deterministic task definitions, non-secret logical aliases, and evidence/communication defaults. It must not invent concrete service names, domains, routes, or project-specific tests, and it must not carry credentials or raw key paths.
 
-- organization or team branch conventions;
-- release, deployment, and artifact policies;
-- approved non-secret access-handle categories;
-- delegation policy;
-- evidence and communication defaults;
-- reusable validators or templates.
-
-It must not replace the project adapter for concrete service names, domains, sidecars, exact runtime routes, or project-specific tests.
+Context updates are explicit synchronization operations that produce a reviewable diff. Runtime execution never silently advances a context pin.
 
 ## Resolution Rules
 
-- Prefer explicit adapter declarations over inferred defaults.
-- Treat mutable hosts, domains, deployment targets, and runtime state as candidates that require live verification.
-- Do not persist secrets in adapters, context helpers, PR bodies, logs, screenshots, or chat.
-- If exactly one safe candidate exists, report the assumption and ask before a side effect.
-- If multiple candidates exist or the result affects merge, deployment, rollback, secrets, destructive changes, or history rewrite, ask for explicit human confirmation.
-
-## Common Adapter Heading Template
-
-A project adapter does not need to use these exact headings, but generic ADW and context helper authors should design around this shape:
-
-```markdown
-# <Project> ADW Adapter
-
-## Context Layer
-- Declared context helper: <none|skill/repo name>
-
-## Project Identity
-- Repository:
-- Default local path:
-
-## Branch and Environment Map
-
-## Deployable Units and Artifacts
-
-## Deployment Targets
-
-## Access and Host Inventory
-
-## Validation Matrix
-
-## Command Expansions
-
-## Admin Closure
-
-## Known Pitfalls
-```
+- Prefer manifest and project-local declarations over inference.
+- Treat hosts, domains, deployment targets, and runtime state as candidates until live verification.
+- Environment names are opaque manifest values; generic ADW does not derive them from branch names.
+- Keep secrets out of manifests, adapters, context snapshots, evidence, logs, screenshots, and chat.
+- Ask for explicit human approval for merge, production-class deployment, rollback, secret handling, destructive actions, or history rewrite.

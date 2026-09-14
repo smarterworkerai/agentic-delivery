@@ -1,62 +1,55 @@
 # <Project> ADW Adapter
 
-> This template is generic. Replace placeholders with repository-specific facts and keep secrets out of the file.
-
-## Context Layer
-
-- Declared context helper: `<none|context-helper-skill-or-repo>`
-- Required generic ADW skills: `adw-core` plus the operational `adw-*` skill for the current stage.
+> Narrative repository policy for humans and agents. The machine-readable source of truth is `.hermes/adw-task-manifest.json`; concrete deterministic commands remain in project-owned mise tasks or `mise-helper/`. Never place secrets here.
 
 ## Project Identity
 
-- Repository: `<owner>/<repo>`
-- Default local path: `<path>`
-- Primary language/runtime: `<runtime>`
+- Repository: `<owner/repo>`
+- Default local path: `<path or logical workspace alias>`
+- Default branch: `<inspect repository metadata; do not assume>`
 
-## Branch and Environment Map
+## Contract and Context
 
-Document branch-to-environment semantics and which actions require explicit approval.
+- Manifest: `.hermes/adw-task-manifest.json`
+- Generic ADW source: `<immutable 40-character commit SHA and reviewed local/vendored path>`
+- Context snapshot: `<none or immutable 40-character commit SHA and reviewed local/vendored path>`
+- Context synchronization policy: `<reviewable explicit update process>`
+- Include precedence: `generic ADW → optional context → project-local override`
 
-## Deployable Units and Artifacts
+## Branch and Release Policy
 
-List applications, packages, images, build outputs, and immutable artifact identifiers.
+Describe issue/branch/PR linkage and release targets. If environments are related to branches, declare that project-specific mapping explicitly; otherwise state that no branch-to-environment mapping exists.
 
-## Deployment Targets
+## Deployable Units and Artifact Identity
 
-List deployment tools, environments, services, domains, and rollback expectations. Use non-secret identifiers only.
+List deployable units and how immutable source/artifact identity is proven. Do not use mutable tags as sole release identity.
 
-## Access and Host Inventory
+## Opaque Environments
 
-List approved non-secret handles such as host aliases, port labels, username/key names, token variable names, and file-exchange paths. Do not include credentials or private key material.
+List only values also declared by the manifest. Explain their purpose and whether they are disposable, production-class, or otherwise restricted. Generic ADW does not derive environment names.
 
-## Compose / Environment / Runtime Sync
+## Access Aliases
 
-Document where configuration examples live, how live secrets are preserved, and which config changes require deployment verification.
+List approved logical host, provider, or runtime aliases only. Do not include raw infrastructure addresses, key paths, credentials, tokens, or connection strings.
 
-## Validation Matrix
+## Validation and Evidence
 
-- Unit/build:
-- Integration:
-- Smoke/API/UI:
-- E2E/regression:
-- Logs/metrics:
+Baseline contract validation: `mise run adw:check`.
 
-## Command Expansions
+Map acceptance criteria to supported canonical `adw:*` capabilities and evidence expectations. Record unsupported capabilities honestly; never replace them with ad-hoc package-manager/provider commands.
 
-Map short, context-specific human commands to ADW skills plus concrete project checks.
+## Deployment and Rollback Policy
+
+Describe approval requirements, immutable identity checks, stateful risks, and the adapter-declared rollback strategy. Concrete execution remains behind canonical configuration, deployment, status, health, readiness, E2E, and deployment-validation tasks.
+
+## Secrets
+
+List required secret environment-variable names only when necessary. Values belong in approved secret stores and must not appear in this file, the manifest, source control, or evidence.
 
 ## Admin Closure
 
-Document issue, PR, release note, and deployment report expectations.
+Describe issue/PR updates, release notes, deployment reporting, and any explicit human approvals required to close work.
 
 ## Known Pitfalls
 
-List project-specific pitfalls that should not be baked into generic ADW.
-
-## Verification Checklist
-
-- [ ] Context helper declaration is current.
-- [ ] Branch/environment mapping is explicit.
-- [ ] Deployment targets use non-secret identifiers only.
-- [ ] Validation matrix has exact commands or documented blockers.
-- [ ] Secret handling rules preserve live credentials and never store placeholder secrets over real values.
+- `<project-specific, current, non-secret constraint>`

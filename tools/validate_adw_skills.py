@@ -27,7 +27,7 @@ EXPECTED = {
 CORE_SHARED = [
     "skills/adw/adw-core/references/playbooks/preview_deployments.md",
     "skills/adw/adw-core/references/playbooks/pr_reviewing.md",
-    "skills/adw/adw-core/references/playbooks/branch_environment_releases.md",
+    "skills/adw/adw-core/references/playbooks/release_targets.md",
     "skills/adw/adw-core/references/playbooks/incident_response.md",
     "skills/adw/adw-core/references/playbooks/github_traceability.md",
     "skills/adw/adw-core/references/playbooks/deployment_gates.md",
@@ -36,7 +36,6 @@ CORE_SHARED = [
     "skills/adw/adw-core/templates/github_issue_feature.md",
     "skills/adw/adw-core/templates/github_issue_bugfix.md",
     "skills/adw/adw-core/templates/pull_request.md",
-    "skills/adw/adw-core/templates/review_report.md",
     "skills/adw/adw-core/templates/validation_report.md",
     "skills/adw/adw-core/templates/deployment_report.md",
     "skills/adw/adw-core/templates/rollback_report.md",
@@ -52,7 +51,19 @@ CORE_SHARED = [
     "skills/adw/adw-core/references/adr/0001-agentic-delivery-workflow.md",
     "skills/adw/adw-core/references/adr/0002-pr-as-delivery-unit.md",
     "skills/adw/adw-core/assets/diagrams/adw-complete-workflow.puml",
-    "skills/adw/adw-core/assets/diagrams/adw-complete-workflow.svg",
+    "skills/adw/adw-core/assets/mise/v1/contract.md",
+    "skills/adw/adw-core/assets/mise/v1/generation-guide.md",
+    "skills/adw/adw-core/assets/mise/v1/adw_contract.py",
+    "skills/adw/adw-core/assets/mise/v1/tasks.toml",
+    "skills/adw/adw-core/assets/mise/v1/schemas/adw-task-manifest.schema.json",
+    "skills/adw/adw-core/assets/mise/v1/schemas/adw-task-evidence.schema.json",
+    "skills/adw/adw-core/assets/mise/v1/templates/mise.toml",
+    "skills/adw/adw-core/assets/mise/v1/templates/project-vars.example.toml",
+    "skills/adw/adw-core/assets/mise/v1/templates/context-vars.example.toml",
+    "skills/adw/adw-core/assets/mise/v1/fixtures/library/.hermes/adw-task-manifest.json",
+    "skills/adw/adw-core/assets/mise/v1/fixtures/library/task-names.json",
+    "skills/adw/adw-core/assets/mise/v1/fixtures/service/.hermes/adw-task-manifest.json",
+    "skills/adw/adw-core/assets/mise/v1/fixtures/service/task-names.json",
 ]
 REQUIRED_ROOT = [
     "SOUL.md",
@@ -139,10 +150,29 @@ def validate_installer() -> list[str]:
     if not script_path.exists():
         return ["missing scripts/install_adw.sh"]
     script_text = script_path.read_text(encoding="utf-8")
-    if 'ADW_REF="${ADW_REF:-main}"' not in script_text:
-        errors.append("scripts/install_adw.sh: ADW_REF default must be main")
-    if "refs/heads/${ADW_REF}" in script_text:
-        errors.append("scripts/install_adw.sh: archive URL must support tags, not only branch heads")
+    for token in (
+        '[[ "${ADW_REF}" =~ ^[0-9a-f]{40}$ ]]',
+        '[[ "${ADW_ARCHIVE_SHA256}" =~ ^[0-9a-f]{64}$ ]]',
+        'ACTUAL_ARCHIVE_SHA256=$(archive_sha256',
+        '[[ "${ACTUAL_ARCHIVE_SHA256}" == "${ADW_ARCHIVE_SHA256}" ]]',
+        '[[ "${HERMES_HOME_DIR}" != "/" ]]',
+        'OWNER_MARKER=".agentic-delivery-owner"',
+        'ADW_REPLACE_UNMANAGED',
+        'log "Preflight validation"',
+        'plugins doctor "${SOURCE_DIR}" --ci',
+        'plugins doctor "${STAGED_PLUGIN}" --ci',
+        'plugins doctor "${PLUGIN_TARGET}" --ci',
+        'rollback_activation',
+    ):
+        if token not in script_text:
+            errors.append(f"scripts/install_adw.sh: missing safety invariant {token}")
+    for obsolete in ('ADW_REF="${ADW_REF:-main}"', "ADW_REMOVE_EXISTING", 'plugins disable "agentic-delivery"'):
+        if obsolete in script_text:
+            errors.append(f"scripts/install_adw.sh: obsolete installer behavior remains: {obsolete}")
+    if script_text.index('log "Preflight validation"') > script_text.index('TARGETS=()'):
+        errors.append("scripts/install_adw.sh: preflight must complete before target activation")
+    if 'tar -C "${SOURCE_DIR}" --exclude=' in script_text:
+        errors.append("scripts/install_adw.sh: plugin install must not copy the entire repository")
     try:
         skill_dirs = extract_bash_array(script_text, "ADW_SKILLS")
         installed_names = extract_bash_array(script_text, "ADW_INSTALLED_SKILL_NAMES")
@@ -178,9 +208,8 @@ def main() -> int:
     for token in [
         "adw-core",
         "Package Source of Truth",
-        "skills/adw/adw-core/templates/",
-        "Minimal Human Prompts",
-        "Detailed Human Prompts",
+        "ADW and mise Boundary",
+        "Workflow Skills",
     ]:
         if token not in readme_text:
             errors.append(f"README missing {token}")

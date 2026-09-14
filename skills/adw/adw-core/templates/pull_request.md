@@ -4,7 +4,7 @@
 
 # Linked Issue
 
-Closes <issue>.
+Relates to <issue>. Use an auto-close keyword only when repository policy treats merge as complete delivery.
 
 # Implementation Notes
 
@@ -12,12 +12,12 @@ Closes <issue>.
 
 # Test Evidence
 
-- `<command>` → <result>
+- `<canonical task/manual review>` → <evidence/result>
 
 # Deployment Notes
 
 - Preview: <URL or not applicable>
-- Production impact: <summary>
+- Deployment/runtime impact: <summary or not applicable>
 
 # Known Limitations
 

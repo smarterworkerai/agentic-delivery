@@ -1,6 +1,6 @@
 ---
 name: adw-plan-feature
-description: Use when planning a new feature through the Agentic Delivery Workflow. Creates or confirms plan, branch, issue, acceptance criteria, and traceability before implementation.
+description: Use when planning a feature through the ADW workflow.
 version: 1.0.0
 author: Hermes Agent
 license: MIT
@@ -31,8 +31,8 @@ Load `adw-core` before using this skill. It contains the shared delivery gates, 
 ## Workflow
 
 1. Inspect repository state: root, current branch, remotes, default branch, and working tree.
-2. Determine or confirm base branch. Default to `main` when safe.
-3. Create or confirm feature branch using `feature/<short-description>`.
+2. Determine or confirm the base branch from repository metadata and the project adapter; do not assume a branch name.
+3. Create or confirm an adapter-compatible descriptive implementation branch; do not invent a prefix absent from repository policy.
 4. Draft a plan from `adw-core/templates/implementation_plan.md`.
 5. Read `adw-core/references/playbooks/github_traceability.md`, especially Markdown and Newline Hygiene, before creating or updating GitHub issue text.
 6. Create a GitHub issue labeled `enhancement` using `adw-core/templates/github_issue_feature.md`; prefer a Markdown body file and verify the posted issue renders without visible literal `\n` sequences.
@@ -53,7 +53,7 @@ Load `adw-core` before using this skill. It contains the shared delivery gates, 
 
 ## Output
 
-- Branch: `<feature/...>`
+- Branch: `<adapter-compatible implementation branch>`
 - Issue: `<GitHub issue URL>`
 - Plan: attached to issue or committed plan artifact
 - Acceptance criteria: listed
@@ -86,7 +86,7 @@ Shared artifacts are package-owned by `adw-core`:
 - `adw-core/references/playbooks/` — reusable operational procedures.
 - `adw-core/templates/` — canonical issue, PR, report, and plan formats.
 - `adw-core/references/adr/` — architecture decisions for the workflow itself.
-- `adw-core/assets/diagrams/` — PlantUML sources and pre-rendered local SVGs.
+- `adw-core/assets/diagrams/` — reviewable PlantUML workflow source.
 
 Load `adw-core` before executing this skill. Do not copy shared playbooks/templates into individual workflow skills; update the central `adw-core` artifact instead.
 

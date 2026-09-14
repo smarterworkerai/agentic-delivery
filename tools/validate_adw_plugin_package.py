@@ -8,6 +8,7 @@ rewrite behavior, and Hermes discovery from a temporary user-plugin install.
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import os
 from pathlib import Path
 import shutil
@@ -16,7 +17,6 @@ import sys
 import tempfile
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-HERMES_SRC = Path(os.environ.get("HERMES_SRC", "/home/pupz/.hermes/hermes-agent"))
 EXPECTED_WORKFLOWS = {
     "plan-feature": "adw-plan-feature",
     "plan-bugfix": "adw-plan-bugfix",
@@ -92,18 +92,32 @@ def validate_manifest_and_entrypoint() -> None:
         raise AssertionError("missing root plugin.yaml")
     data = parse_simple_yaml(manifest)
     assert data.get("name") == "adw", data
+    assert data.get("version") == "1.0.0", data
     assert data.get("kind") == "standalone", data
-    assert_contains(manifest.read_text(encoding="utf-8"), "Agentic Delivery Workflow")
+    manifest_text = manifest.read_text(encoding="utf-8")
+    assert_contains(manifest_text, "Agentic Delivery Workflow")
+    assert_contains(manifest_text, "provides_hooks:\n  - pre_gateway_dispatch")
 
     init_file = REPO_ROOT / "__init__.py"
     if not init_file.exists():
         raise AssertionError("missing root __init__.py")
     root_text = init_file.read_text(encoding="utf-8")
-    assert_contains(root_text, "from adw_plugin.router import register")
+    assert_contains(root_text, "from .adw_plugin.router import register")
+    if "sys.path" in root_text:
+        raise AssertionError("root plugin entrypoint must not mutate sys.path")
 
-    sys.path.insert(0, str(REPO_ROOT))
-    root_module = importlib.import_module("__init__")
-    router = importlib.import_module("adw_plugin.router")
+    package_name = "adw_package_under_test"
+    spec = importlib.util.spec_from_file_location(
+        package_name,
+        init_file,
+        submodule_search_locations=[str(REPO_ROOT)],
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("could not create plugin package spec")
+    root_module = importlib.util.module_from_spec(spec)
+    sys.modules[package_name] = root_module
+    spec.loader.exec_module(root_module)
+    router = importlib.import_module(f"{package_name}.adw_plugin.router")
     assert getattr(root_module, "register") is getattr(router, "register")
 
 
@@ -139,16 +153,18 @@ def validate_router_behavior() -> None:
     prompts = importlib.import_module("adw_plugin.prompts")
     registry = importlib.import_module("adw_plugin.registry")
 
-    assert registry.parse_route("plan invoice CSV export") is None
+    assert registry.parse_route("plan requested feature") is None
 
-    route = registry.parse_route("plan-feature invoice CSV export")
+    route = registry.parse_route("plan-feature requested feature")
     assert route is not None
     prompt = prompts.build_invocation_prompt(route)
     assert not prompt.startswith("/")
     assert_contains(prompt, "Workflow: plan-feature")
     assert_contains(prompt, "Operational skill: adw-plan-feature")
-    assert_contains(prompt, "name: adw-core")
-    assert_contains(prompt, "name: adw-plan-feature")
+    assert_contains(prompt, "Load the installed `adw-core` skill")
+    assert_contains(prompt, "installed `adw-plan-feature` skill")
+    if "## Embedded ADW Core Skill" in prompt:
+        raise AssertionError("router prompt must not duplicate packaged skill bodies")
 
     ctx = FakeCtx()
     router.register(ctx)
@@ -175,11 +191,11 @@ def validate_router_behavior() -> None:
     assert_contains(injected_prompt, "Workflow: plan-bugfix")
     assert_contains(injected_prompt, "User payload: login timeout")
 
-    chain_result = ctx.commands["adw"]["handler"]("chain plan impl test merge invoice CSV export")
+    chain_result = ctx.commands["adw"]["handler"]("chain plan impl test merge requested feature")
     assert_contains(chain_result, "Queued ADW workflow `chain`")
     assert len(ctx.injected) == 2
     assert_contains(ctx.injected[1][1], "Workflow: chain")
-    assert_contains(ctx.injected[1][1], "name: adw-chain")
+    assert_contains(ctx.injected[1][1], "installed `adw-chain` skill")
 
     gateway_result = ctx.hooks["pre_gateway_dispatch"][0](FakeEvent("/adw merge-feature main PR #42"))
     assert gateway_result is not None
@@ -196,6 +212,10 @@ def hermes_python() -> str:
     if not hermes:
         return sys.executable
     try:
+        resolved = Path(hermes).resolve()
+        sibling_python = resolved.with_name("python3")
+        if sibling_python.is_file():
+            return str(sibling_python)
         first_line = Path(hermes).read_text(encoding="utf-8").splitlines()[0]
     except OSError:
         return sys.executable
@@ -206,16 +226,46 @@ def hermes_python() -> str:
     return sys.executable
 
 
-def ignore_for_plugin_copy(dirpath: str, names: list[str]) -> set[str]:
-    ignored = {".git", "__pycache__"}.intersection(names)
-    if Path(dirpath).resolve() == REPO_ROOT:
-        ignored.update({".hermes"}.intersection(names))
-    return ignored
+def hermes_executable() -> str:
+    configured = os.environ.get("HERMES_BIN")
+    if configured and Path(configured).is_file():
+        return configured
+    discovered = shutil.which("hermes")
+    if discovered:
+        return discovered
+    sibling = Path(sys.executable).with_name("hermes")
+    if sibling.is_file():
+        return str(sibling)
+    raise RuntimeError("Hermes CLI not found; set HERMES_BIN or run with the Hermes interpreter")
+
+
+def copy_runtime_plugin(target: Path) -> None:
+    target.mkdir(parents=True)
+    for name in ("plugin.yaml", "__init__.py"):
+        shutil.copy2(REPO_ROOT / name, target / name)
+    shutil.copytree(
+        REPO_ROOT / "adw_plugin",
+        target / "adw_plugin",
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+    )
+
+
+def validate_plugin_doctor() -> None:
+    completed = subprocess.run(
+        [hermes_executable(), "plugins", "doctor", str(REPO_ROOT), "--ci"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if completed.returncode != 0 or "WARN:" in completed.stdout:
+        raise AssertionError(
+            "Hermes Plugin Doctor validation failed or warned\n"
+            f"STDOUT:\n{completed.stdout}\nSTDERR:\n{completed.stderr}"
+        )
+    print(completed.stdout.strip())
 
 
 def validate_hermes_discovery() -> None:
-    if not HERMES_SRC.exists():
-        raise RuntimeError(f"Hermes source not found: {HERMES_SRC}")
     code = """
 from hermes_cli.plugins import discover_plugins, get_plugin_command_handler, get_plugin_commands, invoke_hook
 
@@ -240,18 +290,17 @@ results = invoke_hook('pre_gateway_dispatch', event=Event(), gateway=None, sessi
 rewrites = [r for r in results if isinstance(r, dict) and r.get('action') == 'rewrite']
 assert rewrites, results
 assert 'Workflow: test-feature' in rewrites[0]['text']
-assert 'name: adw-test-feature' in rewrites[0]['text']
+assert 'installed `adw-test-feature` skill' in rewrites[0]['text']
 print('Hermes discovery OK: root /adw plugin registered and gateway rewrite hook works')
 """
     with tempfile.TemporaryDirectory(prefix="adw-plugin-package-") as tmp:
         home = Path(tmp) / "home"
-        installed = home / "plugins" / "agentic-delivery"
+        installed = home / "plugins" / "adw"
         home.mkdir(parents=True)
         (home / "config.yaml").write_text("plugins:\n  enabled:\n    - adw\n", encoding="utf-8")
-        shutil.copytree(REPO_ROOT, installed, ignore=ignore_for_plugin_copy)
+        copy_runtime_plugin(installed)
         env = os.environ.copy()
         env["HERMES_HOME"] = str(home)
-        env["PYTHONPATH"] = f"{HERMES_SRC}:{env.get('PYTHONPATH', '')}"
         completed = subprocess.run(
             [hermes_python(), "-c", code],
             cwd=Path(tmp),
@@ -274,6 +323,7 @@ def main() -> int:
     validate_registry_and_skills()
     validate_router_behavior()
     print("Direct root plugin package tests OK")
+    validate_plugin_doctor()
     validate_hermes_discovery()
     print("ADW root plugin package validation OK")
     return 0

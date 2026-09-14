@@ -1,6 +1,6 @@
 ---
 name: adw-self-improve
-description: Use when the user asks ADW to persist a durable workflow, context, or project-adapter improvement through a confirm-first PR-based change.
+description: Use when persisting an approved ADW workflow improvement.
 version: 1.0.0
 author: Hermes Agent
 license: MIT
@@ -64,7 +64,7 @@ Classify every proposed improvement into one or more of these layers:
 7. Make the smallest durable change that enforces the improvement.
 8. Add or update validators/templates/tests where practical.
 9. Run validation and record exact command output.
-10. Commit, push, and open/update a PR.
+10. Commit the validated change. Push and open/update a PR only after explicit approval of the exact source branch, destination branch, and replacement/deletion effect; otherwise stop with the local commit ready for review.
 11. If live skills were updated, report how to reconcile them with the PR merge.
 
 ## Proposal Format
@@ -129,7 +129,7 @@ If the requested improvement is clearly a secret, unsafe credential, or transien
 - [ ] Target layer classification is explicit.
 - [ ] Rejected layers are listed with reasons.
 - [ ] No side effects occurred before confirmation.
-- [ ] Source-of-truth changes were committed and pushed to a PR.
+- [ ] Source-of-truth changes were committed; push/PR used an explicitly approved exact route or remains pending approval.
 - [ ] Validation commands were run or blockers documented.
 - [ ] Any optional live skill update reports divergence and reconciliation.
 
@@ -143,7 +143,7 @@ Shared artifacts are package-owned by `adw-core`:
 - `adw-core/references/playbooks/` — reusable operational procedures.
 - `adw-core/templates/` — canonical issue, PR, report, and plan formats.
 - `adw-core/references/adr/` — architecture decisions for the workflow itself.
-- `adw-core/assets/diagrams/` — PlantUML sources and pre-rendered local SVGs.
+- `adw-core/assets/diagrams/` — reviewable PlantUML workflow source.
 
 Load `adw-core` before executing this skill. Do not copy shared playbooks/templates into individual workflow skills; update the central `adw-core` artifact instead.
 

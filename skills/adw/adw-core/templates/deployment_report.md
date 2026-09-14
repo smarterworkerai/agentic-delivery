@@ -1,24 +1,38 @@
 # Deployment Report
 
-## Environment
+## Target
 
-<environment>
+- Environment: `<opaque manifest value>`
+- Release target: `<adapter-declared target>`
 
-## Artifact
+## Identity
 
-- Commit: <sha>
-- Image/tag: <tag or N/A>
+- Source revision: `<immutable revision>`
+- Artifact identity: `<immutable identity or not applicable>`
+- Deployment identity: `<provider-neutral deployment reference>`
+
+## Configuration
+
+- `adw:deploy:config:pull`: `<evidence>`
+- `adw:deploy:config:plan`: `<evidence>`
+- `adw:deploy:config:apply`: `<evidence or not requested>`
 
 ## Deployment Status
 
-<status>
+- `adw:deploy:apply`: `<evidence>`
+- `adw:deploy:status`: `<evidence>`
 
-## Verification
+## Runtime Verification
 
-- Endpoint:
-- Logs:
-- Smoke/E2E:
+- Health/readiness: `<evidence or unsupported>`
+- E2E/business semantics: `<evidence or unsupported>`
+- Deployment validation: `<evidence or unsupported>`
+- Non-sensitive logs: `<evidence or unavailable with compensation>`
 
 ## Rollback Path
 
-<path>
+<adapter-declared strategy and last-known-good identity>
+
+## Risks / Blockers
+
+- `<risk or None>`

@@ -1,12 +1,12 @@
 ---
 name: adw-rollback-deployment
-description: Use when restoring a failed ADW environment branch to the last known-good Git state, preserving a bugfix path for the failed state, redeploying through the normal branch-to-environment flow, and reporting impact.
+description: Use when restoring a failed deployment through policy.
 version: 1.0.0
 author: Hermes Agent
 license: MIT
 metadata:
   hermes:
-    tags: [adw, rollback, incident, deployment, branch-restore]
+    tags: [adw, rollback, incident, deployment, recovery]
     related_skills: [adw-core, adw-analyze-production, adw-plan-bugfix, adw-merge-feature]
 ---
 
@@ -14,143 +14,107 @@ metadata:
 
 ## Overview
 
-Use this skill when a deployment fails or post-deploy validation identifies a critical regression that must be restored to a last known-good state.
-
-Rollback is a branch restore workflow, not only a runtime redeploy. The environment must continue to reflect its owning Git branch: preview reflects the explicitly selected feature/bugfix branch, demo reflects `demo`, and production reflects `main`. Restore the owning branch to the last known-good tree, preserve a bugfix path for the failed state, then redeploy the restored branch through the normal deployment gates.
+Restore a failed deployment to an explicitly approved last-known-good state. The repository adapter owns the rollback strategy; generic ADW does not assume branch restoration, artifact format, provider, or environment name.
 
 ## When to Use
 
-- Production, demo, or preview deployment fails.
-- Post-deploy validation fails severely.
-- Monitoring indicates a severe regression.
-- The user requests rollback.
-- `adw-analyze-production` recommends rollback instead of continue or fix-forward.
+- A deployment or post-deployment validation fails severely.
+- Monitoring shows a regression that cannot safely wait for fix-forward.
+- The human explicitly requests rollback.
+- `adw-analyze-production` recommends rollback.
 
 ## Required Context
 
-Load `adw-core` before using this skill. It contains the shared delivery gates, templates, playbooks, ADRs, and workflow diagram. Resolve shared artifacts from the `adw-core` skill package, not from repo-root `playbooks/`, `templates/`, `adr/`, or `docs/` directories. If the current repository contains `.hermes/ADW.md`, read it before acting and load any adapter-declared context helper before resolving branch, validation, deployment, or administration defaults.
-
-Also read `adw-core/references/playbooks/branch_environment_releases.md` and `adw-core/references/playbooks/deployment_gates.md` before changing a release branch or deployment target.
+Load `adw-core` before using this skill. Resolve shared artifacts from the `adw-core` skill package, not from repo-root `playbooks/`, `templates/`, `adr/`, or `docs/` directories. Read repository-local `.hermes/ADW.md`, any adapter-declared context helper, `adw-core/references/playbooks/release_targets.md`, and `adw-core/references/playbooks/deployment_gates.md` before changing source, configuration, or runtime state.
 
 ## Workflow
 
-1. Confirm rollback target, owning branch, environment, and last known-good candidate with the human. Never infer approval for rollback.
-2. Capture the failed state before changing it:
-   - environment and owning branch;
-   - failed branch head SHA;
-   - failed deployment ID/status and image/revision identity;
-   - non-sensitive logs, endpoint evidence, failed smoke/E2E/regression evidence;
-   - stateful risk notes.
-3. If a bug issue and bugfix branch do not already exist, create them from the failed owning branch state:
-   - branch from the failed branch head, for example `bugfix/<short-failure-name>`;
-   - open or update a bug issue with symptoms, failed SHA/deployment, validation evidence, and rollback plan;
-   - link the bug issue and bugfix branch before restoring the environment branch.
-4. Assess stateful risks: migrations, data changes, persistent volumes, external services, credentials, compose topology, and runtime env contract. Stop for explicit decision if rollback crosses a stateful boundary.
-5. Restore the owning environment branch to the last known-good state. Default to a normal restore commit whose tree matches the selected good SHA; do not force-push long-lived branches unless the human explicitly confirms history rewrite. For release branches, a tree-restore commit is preferred because it is auditable and triggers the normal CI/image/deploy flow.
-6. Push the restored branch and wait for the branch's CI/image publication. Verify mutable environment tags and immutable `sha-<short-sha>` tags point to the restore commit.
-7. Re-apply target deployment configuration for the restored commit. For Dokploy raw compose targets, read live compose/env, preserve secrets, update raw compose/env to match the restored commit's runtime contract, and avoid leaving failed-release compose/env drift behind.
-8. Deploy the environment that corresponds to the restored branch using `adw-core/references/playbooks/deployment_gates.md`.
-9. Verify deployment status, artifact/revision parity, endpoint semantics, logs or compensated runtime evidence, TLS/domains, rollback result, and target smoke/E2E/regression checks.
-10. Update the bug issue and rollback report with failed state, restored state, restore commit, deployment evidence, stateful risk decisions, and next fix-forward steps.
-11. Report impact and current status using `adw-core/templates/rollback_report.md`.
-
-## Restore Commit Pattern
-
-Prefer a tree-restore commit for `main` and `demo`:
-
-```bash
-git fetch origin
-git switch -C <environment-branch> origin/<environment-branch>
-git read-tree --reset -u <last-known-good-sha>
-git status --short
-git commit -m "revert: restore <environment> to <last-known-good-sha>"
-git diff --quiet HEAD <last-known-good-sha>
-git push origin <environment-branch>
-```
-
-Adjust the exact command sequence for repository policy. The invariant is that the restored branch tree matches the selected good state while history records the rollback action.
+1. Identify the failed environment, failed source revision, deployment identity, and last-known-good candidate from live evidence.
+2. Ask for explicit approval of the exact environment, restore identity, and adapter-declared rollback strategy. Stop if any target is ambiguous.
+3. Preserve the failed state before mutation:
+   - source revision and PR/branch when applicable;
+   - deployment and immutable artifact identity when applicable;
+   - canonical status/health/readiness/E2E evidence;
+   - non-sensitive logs and stateful-risk notes.
+4. Create or link a bug issue and fix-forward path without assuming a branch naming convention.
+5. Assess migrations, data changes, persistent storage, external services, credentials, and configuration compatibility. Stop for a separate decision when recovery crosses a stateful or destructive boundary.
+6. Prepare the approved last-known-good state using the adapter-declared strategy. This may be an auditable Git revert/restore, immutable artifact selection, configuration restoration, or a documented combination. Never rewrite history without separate approval.
+7. Run `mise run adw:check` and `mise run adw:describe`. Stop on manifest, provenance, or capability errors.
+8. Run `mise run adw:deploy:config:pull <environment>` and `mise run adw:deploy:config:plan <environment>`. Inspect the plan, then invoke `mise run adw:deploy:config:apply <environment>` only under the approved rollback/deployment gate.
+9. Deploy with `mise run adw:deploy:apply <environment>` and inspect `mise run adw:deploy:status <environment>` evidence.
+10. Verify the intended restored identity and runtime behavior with manifest-supported `adw:health`, `adw:readiness`, `adw:e2e`, and `adw:validate-deployment` tasks.
+11. Update the bug issue and `adw-core/templates/rollback_report.md` with failed/restored identities, stateful-risk decisions, canonical evidence, impact, and fix-forward work.
 
 ## Safety Boundary
 
-Rollback is destructive or high-impact. Always ask for explicit confirmation of environment, owning branch, and rollback target before changing branches or deployments.
+Rollback is high-impact. Approval must identify the exact target environment and restore state. A previously approved target does not authorize a different environment, revision, artifact, configuration, history rewrite, or destructive data action.
 
 Do not:
 
-- force-push `main` or `demo` without separate explicit approval;
-- overwrite live Dokploy secrets with placeholders or stale examples;
-- discard the failed state before preserving a bug issue/branch path;
-- claim rollback success before branch, image, deployment, endpoint, and revision parity are verified.
+- infer an environment, branch, artifact, or provider operation;
+- bypass the manifest-declared configuration and deployment tasks;
+- expose secrets or private infrastructure details in evidence;
+- discard the failed state before preserving a fix-forward path;
+- equate command completion with restored runtime identity;
+- claim success before source, configuration, deployment status, and runtime validation agree.
 
 ## Output
 
-- Rolled-back environment and owning branch
-- Failed branch head / artifact / deployment identity
-- Last known-good SHA and restore commit SHA
-- Bug issue and bugfix branch for the failed state
-- Deployment target and status
-- Verification result, including target smoke/E2E/regression evidence
-- User impact and stateful risk notes
-- Follow-up fix-forward path
+- Target environment and non-secret deployment reference
+- Failed source/deployment/artifact identity
+- Approved last-known-good identity and restore strategy
+- Bug issue and fix-forward path
+- Configuration plan/apply evidence
+- Deployment status and restored runtime identity
+- Health/readiness/E2E/deployment-validation result
+- User impact, stateful risks, and remaining blockers
 
 ## Common Pitfalls
 
-1. Rolling back runtime tags without restoring the branch that owns the environment.
-2. Restoring code without creating a bug issue/branch from the failed state first.
-3. Assuming Git restore updates Dokploy raw compose/env state.
-4. Force-pushing long-lived release branches when an auditable restore commit would work.
-5. Rolling back code without checking data, migration, volume, or external-service compatibility.
-6. Losing evidence needed for root-cause analysis.
-7. Not creating follow-up work after emergency recovery.
+1. Assuming every project rolls back by moving a release branch.
+2. Reusing a mutable artifact name without proving immutable identity.
+3. Restoring code while leaving failed deployment configuration active.
+4. Treating liveness as full recovery for a persistent service.
+5. Skipping migration or data compatibility analysis.
+6. Losing failed-state evidence needed for root-cause analysis.
 
 ## Verification Checklist
 
-- [ ] Explicit rollback approval recorded for environment, branch, and target SHA
-- [ ] Failed state captured with non-sensitive evidence
-- [ ] Bug issue and bugfix branch exist for the failed state, or an existing equivalent is linked
-- [ ] Last known-good SHA identified and stateful risks checked
-- [ ] Environment branch restored with an auditable commit unless history rewrite was explicitly approved
-- [ ] CI/image publication for the restore commit completed
-- [ ] Dokploy/raw deployment config re-synced to the restored commit while preserving secrets
-- [ ] Deployment verified through status, endpoint semantics, logs or compensated evidence, and revision parity
-- [ ] Target smoke/E2E/regression checks completed or blocker documented
-- [ ] Bug issue and rollback report updated with failed/restored SHAs and deployment evidence
+- [ ] Exact rollback environment, restore identity, and strategy explicitly approved
+- [ ] Failed state preserved with non-sensitive evidence
+- [ ] Bug issue and fix-forward path linked
+- [ ] Stateful and destructive risks resolved explicitly
+- [ ] `adw:check` and `adw:describe` passed for the restored source state
+- [ ] Configuration pull/plan/apply evidence matches the approved restore state
+- [ ] Deployment status proves the intended restored identity
+- [ ] Health, readiness, E2E, and deployment validation completed as supported
+- [ ] Rollback report records impact, evidence, blockers, and follow-up
 
 ## ADW Shared Operating Contract
 
-All ADW skills belong to one pipeline and share installable supporting material through `adw-core`.
-
-Shared artifacts are package-owned by `adw-core`:
-
-- Root `SOUL.md` — identity, tone, hard boundaries, and assumption policy for profiles that adopt ADW.
-- `adw-core/references/playbooks/` — reusable operational procedures.
-- `adw-core/templates/` — canonical issue, PR, report, and plan formats.
-- `adw-core/references/adr/` — architecture decisions for the workflow itself.
-- `adw-core/assets/diagrams/` — PlantUML sources and pre-rendered local SVGs.
+All ADW skills belong to one PR-centric pipeline. Planning, implementation, review, approval, and rollback decisions remain agentic workflow policy. Deterministic project operations use the manifest-declared canonical `adw:*` task ABI packaged by `adw-core`.
 
 Load `adw-core` before executing this skill. Do not copy shared playbooks/templates into individual workflow skills; update the central `adw-core` artifact instead.
 
 ## Parameter Resolution
 
-Human prompts may be minimal. Resolve missing parameters in this order:
-
-1. Inspect current repository, branch, issue, PR, and deployment metadata.
-2. Check `adw-core` artifacts, playbooks, templates, ADRs, and the root `SOUL.md` if available.
-3. If exactly one safe candidate exists, state the inferred assumption and ask the human to confirm before proceeding.
-4. If multiple candidates exist or the consequence is unsafe, ask for explicit human input.
-5. Never treat inference as approval for merge, production deployment, rollback, secret handling, destructive infrastructure changes, or history rewrite.
+1. Inspect repository, issue, PR, manifest, adapter, and live deployment metadata.
+2. Load any adapter-declared context helper.
+3. Ask for the exact rollback target and restore identity even when one candidate appears likely.
+4. Never infer approval for rollback, production deployment, secret handling, destructive infrastructure changes, data mutation, or history rewrite.
 
 ## Standard Status Report
 
 ```markdown
 ### Status
-<current stage>
+<current rollback stage>
 
 ### Completed
-- <artifact/result>
+- <verified artifact/result>
 
 ### Risks / Blockers
 - <risk or "None">
 
 ### Next
-- <recommended next action>
+- <recommended approved action>
 ```

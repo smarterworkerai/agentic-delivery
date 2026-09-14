@@ -1,6 +1,6 @@
 ---
 name: adw-chain
-description: Use when the user asks for a confirmed multi-stage ADW sequence such as plan, implement, test, merge, or deploy from one free-text request.
+description: Use when coordinating an approved multi-stage ADW flow.
 version: 1.0.0
 author: Hermes Agent
 license: MIT
@@ -43,7 +43,7 @@ Also load any project context helper explicitly declared by the repository adapt
 
 1. Parse the requested stage sequence and free-text work description.
 2. Inspect the repository, current branch, existing issue/PR state, and any project adapter such as `.hermes/ADW.md`.
-3. Classify the work as feature, bugfix, regression validation, release-branch merge/deploy, rollback, or incident analysis.
+3. Classify the work as feature, bugfix, regression validation, adapter-declared release, rollback, or incident analysis.
 4. Build a chain plan that lists each stage, the ADW skill that will own it, expected side effects, required confirmations, and blockers.
 5. Stop and ask the human to approve the chain plan before creating branches, issues, commits, PRs, deployments, merges, or persistent changes.
 6. After approval, execute one stage at a time using the existing ADW operational skill for that stage.
@@ -59,7 +59,7 @@ Before any side effect, report:
 ### ADW Chain Proposal
 
 Requested stages: <parsed sequence>
-Work classification: <feature|bugfix|validation|release-branch-merge|incident|unknown>
+Work classification: <feature|bugfix|validation|release|incident|unknown>
 Repository context: <current repo/branch/adapter status>
 
 ### Planned Stage Owners
@@ -85,7 +85,7 @@ Use these generic mappings unless a project adapter declares stricter routing:
 - `test` / `validate` -> `adw-test-feature` or `adw-validate-regression`.
 - `merge` -> `adw-merge-feature` after review and validation gates pass.
 - `deploy` -> the deployment phase owned by `adw-merge-feature` or the project adapter's release flow.
-- `promote` -> treat as a release-branch merge/deploy request and route to `adw-merge-feature` unless the project adapter defines a different explicit workflow.
+- `promote` -> treat as an adapter-declared release request and route to the repository's explicit release workflow; do not infer a branch or environment mapping.
 - `rollback` -> `adw-rollback-deployment`.
 
 If a word is ambiguous, report the ambiguity in the proposal and ask for confirmation before acting.
@@ -138,7 +138,7 @@ Shared artifacts are package-owned by `adw-core`:
 - `adw-core/references/playbooks/` — reusable operational procedures.
 - `adw-core/templates/` — canonical issue, PR, report, and plan formats.
 - `adw-core/references/adr/` — architecture decisions for the workflow itself.
-- `adw-core/assets/diagrams/` — PlantUML sources and pre-rendered local SVGs.
+- `adw-core/assets/diagrams/` — reviewable PlantUML workflow source.
 
 Load `adw-core` before executing this skill. Do not copy shared playbooks/templates into individual workflow skills; update the central `adw-core` artifact instead.
 

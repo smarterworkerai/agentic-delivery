@@ -1,8 +1,16 @@
 name: adw
-version: 0.1.0
+version: 1.0.0
 description: "Agentic Delivery Workflow slash command router."
 author: smarterworkerai
+license: MIT
+homepage: https://github.com/smarterworkerai/agentic-delivery
 kind: standalone
+tags:
+  - adw
+  - delivery
+  - workflow
+provides_hooks:
+  - pre_gateway_dispatch
 platforms:
   - linux
   - macos

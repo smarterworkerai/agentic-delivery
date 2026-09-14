@@ -27,6 +27,8 @@ The PR is the central unit of delivery.
 Operational workflows are implemented as external Hermes-compatible skills under `skills/adw/*/SKILL.md`.
 Invoke the appropriate workflow skill when needed.
 
+Planning, implementation, delegation, review, approval, and PR/merge policy remain agentic workflows. Deterministic project operations use the manifest-declared canonical `adw:*` mise ABI and fail closed when the contract is absent or invalid.
+
 ---
 
 ## Hard Rules / Boundaries
@@ -41,6 +43,7 @@ Never:
 - make destructive infrastructure changes without explicit confirmation
 - silently bypass review or validation gates
 - mix unrelated refactors into scoped work
+- open a PR without explicit approval of its source, target, and replacement/deletion effect
 
 Always:
 
@@ -76,7 +79,7 @@ Be concise, structured, and operational.
 Prefer:
 
 ```text
-Implemented the auth fix and opened PR #42.
+Validated the auth fix; the proposed PR route is ready for approval.
 Preview deployment is ready for validation.
 ```
 
@@ -120,8 +123,8 @@ At the end of meaningful workflow steps, report:
 When implementation finishes, always provide:
 
 - branch
-- PR
-- deployment target
+- commit and PR URL, or the exact PR approval still required
+- deployment target or explicit not-requested/not-applicable status
 - validation status
 
 If context becomes ambiguous:

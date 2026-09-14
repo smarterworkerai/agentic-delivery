@@ -18,17 +18,18 @@ Do not create repo-root shared artifact directories for new ADW materials. Add o
 - `adw-core/templates/`
 - `adw-core/references/adr/`
 - `adw-core/assets/diagrams/`
+- `adw-core/assets/mise/v1/`
 
 ## Skill Index
 
-- `adw-core` — shared gates, playbooks, templates, ADRs, and diagrams. Load before any other ADW skill.
+- `adw-core` — shared gates, playbooks, templates, ADRs, diagrams, and the versioned mise task contract. Load before any other ADW skill.
 - `adw-plan-feature` — plan a new feature and create traceability artifacts.
 - `adw-plan-bugfix` — plan a bugfix from symptoms and suspected root cause.
-- `adw-do-impl` — implement a planned change directly and open a PR.
-- `adw-do-impl-delegate` — delegate implementation through a selected backend using the portable handoff/result contract, then review the returned PR.
+- `adw-do-impl` — implement and validate a planned change; push/PR creation requires an approved exact route.
+- `adw-do-impl-delegate` — delegate through a portable handoff/result contract, then review the approved PR or returned local commit/patch.
 - `adw-test-feature` — review, preview deploy, and validate a PR before merge.
-- `adw-merge-feature` — merge a validated PR and deploy the destination branch.
-- `adw-rollback-deployment` — roll back a failed deployment and create follow-up work.
+- `adw-merge-feature` — merge a validated PR and deploy only when the exact target is separately requested and gated.
+- `adw-rollback-deployment` — restore a failed deployment through the approved adapter-declared strategy and create follow-up work.
 - `adw-validate-regression` — run targeted/broad regression validation.
 - `adw-create-adr` — create architecture decision records.
 - `adw-audit-dependencies` — audit dependency/build-tool risk.

@@ -1,7 +1,7 @@
 ---
 name: adw-do-impl-delegate
-description: Use when delegating ADW implementation to a backend-selected agent. Defines a portable handoff/result contract, resolves the delegation target, reviews returned work, and requests correction when output is weak.
-version: 1.1.0
+description: Use when delegating an approved ADW implementation.
+version: 1.0.0
 author: Hermes Agent
 license: MIT
 metadata:
@@ -88,10 +88,10 @@ The concrete run root is backend-specific. ADW skills may require the file names
 - linked issue and/or approved plan artifact;
 - exact scope;
 - explicit non-scope;
-- required deliverable;
+- required deliverable, including whether an exact PR/MR route is approved or patch/local-commit output is required;
 - expected tests/checks;
 - secret handling policy;
-- instruction not to merge or deploy unless the human explicitly requested it.
+- instruction not to open a PR/MR without approved source/target/replacement scope, and not to merge or deploy unless the human explicitly requested it.
 
 `01-environment.md` should name the selected backend and summarize only the execution assumptions the worker needs. Backend-specific paths or commands may appear in the backend-produced bundle, but should not be copied into this portable ADW skill.
 
@@ -101,7 +101,7 @@ The concrete run root is backend-specific. ADW skills may require the file names
 
 The worker result must include, at minimum:
 
-- PR/MR URL;
+- PR/MR URL when the exact route was approved, otherwise a local commit or patch/artifact reference;
 - implementation branch;
 - commit SHA;
 - changed-file summary;
@@ -109,11 +109,11 @@ The worker result must include, at minimum:
 - blockers / remaining risks;
 - explicit statement that no merge/deploy was performed.
 
-If a PR/MR is impossible, the worker must explain why and provide patches or artifacts under `result/`.
+When PR/MR creation is not approved or is technically impossible, the worker must provide a local commit or patches/artifacts under `result/` and state why no PR/MR exists.
 
 ### Correction rounds
 
-A correction round is required when output is weak, incomplete, self-reported only, missing a PR/diff/test artifact, or violates scope/non-scope. Correction rounds should preserve traceability through `status.json.correction_rounds`, a correction note artifact, and an updated `12-output-summary.md`.
+A correction round is required when output is weak, incomplete, self-reported only, missing an approved PR or reviewable diff/test artifact, or violates scope/non-scope. Correction rounds should preserve traceability through `status.json.correction_rounds`, a correction note artifact, and an updated `12-output-summary.md`.
 
 ## Workflow
 
@@ -121,22 +121,22 @@ A correction round is required when output is weak, incomplete, self-reported on
 2. Inspect current repository, branch, issue, PR, and plan state.
 3. Read `.hermes/ADW.md` when present and load any adapter-declared context helper before resolving branch, validation, deployment, administration, or delegation defaults.
 4. Resolve the delegation backend using the backend resolution order above.
-5. Create the portable handoff bundle from the templates.
+5. Create the portable handoff bundle from the templates. Include an exact approved PR/MR source/target/replacement route, or explicitly require local-commit/patch output without PR creation.
 6. Load the selected backend's skill or documentation before launching (for example, load `sandbox-delegation` when `.hermes/ADW.md`, the context helper, or the human selects the sandbox backend); if no backend docs/skill are available, stop and ask instead of inventing launcher commands.
 7. Launch the selected backend using that backend's documented mechanism.
-8. Receive a verifiable result: PR/MR URL, branch, commit SHA, test evidence, and summary.
-9. Inspect the returned diff and test evidence.
+8. Receive a verifiable result: approved PR/MR URL or local commit/patch reference, branch when applicable, commit SHA, test evidence, and summary.
+9. Inspect the returned diff and evidence, then independently run `mise run adw:check` and `mise run adw:verify:minimal` in the returned revision when accessible. If the manifest is absent, return the work for an adapter-generation correction instead of substituting ad-hoc commands.
 10. Verify scope, non-scope, traceability, and secret hygiene in tracked files/docs/examples.
 11. Confirm no merge/deploy happened unless explicitly authorized.
 12. Request a correction round when output is weak, missing, or self-reported only.
-13. Comment on the PR or summarize the review result for the human.
+13. Comment on the PR only when one was approved and created; otherwise summarize the reviewed commit/patch result for the human.
 
 ## Orchestrator Completion Gate
 
 Do not report delegation success until the orchestrator has verified:
 
-- PR/MR exists or patches/artifacts are supplied with a clear blocker explanation.
-- Returned branch and commit SHA match the PR/MR or artifact set.
+- An approved PR/MR exists, or local commit/patch artifacts are supplied with the explicit no-PR reason.
+- Returned branch and commit SHA match the approved PR/MR or artifact set.
 - Diff matches the requested scope and avoids explicit non-scope.
 - Test/check evidence is present and credible.
 - Tracked files and docs/examples do not contain real-looking secrets.
@@ -150,7 +150,7 @@ Final user-facing output should include:
 
 - Delegated task summary.
 - Selected backend/target, if safe to disclose.
-- PR/MR link or artifact location.
+- Approved PR/MR link, or local commit/patch artifact location and pending route approval.
 - Implementation branch and commit SHA.
 - Checks/tests reviewed.
 - Correction rounds performed.
@@ -164,7 +164,7 @@ Final user-facing output should include:
 3. Assuming a backend target when context is ambiguous instead of asking the human.
 4. Hard-coding backend-specific launcher mechanics into the portable ADW contract.
 5. Forgetting to return weak results for correction instead of hiding them.
-6. Treating a completed backend process as complete delivery when PR/test artifacts are missing.
+6. Treating a completed backend process as complete delivery when the approved PR or required diff/test artifacts are missing.
 
 ## Verification Checklist
 
@@ -172,8 +172,8 @@ Final user-facing output should include:
 - [ ] Repository-local `.hermes/ADW.md` and any adapter-declared context helper were checked before backend/default resolution.
 - [ ] Delegation backend/target was explicit, unambiguous, or confirmed by the human.
 - [ ] Selected backend skill/documentation was loaded before launcher-specific commands were used.
-- [ ] Handoff bundle includes task brief, environment, constraints, acceptance criteria, and input artifacts.
-- [ ] Worker returned PR/MR URL or patches/artifacts with a blocker explanation.
+- [ ] Handoff bundle includes task brief, environment, constraints, acceptance criteria, input artifacts, and approved PR route or explicit no-PR instruction.
+- [ ] Worker returned an approved PR/MR URL or local commit/patch artifacts with the no-PR reason.
 - [ ] Worker returned branch, commit SHA, changed-file summary, and verification evidence.
 - [ ] PR diff or patches were reviewed by the orchestrator.
 - [ ] Secret hygiene was checked in tracked files and docs/examples.
@@ -191,7 +191,7 @@ Shared artifacts are package-owned by `adw-core`:
 - `adw-core/references/playbooks/` — reusable operational procedures.
 - `adw-core/templates/` — canonical issue, PR, report, plan, and delegation formats.
 - `adw-core/references/adr/` — architecture decisions for the workflow itself.
-- `adw-core/assets/diagrams/` — PlantUML sources and pre-rendered local SVGs.
+- `adw-core/assets/diagrams/` — reviewable PlantUML workflow source.
 
 Load `adw-core` before executing this skill. Do not copy shared playbooks/templates into individual workflow skills; update the central `adw-core` artifact instead.
 

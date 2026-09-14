@@ -1,6 +1,6 @@
 ---
 name: adw-do-impl
-description: Use when implementing an approved ADW plan directly. Loads the linked issue and plan, changes only planned scope, runs checks, commits, and opens a PR.
+description: Use when implementing an approved ADW plan directly.
 version: 1.0.0
 author: Hermes Agent
 license: MIT
@@ -34,20 +34,22 @@ Load `adw-core` before using this skill. It contains the shared delivery gates, 
 2. Verify branch, working tree, and PR target.
 3. Confirm no secrets or unrelated changes are present.
 4. Implement only planned scope.
-5. Run relevant tests/checks and record exact commands/results.
-6. Commit changes with scoped messages.
-7. Open a PR using `adw-core/templates/pull_request.md`.
-8. Report changed files, validation status, PR link, and remaining risks.
+5. Run `mise run adw:check`, then `mise run adw:verify:minimal`; record task evidence and exact results. If the project manifest is absent, stop as blocked and offer the `adw-core` adapter generator. Do not substitute package-manager or inferred project commands.
+6. Commit the validated changes with scoped messages.
+7. Review the complete diff and report the proposed source branch, destination branch, replacement/deletion effect, and delivery route.
+8. Push and open/update a PR with `adw-core/templates/pull_request.md` only when that exact route is explicitly approved. Otherwise stop with a validated local commit ready for approval.
+9. Report changed files, validation status, branch/commit/PR state, and remaining risks.
 
 ## Implementation Gate
 
 Before PR creation, confirm:
 
-- code compiles/builds where applicable
-- obvious lint/type errors are handled
+- code compiles/builds where applicable, proven by `adw:verify:minimal` evidence
+- obvious lint/type errors required by the manifest's minimal graph are handled
 - implementation matches plan
 - no unrelated changes were introduced
 - secrets are not committed
+- exact source branch, destination branch, replacement/deletion effect, and delivery route are explicitly approved
 
 ## Output
 
@@ -55,13 +57,13 @@ Before PR creation, confirm:
 - Changed files summary
 - Test/check results
 - Branch
-- PR URL
+- Commit and PR URL, or the exact approval still required
 - Remaining risks or limitations
 
 ## Common Pitfalls
 
 1. Implementing opportunistic refactors outside the plan.
-2. Opening a PR without test evidence.
+2. Pushing or opening a PR without exact route approval and test evidence.
 3. Forgetting to link the issue in the PR body.
 4. Claiming tests passed without exact command output.
 
@@ -70,7 +72,8 @@ Before PR creation, confirm:
 - [ ] Linked issue and plan were read
 - [ ] Diff matches planned scope
 - [ ] Tests/checks were run or blockers documented
-- [ ] PR exists and links the issue
+- [ ] Push/PR route was explicitly approved, or work stopped at a validated local commit
+- [ ] Any created PR links the issue
 - [ ] Next step is `adw-test-feature`
 
 
@@ -84,7 +87,7 @@ Shared artifacts are package-owned by `adw-core`:
 - `adw-core/references/playbooks/` — reusable operational procedures.
 - `adw-core/templates/` — canonical issue, PR, report, and plan formats.
 - `adw-core/references/adr/` — architecture decisions for the workflow itself.
-- `adw-core/assets/diagrams/` — PlantUML sources and pre-rendered local SVGs.
+- `adw-core/assets/diagrams/` — reviewable PlantUML workflow source.
 
 Load `adw-core` before executing this skill. Do not copy shared playbooks/templates into individual workflow skills; update the central `adw-core` artifact instead.
 

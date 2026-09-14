@@ -16,9 +16,9 @@ Preserve branch ↔ issue ↔ PR linkage across the ADW lifecycle.
 
 Use consistent labels: `enhancement`, `bug`, `hotfix`, `chore`, `documentation`, `security`.
 
-## Issue Closure After Merge
+## Issue Completion
 
-When a feature or bugfix PR is merged into a non-feature/non-bugfix destination branch, close the linked issue as part of delivery closure after validation/deployment evidence is available. Add a final issue comment before or during closure that includes:
+Read the repository adapter's explicit completion policy. Close the linked issue only when that policy's required merge and, when applicable, deployment/validation evidence is available. Do not infer completion from branch names or prefixes. Add a final issue comment before or during closure that includes:
 
 - merged PR link;
 - destination branch and merge SHA;
@@ -26,7 +26,7 @@ When a feature or bugfix PR is merged into a non-feature/non-bugfix destination 
 - final status;
 - rollback or follow-up notes when relevant.
 
-When the PR is merged into another feature or bugfix branch, do not close the issue yet. Add an intermediate status comment that records the merge target and next expected delivery branch.
+If the policy is not yet satisfied, keep the issue open and add an intermediate status comment that records the completed stage and the next required action.
 
 ## Markdown and Newline Hygiene
 

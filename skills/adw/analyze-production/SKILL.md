@@ -1,6 +1,6 @@
 ---
 name: adw-analyze-production
-description: Use when inspecting production or post-deployment feedback to classify incidents, regressions, rollback need, or follow-up ADW bugfix work.
+description: Use when inspecting deployment feedback or incidents.
 version: 1.0.0
 author: Hermes Agent
 license: MIT
@@ -20,7 +20,7 @@ Use this skill to inspect production feedback after deployment and decide whethe
 
 - Post-deploy smoke checks fail.
 - Users report a regression.
-- Monitoring, logs, or Sentry indicate errors.
+- Monitoring, logs, or error-monitoring systems indicate errors.
 - Deployment health is uncertain.
 
 ## Required Context
@@ -29,12 +29,13 @@ Load `adw-core` before using this skill. It contains the shared delivery gates, 
 
 ## Workflow
 
-1. Identify environment, deployment, commit/image, time window, and reported symptom.
-2. Collect non-sensitive logs, metrics, traces, and endpoint evidence.
-3. Classify severity and user impact.
-4. Recommend continue, fix-forward, rollback, or deeper investigation.
-5. If bugfix is needed, hand off to `adw-plan-bugfix`.
-6. If rollback is needed, hand off to `adw-rollback-deployment`.
+1. Read `adw-core/references/playbooks/incident_response.md`, then identify the manifest environment, deployment, immutable source/artifact identity, time window, and reported symptom.
+2. Run `mise run adw:check` and `mise run adw:describe`, then collect `mise run adw:deploy:status <environment>`, `mise run adw:health <environment>`, and `mise run adw:readiness <environment>` evidence when supported.
+3. Collect additional non-sensitive project-owned logs, metrics, traces, and endpoint evidence without bypassing the canonical task results.
+4. Classify severity and user impact.
+5. Recommend continue, fix-forward, rollback, or deeper investigation.
+6. If bugfix is needed, hand off to `adw-plan-bugfix`.
+7. If rollback is needed, hand off to `adw-rollback-deployment`.
 
 ## Output
 
@@ -68,7 +69,7 @@ Shared artifacts are package-owned by `adw-core`:
 - `adw-core/references/playbooks/` — reusable operational procedures.
 - `adw-core/templates/` — canonical issue, PR, report, and plan formats.
 - `adw-core/references/adr/` — architecture decisions for the workflow itself.
-- `adw-core/assets/diagrams/` — PlantUML sources and pre-rendered local SVGs.
+- `adw-core/assets/diagrams/` — reviewable PlantUML workflow source.
 
 Load `adw-core` before executing this skill. Do not copy shared playbooks/templates into individual workflow skills; update the central `adw-core` artifact instead.
 

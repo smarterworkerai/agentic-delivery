@@ -2,7 +2,7 @@
 
 - [ ] Task objective addressed.
 - [ ] Scope and non-scope respected.
-- [ ] PR/MR URL provided, or patches/artifacts plus blocker explanation supplied.
+- [ ] Approved PR/MR URL provided, or local commit/patch artifacts plus explicit no-PR reason supplied.
 - [ ] Implementation branch documented.
 - [ ] Commit SHA documented.
 - [ ] Changed-file summary documented.

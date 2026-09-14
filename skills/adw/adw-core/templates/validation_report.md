@@ -14,7 +14,7 @@ PR/branch/deployment: <target>
 
 ## Tests / Checks
 
-- `<command or manual step>` → <result>
+- `<canonical task or manual review>` → <evidence/result>
 
 ## Go / No-Go
 

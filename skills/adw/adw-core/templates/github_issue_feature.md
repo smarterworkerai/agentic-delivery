@@ -14,5 +14,5 @@
 
 ## Traceability
 
-- Branch: `<feature/...>`
+- Branch: `<adapter-compatible implementation branch>`
 - PR: <to be added>

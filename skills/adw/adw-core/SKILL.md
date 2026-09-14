@@ -1,6 +1,6 @@
 ---
 name: adw-core
-description: Use before any Agentic Delivery Workflow skill. Provides the shared delivery contract, project/context resolution rules, playbooks, templates, ADRs, and workflow diagrams used by all adw-* skills.
+description: Use before any ADW workflow. Loads shared policy and ABI.
 version: 1.0.0
 author: Hermes Agent
 license: MIT
@@ -39,13 +39,12 @@ This skill owns the shared artifacts for portable installs:
 - `references/playbooks/incident_response.md` — production incident response flow.
 - `references/playbooks/pr_reviewing.md` — review expectations and rejection handling.
 - `references/playbooks/preview_deployments.md` — preview deployment safety model.
-- `references/playbooks/branch_environment_releases.md` — branch-to-environment release mapping and deployment closure rules.
+- `references/playbooks/release_targets.md` — adapter-owned release target, deployment, and rollback rules.
 - `templates/implementation_plan.md` — feature implementation plan template.
 - `templates/bugfix_plan.md` — bugfix plan template.
 - `templates/github_issue_feature.md` — feature issue template.
 - `templates/github_issue_bugfix.md` — bug issue template.
 - `templates/pull_request.md` — PR body template.
-- `templates/review_report.md` — review report template.
 - `templates/validation_report.md` — validation report template.
 - `templates/deployment_report.md` — deployment report template.
 - `templates/rollback_report.md` — rollback report template.
@@ -55,7 +54,10 @@ This skill owns the shared artifacts for portable installs:
 - `references/adr/0001-agentic-delivery-workflow.md` — ADW architecture decision.
 - `references/adr/0002-pr-as-delivery-unit.md` — PR-as-delivery-unit decision.
 - `assets/diagrams/adw-complete-workflow.puml` — workflow diagram source.
-- `assets/diagrams/adw-complete-workflow.svg` — pre-rendered local SVG for GitHub display.
+- `assets/mise/v1/contract.md` — versioned canonical task, manifest, evidence, and status contract.
+- `assets/mise/v1/generation-guide.md` — AI-facing, diff-only project adapter generation procedure.
+- `assets/mise/v1/tasks.toml` and `assets/mise/v1/adw_contract.py` — vendorable generic stubs and contract validator/runner.
+- `assets/mise/v1/schemas/`, `templates/`, and `fixtures/` — machine schemas, variable/config templates, and conformance examples.
 
 The root `SOUL.md` remains the agent identity file for profiles that adopt ADW. The root README points to this skill for installable shared artifacts.
 
@@ -71,14 +73,26 @@ The root `SOUL.md` remains the agent identity file for profiles that adopt ADW. 
 Example:
 
 ```text
-Use adw-core and adw-plan-feature for invoice CSV export.
+Use adw-core and adw-plan-feature for the requested feature.
 ```
 
 Then later:
 
 ```text
-Use adw-core and adw-do-impl for the approved invoice CSV export issue.
+Use adw-core and adw-do-impl for the approved implementation issue.
 ```
+
+## Deterministic Project Operations
+
+After implementation, generic ADW treats the repository's mise adapter as the only executable interface for deterministic project operations.
+
+1. If `.hermes/adw-task-manifest.json` exists, run `mise run adw:check` before any build, verification, deployment, health, readiness, E2E, hotfix, or context task.
+2. Run `mise run adw:describe` when capability, environment, or effective-source discovery is needed. Read the manifest rather than inventing environment names.
+3. Invoke only the canonical `adw:*` task required by the operational skill. Pass the selected environment as the task's explicit opaque argument.
+4. Interpret `unsupported` as a successful declaration of absence, never as proof that work ran. If the requested stage requires that capability, report `blocked`.
+5. Preserve task evidence from `.hermes/evidence/<run-id>/` and cite it in delivery reports. Approval and review gates remain outside mise.
+
+If the manifest is absent, stop deterministic execution as `blocked` and offer to generate a reviewable adapter diff using `assets/mise/v1/generation-guide.md`. Generation may automatically run only `mise run adw:check`; it must not run install, build, test, deployment, E2E, hotfix, or context sync tasks. There is no ad-hoc fallback to package-manager commands, provider CLIs, provider REST calls, or inferred project scripts.
 
 ## ADW Shared Operating Contract
 
@@ -97,6 +111,7 @@ Use the package paths below:
 - ADRs: `skills/adw/adw-core/references/adr/`
 - Diagrams: `skills/adw/adw-core/assets/diagrams/`
 - Project/context resolution: `skills/adw/adw-core/references/project_contexts.md`
+- ADW mise contract: `skills/adw/adw-core/assets/mise/v1/`
 
 When installed into a Hermes profile, these files travel with the `adw-core` skill directory.
 
@@ -117,7 +132,7 @@ Human prompts may be minimal. Resolve missing parameters in this order:
 1. Installing only a workflow skill such as `adw-plan-feature` and expecting repo-root `playbooks/` or `templates/` to be available. Install/load `adw-core` with the workflow skills.
 2. Treating root-level repository layout as the runtime package contract. The portable package contract is this skill directory.
 3. Duplicating templates into individual workflow skills. Update the central `adw-core` artifact instead.
-4. Editing a `.puml` diagram without regenerating and committing the matching `.svg`.
+4. Editing the workflow diagram without keeping it synchronized with the current ADW/mise responsibility boundary.
 5. Using an operational skill without first checking review, preview, merge, or deployment gates from the shared playbooks.
 6. Putting project-specific defaults into generic ADW skills instead of a project adapter or context helper.
 
@@ -128,6 +143,8 @@ Human prompts may be minimal. Resolve missing parameters in this order:
 - [ ] Required playbooks/templates exist under this skill directory
 - [ ] Delegation templates exist under `templates/delegation/` when delegated implementation is enabled
 - [ ] Project adapter template and context-resolution reference exist under `adw-core`
-- [ ] The workflow diagram source and rendered SVG both exist
+- [ ] Versioned mise contract, schemas, templates, fixtures, and validator exist under `assets/mise/v1/`
+- [ ] Operational skills use canonical mise tasks and do not define project/provider commands
+- [ ] The canonical PlantUML workflow source exists and matches the current ADW/mise boundary
 - [ ] Root README points to `adw-core` as the package source of truth
 - [ ] `tools/validate_adw_skills.py` passes

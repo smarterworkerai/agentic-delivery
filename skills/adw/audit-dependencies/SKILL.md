@@ -1,6 +1,6 @@
 ---
 name: adw-audit-dependencies
-description: Use when auditing ADW dependency, build, or tooling changes for security and maintenance risk before implementation, validation, or release.
+description: Use when auditing dependency, build, or tooling changes.
 version: 1.0.0
 author: Hermes Agent
 license: MIT
@@ -66,7 +66,7 @@ Shared artifacts are package-owned by `adw-core`:
 - `adw-core/references/playbooks/` — reusable operational procedures.
 - `adw-core/templates/` — canonical issue, PR, report, and plan formats.
 - `adw-core/references/adr/` — architecture decisions for the workflow itself.
-- `adw-core/assets/diagrams/` — PlantUML sources and pre-rendered local SVGs.
+- `adw-core/assets/diagrams/` — reviewable PlantUML workflow source.
 
 Load `adw-core` before executing this skill. Do not copy shared playbooks/templates into individual workflow skills; update the central `adw-core` artifact instead.
 

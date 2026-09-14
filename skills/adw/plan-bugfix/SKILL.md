@@ -1,6 +1,6 @@
 ---
 name: adw-plan-bugfix
-description: Use when planning a bugfix through the Agentic Delivery Workflow. Captures symptoms, suspected root cause, branch, issue, verification strategy, and rollback considerations.
+description: Use when planning a bugfix through the ADW workflow.
 version: 1.0.0
 author: Hermes Agent
 license: MIT
@@ -31,7 +31,7 @@ Load `adw-core` before using this skill. It contains the shared delivery gates, 
 1. Reproduce or document the symptom as far as possible.
 2. Inspect current branch, target branch, recent commits, logs, tests, and related issues.
 3. Identify suspected root cause and confidence level.
-4. Create or confirm `bugfix/<short-description>` branch.
+4. Create or confirm an adapter-compatible descriptive implementation branch; do not invent a prefix absent from repository policy.
 5. Draft a bugfix plan from `adw-core/templates/bugfix_plan.md`.
 6. Create a GitHub issue labeled `bug` using `adw-core/templates/github_issue_bugfix.md`.
 7. Attach repro notes, expected/actual behavior, and verification strategy.
@@ -49,7 +49,7 @@ Load `adw-core` before using this skill. It contains the shared delivery gates, 
 
 ## Output
 
-- Branch: `<bugfix/...>`
+- Branch: `<adapter-compatible implementation branch>`
 - Issue: `<GitHub issue URL>`
 - Suspected root cause: `<summary>`
 - Verification strategy: `<tests/smokes>`
@@ -81,7 +81,7 @@ Shared artifacts are package-owned by `adw-core`:
 - `adw-core/references/playbooks/` — reusable operational procedures.
 - `adw-core/templates/` — canonical issue, PR, report, and plan formats.
 - `adw-core/references/adr/` — architecture decisions for the workflow itself.
-- `adw-core/assets/diagrams/` — PlantUML sources and pre-rendered local SVGs.
+- `adw-core/assets/diagrams/` — reviewable PlantUML workflow source.
 
 Load `adw-core` before executing this skill. Do not copy shared playbooks/templates into individual workflow skills; update the central `adw-core` artifact instead.
 

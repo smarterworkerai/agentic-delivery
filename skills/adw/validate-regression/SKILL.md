@@ -1,6 +1,6 @@
 ---
 name: adw-validate-regression
-description: Use when running targeted or broad regression validation against an ADW PR, branch, deployment, or release candidate.
+description: Use when running targeted or broad ADW regression checks.
 version: 1.0.0
 author: Hermes Agent
 license: MIT
@@ -28,10 +28,10 @@ Load `adw-core` before using this skill. It contains the shared delivery gates, 
 
 ## Workflow
 
-1. Identify validation target: PR, branch, deployment URL, or artifact.
-2. Select checks based on risk: unit, integration, E2E, API contract, visual, performance baseline.
-3. Run exact commands or manual steps. For persistent services, include write-path validation when deployment/runtime behavior is in scope.
-4. Capture evidence, artifact identity, runtime environment, and failures.
+1. Identify validation target: PR, branch, manifest environment, or artifact.
+2. Run `mise run adw:check` and `mise run adw:describe`, then select only manifest-supported canonical capabilities.
+3. For local regression, run the needed `adw:test:unit`, `adw:test:integration`, `adw:lint`, or `adw:static-analysis` tasks; use `mise run adw:verify:full` for broad/release validation. For a deployed target, pass the explicit environment to `mise run adw:e2e <environment>` and `mise run adw:validate-deployment <environment>`. Persistent services require write-path validation when runtime behavior is in scope.
+4. Capture task evidence, artifact identity, runtime environment, and failures.
 5. Report pass/fail with remediation recommendations using `adw-core/references/playbooks/github_traceability.md` for file-backed Markdown when posting to GitHub.
 
 ## Output
@@ -72,7 +72,7 @@ Shared artifacts are package-owned by `adw-core`:
 - `adw-core/references/playbooks/` — reusable operational procedures.
 - `adw-core/templates/` — canonical issue, PR, report, and plan formats.
 - `adw-core/references/adr/` — architecture decisions for the workflow itself.
-- `adw-core/assets/diagrams/` — PlantUML sources and pre-rendered local SVGs.
+- `adw-core/assets/diagrams/` — reviewable PlantUML workflow source.
 
 Load `adw-core` before executing this skill. Do not copy shared playbooks/templates into individual workflow skills; update the central `adw-core` artifact instead.
 

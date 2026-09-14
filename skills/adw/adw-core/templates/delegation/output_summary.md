@@ -5,7 +5,8 @@
 
 ## PR/MR
 - URL: `<url-or-none>`
-- If unavailable: `<why and where patches/artifacts are stored>`
+- Route approval: `<approved exact source/target/replacement route | not approved>`
+- If unavailable or not approved: `<why and where local commit/patch artifacts are stored>`
 
 ## Branch and commit
 - Branch: `<implementation-branch>`

@@ -1,43 +1,46 @@
 # Rollback Report
 
-## Environment
+## Target
 
-<environment and owning branch>
+- Environment: `<opaque manifest value>`
+- Release target: `<adapter-declared target>`
 
 ## Failed State
 
-- Branch head: <failed branch SHA>
-- Artifact/image: <failed artifact/image identity>
-- Deployment: <failed deployment ID/status>
-- Evidence: <non-sensitive symptoms, logs, endpoint or E2E failures>
+- Source revision: `<failed immutable revision>`
+- Artifact identity: `<failed immutable artifact identity or not applicable>`
+- Deployment identity/status: `<failed deployment reference>`
+- Evidence: `<non-sensitive symptoms, logs, health/readiness/E2E findings>`
 
-## Bugfix Tracking
+## Fix-Forward Traceability
 
-- Bug issue: <issue URL or ID>
-- Bugfix branch: <branch created from failed state, or existing linked branch>
+- Bug issue: <URL>
+- Implementation branch/commit or patch artifact: <reference>
+- PR/MR: <approved URL or pending approval>
 
-## Restored State
+## Approved Restore State
 
-- Last known-good SHA/tree: <good SHA>
-- Restore commit: <rollback/restore commit SHA>
-- Artifact/image after restore: <restored artifact/image identity>
+- Restore strategy: `<Git revert/restore | artifact selection | configuration restoration | adapter-defined combination>`
+- Last-known-good source revision: `<immutable revision>`
+- Last-known-good artifact identity: `<immutable identity or not applicable>`
+- Prepared restore revision/configuration: `<reference>`
 
 ## Stateful Risk Review
 
-<migrations, data, volumes, external services, compose/env contract, and decisions>
+<migrations, data, volumes, external services, deployment/configuration contract, and decisions>
 
-## Deployment Recovery
+## Recovery Evidence
 
-<Dokploy/raw compose/env sync, deployment ID/status, domain/route checked>
+- `adw:check` / `adw:describe`: <evidence>
+- Configuration pull/plan/apply: <evidence>
+- Deployment apply/status: <evidence>
+- Restored runtime identity: <evidence>
+- Health/readiness/E2E/deployment validation: <evidence or unsupported/blocker>
 
-## Verification
+## User Impact
 
-<checks run: status, endpoint semantics, logs or compensated evidence, revision parity, smoke/E2E/regression>
-
-## Impact
-
-<user/system impact and recovery status>
+<impact summary>
 
 ## Follow-up
 
-<fix-forward plan, bug issue status, owner/next action>
+<remaining risks, root-cause work, owner, and next action>

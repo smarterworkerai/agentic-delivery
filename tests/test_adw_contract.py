@@ -764,6 +764,36 @@ class ContractTests(unittest.TestCase):
         self.assertFalse(marker.exists())
         self.assertTrue(any(item["code"] == "target.invalid" for item in malformed.evidence["findings"]))
 
+    def test_context_check_uses_trusted_upstream_main_index(self) -> None:
+        manifest = valid_manifest()
+        manifest["capabilities"]["adw:context:check"]["status"] = "supported"
+        manifest["context_freshness"] = {
+            "policy": "require-current-compatible",
+            "upstream": {
+                "repository": "smarterworkerai/agentic-delivery",
+                "branch": "main",
+                "index_path": "releases/adw-mise-v1.json",
+            },
+        }
+        self.write_manifest(manifest)
+        index = {"schema_version": "1.0.0", "releases": [{
+            "version": "1.0.1", "ref": "2" * 40,
+            "checksum": manifest["sources"][0]["checksum"], "snapshot_path": "fixtures/adw-1.0.1",
+        }]}
+
+        class Response:
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self): return json.dumps(index).encode("utf-8")
+
+        from unittest.mock import patch
+        with patch("urllib.request.urlopen", return_value=Response()) as fetch:
+            result = self.contract.context_check(self.root, run_id="run-upstream-stale")
+
+        self.assertEqual(self.contract.EXIT_BLOCKED, result.exit_code)
+        self.assertEqual("update-available", result.evidence["freshness"]["verdict"])
+        self.assertIn("raw.githubusercontent.com/smarterworkerai/agentic-delivery/main/releases/adw-mise-v1.json", fetch.call_args.args[0].full_url)
+
     def test_context_check_is_read_only_and_strictly_fails_stale_fixture(self) -> None:
         manifest = valid_manifest()
         generic = manifest["sources"][0]
@@ -771,7 +801,7 @@ class ContractTests(unittest.TestCase):
         manifest["capabilities"]["adw:context:sync"]["status"] = "supported"
         manifest["context_freshness"] = {
             "policy": "require-current-compatible",
-            "index": {"path": ".hermes/trusted-index.json", "checksum": ""},
+            "upstream": {"repository": "smarterworkerai/agentic-delivery", "branch": "main", "index_path": "releases/adw-mise-v1.json"},
         }
         self.write_manifest(manifest)
         index = {
@@ -781,14 +811,16 @@ class ContractTests(unittest.TestCase):
                 "snapshot_path": "fixtures/adw-1.0.1",
             }],
         }
-        index_path = self.root / ".hermes" / "trusted-index.json"
-        index_path.write_text(json.dumps(index), encoding="utf-8")
-        manifest["context_freshness"]["index"]["checksum"] = "sha256:" + hashlib.sha256(index_path.read_bytes()).hexdigest()
-        self.write_manifest(manifest)
+        class Response:
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self): return json.dumps(index).encode("utf-8")
         before = self.root / "mise-helper" / "vendor" / "agentic-delivery" / "tasks.toml"
         before_bytes = before.read_bytes()
 
-        result = self.contract.context_check(self.root, run_id="run-context-stale")
+        from unittest.mock import patch
+        with patch("urllib.request.urlopen", return_value=Response()):
+            result = self.contract.context_check(self.root, run_id="run-context-stale")
 
         self.assertEqual(self.contract.EXIT_BLOCKED, result.exit_code)
         self.assertEqual("update-available", result.evidence["freshness"]["verdict"])
@@ -799,25 +831,24 @@ class ContractTests(unittest.TestCase):
         manifest = valid_manifest()
         manifest["capabilities"]["adw:context:check"]["status"] = "supported"
         manifest["capabilities"]["adw:context:sync"]["status"] = "supported"
-        manifest["context_freshness"] = {"policy": "advisory", "index": {"path": ".hermes/index.json", "checksum": ""}}
+        manifest["context_freshness"] = {"policy": "advisory", "upstream": {"repository": "smarterworkerai/agentic-delivery", "branch": "main", "index_path": "releases/adw-mise-v1.json"}}
         self.write_manifest(manifest)
         snapshot = self.root / "fixtures" / "adw-1.0.1"
         snapshot.mkdir(parents=True)
         (snapshot / "tasks.toml").write_text("new snapshot\n", encoding="utf-8")
         checksum = "sha256:" + hashlib.sha256((snapshot / "tasks.toml").read_bytes()).hexdigest()
         index = {"schema_version": "1.0.0", "releases": [{"version": "1.0.1", "ref": "2" * 40, "checksum": checksum, "snapshot_path": "fixtures/adw-1.0.1"}]}
-        index_path = self.root / ".hermes" / "index.json"
-        index_path.write_text(json.dumps(index), encoding="utf-8")
-        manifest["context_freshness"]["index"]["checksum"] = "sha256:" + hashlib.sha256(index_path.read_bytes()).hexdigest()
-        self.write_manifest(manifest)
-
-        sync = self.contract.context_sync(self.root, run_id="run-context-sync")
+        class Response:
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self): return json.dumps(index).encode("utf-8")
+        from unittest.mock import patch
+        with patch("urllib.request.urlopen", return_value=Response()):
+            sync = self.contract.context_sync(self.root, run_id="run-context-sync")
         saved = json.loads((self.root / ".hermes" / "adw-task-manifest.json").read_text(encoding="utf-8"))
         index["releases"][0]["ref"] = "main"
-        index_path.write_text(json.dumps(index), encoding="utf-8")
-        manifest["context_freshness"]["index"]["checksum"] = "sha256:" + hashlib.sha256(index_path.read_bytes()).hexdigest()
-        self.write_manifest(manifest)
-        rejected = self.contract.context_check(self.root, run_id="run-moving-ref")
+        with patch("urllib.request.urlopen", return_value=Response()):
+            rejected = self.contract.context_check(self.root, run_id="run-moving-ref")
 
         self.assertEqual(0, sync.exit_code)
         self.assertEqual("2" * 40, saved["sources"][0]["ref"])

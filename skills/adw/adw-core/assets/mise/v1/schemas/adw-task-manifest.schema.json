@@ -466,30 +466,22 @@
             "require-current-compatible"
           ]
         },
-        "index": {
+        "upstream": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "path": {
+            "repository": {"const": "smarterworkerai/agentic-delivery"},
+            "branch": {"const": "main"},
+            "index_path": {
               "type": "string",
               "minLength": 1,
               "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
-            },
-            "checksum": {
-              "type": "string",
-              "pattern": "^sha256:[0-9a-f]{64}$"
             }
           },
-          "required": [
-            "path",
-            "checksum"
-          ]
+          "required": ["repository", "branch", "index_path"]
         }
       },
-      "required": [
-        "policy",
-        "index"
-      ]
+      "required": ["policy", "upstream"]
     }
   },
   "required": [

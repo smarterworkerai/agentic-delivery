@@ -738,6 +738,93 @@ class ContractTests(unittest.TestCase):
         self.assertFalse(outside.exists())
         self.assertTrue((self.root / ".hermes" / "evidence" / result.evidence["run_id"] / "adw_describe.json").exists())
 
+    def test_target_is_optional_redacted_and_validated_before_child_execution(self) -> None:
+        self.write_manifest()
+        marker = self.root / "target-child-ran"
+
+        no_target = self.contract.run_command(
+            self.root, "adw:hotfix:apply", ["python3", "-c", "pass"], environment="preview", run_id="run-no-target"
+        )
+        targeted = self.contract.run_command(
+            self.root, "adw:hotfix:apply", ["python3", "-c", "pass"], environment="preview", target="shadow-blue", run_id="run-target"
+        )
+        malformed = self.contract.run_command(
+            self.root,
+            "adw:hotfix:apply",
+            ["python3", "-c", f"from pathlib import Path; Path({str(marker)!r}).touch()"],
+            environment="preview",
+            target="provider/namespace",
+            run_id="run-malformed-target",
+        )
+
+        self.assertEqual(0, no_target.exit_code)
+        self.assertNotIn("target", no_target.evidence["arguments"])
+        self.assertEqual("shadow-blue", targeted.evidence["arguments"]["target"])
+        self.assertEqual(self.contract.EXIT_CONTRACT_ERROR, malformed.exit_code)
+        self.assertFalse(marker.exists())
+        self.assertTrue(any(item["code"] == "target.invalid" for item in malformed.evidence["findings"]))
+
+    def test_context_check_is_read_only_and_strictly_fails_stale_fixture(self) -> None:
+        manifest = valid_manifest()
+        generic = manifest["sources"][0]
+        manifest["capabilities"]["adw:context:check"]["status"] = "supported"
+        manifest["capabilities"]["adw:context:sync"]["status"] = "supported"
+        manifest["context_freshness"] = {
+            "policy": "require-current-compatible",
+            "index": {"path": ".hermes/trusted-index.json", "checksum": ""},
+        }
+        self.write_manifest(manifest)
+        index = {
+            "schema_version": "1.0.0",
+            "releases": [{
+                "version": "1.0.1", "ref": "2" * 40, "checksum": generic["checksum"],
+                "snapshot_path": "fixtures/adw-1.0.1",
+            }],
+        }
+        index_path = self.root / ".hermes" / "trusted-index.json"
+        index_path.write_text(json.dumps(index), encoding="utf-8")
+        manifest["context_freshness"]["index"]["checksum"] = "sha256:" + hashlib.sha256(index_path.read_bytes()).hexdigest()
+        self.write_manifest(manifest)
+        before = self.root / "mise-helper" / "vendor" / "agentic-delivery" / "tasks.toml"
+        before_bytes = before.read_bytes()
+
+        result = self.contract.context_check(self.root, run_id="run-context-stale")
+
+        self.assertEqual(self.contract.EXIT_BLOCKED, result.exit_code)
+        self.assertEqual("update-available", result.evidence["freshness"]["verdict"])
+        self.assertEqual("2" * 40, result.evidence["freshness"]["latest"]["ref"])
+        self.assertEqual(before_bytes, before.read_bytes())
+
+    def test_context_check_rejects_moving_refs_and_sync_updates_only_local_vendor_and_manifest(self) -> None:
+        manifest = valid_manifest()
+        manifest["capabilities"]["adw:context:check"]["status"] = "supported"
+        manifest["capabilities"]["adw:context:sync"]["status"] = "supported"
+        manifest["context_freshness"] = {"policy": "advisory", "index": {"path": ".hermes/index.json", "checksum": ""}}
+        self.write_manifest(manifest)
+        snapshot = self.root / "fixtures" / "adw-1.0.1"
+        snapshot.mkdir(parents=True)
+        (snapshot / "tasks.toml").write_text("new snapshot\n", encoding="utf-8")
+        checksum = "sha256:" + hashlib.sha256((snapshot / "tasks.toml").read_bytes()).hexdigest()
+        index = {"schema_version": "1.0.0", "releases": [{"version": "1.0.1", "ref": "2" * 40, "checksum": checksum, "snapshot_path": "fixtures/adw-1.0.1"}]}
+        index_path = self.root / ".hermes" / "index.json"
+        index_path.write_text(json.dumps(index), encoding="utf-8")
+        manifest["context_freshness"]["index"]["checksum"] = "sha256:" + hashlib.sha256(index_path.read_bytes()).hexdigest()
+        self.write_manifest(manifest)
+
+        sync = self.contract.context_sync(self.root, run_id="run-context-sync")
+        saved = json.loads((self.root / ".hermes" / "adw-task-manifest.json").read_text(encoding="utf-8"))
+        index["releases"][0]["ref"] = "main"
+        index_path.write_text(json.dumps(index), encoding="utf-8")
+        manifest["context_freshness"]["index"]["checksum"] = "sha256:" + hashlib.sha256(index_path.read_bytes()).hexdigest()
+        self.write_manifest(manifest)
+        rejected = self.contract.context_check(self.root, run_id="run-moving-ref")
+
+        self.assertEqual(0, sync.exit_code)
+        self.assertEqual("2" * 40, saved["sources"][0]["ref"])
+        self.assertEqual("new snapshot\n", (self.root / "mise-helper" / "vendor" / "agentic-delivery" / "tasks.toml").read_text())
+        self.assertEqual(self.contract.EXIT_CONTRACT_ERROR, rejected.exit_code)
+        self.assertTrue(any(item["code"] == "freshness.release.ref" for item in rejected.evidence["findings"]))
+
     @staticmethod
     def _restore_env(name: str, value: str | None) -> None:
         if value is None:

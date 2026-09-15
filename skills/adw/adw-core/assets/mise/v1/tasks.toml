@@ -11,42 +11,47 @@ run = "python3 mise-helper/vendor/agentic-delivery/adw_contract.py check"
 ["adw:context:check"]
 description = "ADW contract task: adw:context:check"
 dir = "{{config_root}}"
-run = "python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:context:check"
+run = "python3 mise-helper/vendor/agentic-delivery/adw_contract.py context-check"
 
 ["adw:context:sync"]
 description = "ADW contract task: adw:context:sync"
 dir = "{{config_root}}"
-run = "python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:context:sync"
+run = "python3 mise-helper/vendor/agentic-delivery/adw_contract.py context-sync"
 
 ["adw:deploy:apply"]
 description = "ADW contract task: adw:deploy:apply"
 dir = "{{config_root}}"
-usage = 'arg "<environment>" help="Target environment"'
-run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:deploy:apply --environment "$usage_environment"'
+usage = '''arg "<environment>" help="Target environment"
+flag "--target <target>" help="Optional logical target"'''
+run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:deploy:apply --environment "$usage_environment" ${usage_target:+--target "$usage_target"}'
 
 ["adw:deploy:config:apply"]
 description = "ADW contract task: adw:deploy:config:apply"
 dir = "{{config_root}}"
-usage = 'arg "<environment>" help="Target environment"'
-run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:deploy:config:apply --environment "$usage_environment"'
+usage = '''arg "<environment>" help="Target environment"
+flag "--target <target>" help="Optional logical target"'''
+run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:deploy:config:apply --environment "$usage_environment" ${usage_target:+--target "$usage_target"}'
 
 ["adw:deploy:config:plan"]
 description = "ADW contract task: adw:deploy:config:plan"
 dir = "{{config_root}}"
-usage = 'arg "<environment>" help="Target environment"'
-run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:deploy:config:plan --environment "$usage_environment"'
+usage = '''arg "<environment>" help="Target environment"
+flag "--target <target>" help="Optional logical target"'''
+run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:deploy:config:plan --environment "$usage_environment" ${usage_target:+--target "$usage_target"}'
 
 ["adw:deploy:config:pull"]
 description = "ADW contract task: adw:deploy:config:pull"
 dir = "{{config_root}}"
-usage = 'arg "<environment>" help="Target environment"'
-run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:deploy:config:pull --environment "$usage_environment"'
+usage = '''arg "<environment>" help="Target environment"
+flag "--target <target>" help="Optional logical target"'''
+run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:deploy:config:pull --environment "$usage_environment" ${usage_target:+--target "$usage_target"}'
 
 ["adw:deploy:status"]
 description = "ADW contract task: adw:deploy:status"
 dir = "{{config_root}}"
-usage = 'arg "<environment>" help="Target environment"'
-run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:deploy:status --environment "$usage_environment"'
+usage = '''arg "<environment>" help="Target environment"
+flag "--target <target>" help="Optional logical target"'''
+run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:deploy:status --environment "$usage_environment" ${usage_target:+--target "$usage_target"}'
 
 ["adw:describe"]
 description = "ADW contract task: adw:describe"
@@ -56,20 +61,23 @@ run = "python3 mise-helper/vendor/agentic-delivery/adw_contract.py describe"
 ["adw:e2e"]
 description = "ADW contract task: adw:e2e"
 dir = "{{config_root}}"
-usage = 'arg "<environment>" help="Target environment"'
-run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:e2e --environment "$usage_environment"'
+usage = '''arg "<environment>" help="Target environment"
+flag "--target <target>" help="Optional logical target"'''
+run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:e2e --environment "$usage_environment" ${usage_target:+--target "$usage_target"}'
 
 ["adw:health"]
 description = "ADW contract task: adw:health"
 dir = "{{config_root}}"
-usage = 'arg "<environment>" help="Target environment"'
-run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:health --environment "$usage_environment"'
+usage = '''arg "<environment>" help="Target environment"
+flag "--target <target>" help="Optional logical target"'''
+run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:health --environment "$usage_environment" ${usage_target:+--target "$usage_target"}'
 
 ["adw:hotfix:apply"]
 description = "ADW contract task: adw:hotfix:apply"
 dir = "{{config_root}}"
-usage = 'arg "<environment>" help="Target environment"'
-run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:hotfix:apply --environment "$usage_environment"'
+usage = '''arg "<environment>" help="Target environment"
+flag "--target <target>" help="Optional logical target"'''
+run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:hotfix:apply --environment "$usage_environment" ${usage_target:+--target "$usage_target"}'
 
 ["adw:install"]
 description = "ADW contract task: adw:install"
@@ -84,8 +92,9 @@ run = "python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported -
 ["adw:readiness"]
 description = "ADW contract task: adw:readiness"
 dir = "{{config_root}}"
-usage = 'arg "<environment>" help="Target environment"'
-run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:readiness --environment "$usage_environment"'
+usage = '''arg "<environment>" help="Target environment"
+flag "--target <target>" help="Optional logical target"'''
+run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:readiness --environment "$usage_environment" ${usage_target:+--target "$usage_target"}'
 
 ["adw:static-analysis"]
 description = "ADW contract task: adw:static-analysis"
@@ -105,8 +114,9 @@ run = "python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported -
 ["adw:validate-deployment"]
 description = "ADW contract task: adw:validate-deployment"
 dir = "{{config_root}}"
-usage = 'arg "<environment>" help="Target environment"'
-run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:validate-deployment --environment "$usage_environment"'
+usage = '''arg "<environment>" help="Target environment"
+flag "--target <target>" help="Optional logical target"'''
+run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:validate-deployment --environment "$usage_environment" ${usage_target:+--target "$usage_target"}'
 
 ["adw:verify:full"]
 description = "ADW contract task: adw:verify:full"

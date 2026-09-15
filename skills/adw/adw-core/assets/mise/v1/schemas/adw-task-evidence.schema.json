@@ -7,10 +7,15 @@
           "if": {
             "properties": {
               "layer": {
-                "enum": ["generic", "context"]
+                "enum": [
+                  "generic",
+                  "context"
+                ]
               }
             },
-            "required": ["layer"]
+            "required": [
+              "layer"
+            ]
           },
           "then": {
             "properties": {
@@ -27,7 +32,9 @@
                 "const": "project"
               }
             },
-            "required": ["layer"]
+            "required": [
+              "layer"
+            ]
           },
           "then": {
             "properties": {
@@ -75,35 +82,109 @@
   "allOf": [
     {
       "if": {
-        "properties": { "status": { "enum": ["passed", "skipped", "unsupported"] } },
-        "required": ["status"]
+        "properties": {
+          "status": {
+            "enum": [
+              "passed",
+              "skipped",
+              "unsupported"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
       },
-      "then": { "properties": { "exit_code": { "const": 0 } } }
+      "then": {
+        "properties": {
+          "exit_code": {
+            "const": 0
+          }
+        }
+      }
     },
     {
-      "if": { "properties": { "status": { "const": "failed" } }, "required": ["status"] },
-      "then": { "properties": { "exit_code": { "const": 1 } } }
+      "if": {
+        "properties": {
+          "status": {
+            "const": "failed"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "exit_code": {
+            "const": 1
+          }
+        }
+      }
     },
     {
-      "if": { "properties": { "status": { "const": "blocked" } }, "required": ["status"] },
-      "then": { "properties": { "exit_code": { "const": 20 } } }
+      "if": {
+        "properties": {
+          "status": {
+            "const": "blocked"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "exit_code": {
+            "const": 20
+          }
+        }
+      }
     },
     {
-      "if": { "properties": { "status": { "const": "contract-error" } }, "required": ["status"] },
-      "then": { "properties": { "exit_code": { "const": 21 } } }
+      "if": {
+        "properties": {
+          "status": {
+            "const": "contract-error"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "exit_code": {
+            "const": 21
+          }
+        }
+      }
     },
     {
       "if": {
         "properties": {
           "task": {
             "not": {
-              "enum": ["adw:verify:minimal", "adw:verify:full", "adw:validate-deployment", "adw:hotfix:apply"]
+              "enum": [
+                "adw:verify:minimal",
+                "adw:verify:full",
+                "adw:validate-deployment",
+                "adw:hotfix:apply"
+              ]
             }
           }
         },
-        "required": ["task"]
+        "required": [
+          "task"
+        ]
       },
-      "then": { "properties": { "children": { "maxItems": 0 } } }
+      "then": {
+        "properties": {
+          "children": {
+            "maxItems": 0
+          }
+        }
+      }
     }
   ],
   "properties": {
@@ -113,6 +194,10 @@
         "environment": {
           "minLength": 1,
           "type": "string"
+        },
+        "target": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,62}$"
         }
       },
       "type": "object"
@@ -205,8 +290,13 @@
     },
     "source_revision": {
       "oneOf": [
-        { "pattern": "^(?:unknown|[0-9a-f]{40})$", "type": "string" },
-        { "type": "null" }
+        {
+          "pattern": "^(?:unknown|[0-9a-f]{40})$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ]
     },
     "started_at": {
@@ -248,6 +338,9 @@
         "adw:context:check",
         "adw:context:sync"
       ]
+    },
+    "freshness": {
+      "type": "object"
     }
   },
   "required": [

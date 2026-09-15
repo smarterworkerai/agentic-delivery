@@ -455,6 +455,41 @@
         "full"
       ],
       "type": "object"
+    },
+    "context_freshness": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "policy": {
+          "enum": [
+            "advisory",
+            "require-current-compatible"
+          ]
+        },
+        "index": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+            },
+            "checksum": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "path",
+            "checksum"
+          ]
+        }
+      },
+      "required": [
+        "policy",
+        "index"
+      ]
     }
   },
   "required": [

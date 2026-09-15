@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -69,6 +70,17 @@ class DistributionTests(unittest.TestCase):
             self.assertFalse(Path(release["snapshot_path"]).is_absolute())
             self.assertNotIn("..", Path(release["snapshot_path"]).parts)
             self.assertIsInstance(release["required"], bool)
+            snapshot_tasks = subprocess.check_output(
+                ["git", "show", f"{release['ref']}:{release['snapshot_path']}/tasks.toml"],
+                cwd=ROOT,
+            )
+            self.assertEqual(release["checksum"], "sha256:" + hashlib.sha256(snapshot_tasks).hexdigest())
+            snapshot_contract = subprocess.check_output(
+                ["git", "show", f"{release['ref']}:{release['snapshot_path']}/adw_contract.py"],
+                cwd=ROOT,
+                text=True,
+            )
+            self.assertIn("_fetch_release_snapshot", snapshot_contract)
 
     def test_generic_task_snapshot_defines_exact_canonical_abi(self) -> None:
         tasks = tomllib.loads((CONTRACT_ROOT / "tasks.toml").read_text())

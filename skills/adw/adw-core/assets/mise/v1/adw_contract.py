@@ -16,6 +16,7 @@ import sys
 import tempfile
 import uuid
 from typing import Any, Iterable
+import urllib.request
 
 
 CONTRACT_NAME = "adw-mise-task-contract"
@@ -530,14 +531,9 @@ def validate_manifest(manifest: dict[str, Any]) -> list[dict[str, str]]:
     required_secret_env = manifest.get("required_secret_env", [])
     context_freshness = manifest.get("context_freshness")
     if context_freshness is not None:
-        if not isinstance(context_freshness, dict) or set(context_freshness) != {"policy", "index"}:
-            findings.append(_finding("freshness.config", "context_freshness requires policy and trusted index"))
-        else:
-            index = context_freshness.get("index")
-            if context_freshness.get("policy") not in {"advisory", "require-current-compatible"} or not isinstance(index, dict) or set(index) != {"path", "checksum"}:
-                findings.append(_finding("freshness.config", "context_freshness policy or index is invalid"))
-            elif not isinstance(index.get("path"), str) or Path(index["path"]).is_absolute() or ".." in Path(index["path"]).parts or not isinstance(index.get("checksum"), str) or not CHECKSUM_PATTERN.fullmatch(index["checksum"]):
-                findings.append(_finding("freshness.index", "context freshness index path/checksum is invalid"))
+        upstream = context_freshness.get("upstream") if isinstance(context_freshness, dict) else None
+        if not isinstance(context_freshness, dict) or set(context_freshness) != {"policy", "upstream"} or context_freshness.get("policy") not in {"advisory", "require-current-compatible"} or not isinstance(upstream, dict) or set(upstream) != {"repository", "branch", "index_path"} or upstream.get("repository") != "smarterworkerai/agentic-delivery" or upstream.get("branch") != "main" or not isinstance(upstream.get("index_path"), str) or Path(upstream["index_path"]).is_absolute() or ".." in Path(upstream["index_path"]).parts:
+            findings.append(_finding("freshness.config", "context_freshness requires trusted smarterworkerai/agentic-delivery main upstream"))
     required_secret_env = manifest.get("required_secret_env", [])
     if not isinstance(required_secret_env, list) or any(
         not isinstance(item, str) or not re.fullmatch(r"[A-Z][A-Z0-9_]*", item)
@@ -593,21 +589,23 @@ def _version(value: str) -> tuple[int, int, int] | None:
 
 def _resolve_freshness(root: Path, manifest: dict[str, Any]) -> tuple[dict[str, Any] | None, dict[str, Any] | None, list[dict[str, str]]]:
     config = manifest.get("context_freshness")
-    if not isinstance(config, dict) or set(config) != {"policy", "index"} or config.get("policy") not in {"advisory", "require-current-compatible"}:
-        return None, None, [_finding("freshness.config", "context_freshness requires policy and trusted index")]
-    index_config = config.get("index")
-    if not isinstance(index_config, dict) or set(index_config) != {"path", "checksum"}:
-        return config, None, [_finding("freshness.index", "trusted index requires path and checksum")]
-    path, checksum = index_config.get("path"), index_config.get("checksum")
-    if not isinstance(path, str) or Path(path).is_absolute() or ".." in Path(path).parts or not isinstance(checksum, str) or not CHECKSUM_PATTERN.fullmatch(checksum):
-        return config, None, [_finding("freshness.index", "trusted index path/checksum is invalid")]
-    try:
-        raw = (root / path).read_bytes()
-        if "sha256:" + hashlib.sha256(raw).hexdigest() != checksum:
-            raise ValueError("checksum mismatch")
-        index = json.loads(raw)
-    except (OSError, ValueError, json.JSONDecodeError) as exc:
-        return config, None, [_finding("freshness.lookup", f"trusted index unavailable ({type(exc).__name__})")]
+    if not isinstance(config, dict) or config.get("policy") not in {"advisory", "require-current-compatible"}:
+        return None, None, [_finding("freshness.config", "context_freshness requires a valid policy")]
+    upstream = config.get("upstream")
+    if isinstance(upstream, dict):
+        repository, branch, path = upstream.get("repository"), upstream.get("branch"), upstream.get("index_path")
+        if set(config) != {"policy", "upstream"} or repository != "smarterworkerai/agentic-delivery" or branch != "main" or not isinstance(path, str) or Path(path).is_absolute() or ".." in Path(path).parts:
+            return config, None, [_finding("freshness.config", "trusted upstream must be smarterworkerai/agentic-delivery main with a safe index path")]
+        url = f"https://raw.githubusercontent.com/{repository}/{branch}/{path}"
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url), timeout=10) as response:
+                raw = response.read()
+            index = json.loads(raw)
+        except Exception as exc:
+            return config, None, [_finding("freshness.lookup", f"trusted upstream index unavailable ({type(exc).__name__})")]
+        config = {**config, "lookup_source": url}
+    else:
+        return config, None, [_finding("freshness.config", "context_freshness requires trusted upstream")]
     if not isinstance(index, dict) or index.get("schema_version") != "1.0.0" or not isinstance(index.get("releases"), list):
         return config, None, [_finding("freshness.index", "trusted index has an invalid shape")]
     match = COMPATIBILITY_PATTERN.fullmatch(manifest["contract"]["compatible"])
@@ -641,10 +639,10 @@ def context_check(project_root: Path | str, run_id: str | None = None) -> Result
     config, latest, lookup_findings = _resolve_freshness(root, manifest) if not findings else (None, None, [])
     findings.extend(lookup_findings)
     if findings:
-        return _result(root, manifest, task="adw:context:check", status="blocked" if any(item["code"] == "freshness.lookup" for item in findings) else "contract-error", exit_code=EXIT_BLOCKED if any(item["code"] == "freshness.lookup" for item in findings) else EXIT_CONTRACT_ERROR, run_id=run_id, findings=findings, freshness={"verdict": "lookup-unavailable", "lookup_source": config["index"]["path"] if config else None}, started_at=started)
+        return _result(root, manifest, task="adw:context:check", status="blocked" if any(item["code"] == "freshness.lookup" for item in findings) else "contract-error", exit_code=EXIT_BLOCKED if any(item["code"] == "freshness.lookup" for item in findings) else EXIT_CONTRACT_ERROR, run_id=run_id, findings=findings, freshness={"verdict": "lookup-unavailable", "lookup_source": config.get("lookup_source") if config else None}, started_at=started)
     generic = next(source for source in manifest["sources"] if source.get("layer") == "generic")
     verdict = "incompatible-major" if latest is None else "current" if generic["ref"] == latest["ref"] else "update-required" if latest.get("required") else "update-available"
-    freshness = {"verdict": verdict, "lookup_source": config["index"]["path"], "pin": {"ref": generic["ref"], "checksum": generic["checksum"]}, "latest": {key: latest[key] for key in ("version", "ref", "checksum")} if latest else None}
+    freshness = {"verdict": verdict, "lookup_source": config["lookup_source"], "pin": {"ref": generic["ref"], "checksum": generic["checksum"]}, "latest": {key: latest[key] for key in ("version", "ref", "checksum")} if latest else None}
     strict = config["policy"] == "require-current-compatible" and verdict in {"update-available", "update-required", "lookup-unavailable"}
     return _result(root, manifest, task="adw:context:check", status="blocked" if strict else "passed", exit_code=EXIT_BLOCKED if strict else 0, run_id=run_id, findings=[_finding("freshness.verdict", verdict, "warning" if verdict != "current" else "info")], freshness=freshness, payload=freshness, started_at=started)
 

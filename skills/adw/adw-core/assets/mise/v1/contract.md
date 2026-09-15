@@ -114,7 +114,7 @@ adw:context:check
 adw:context:sync
 ```
 
-`adw:context:check` is read-only and only operates when the manifest declares a trusted, checksummed release index. It records the consumer generic pin, selected latest compatible immutable ref/version, index path, and one of `current`, `update-available`, `update-required`, `incompatible-major`, or `lookup-unavailable`. `require-current-compatible` blocks stale pins and unavailable lookup in CI. Moving branches and tags are never final resolved refs.
+`adw:context:check` is read-only and only operates when the manifest declares the trusted `smarterworkerai/agentic-delivery` `main` branch plus a safe release-index path. It retrieves that upstream index over HTTPS, records the consumer generic pin and selected latest compatible immutable ref/version, and returns one of `current`, `update-available`, `update-required`, `incompatible-major`, or `lookup-unavailable`. `require-current-compatible` blocks stale pins and unavailable lookup in CI. Moving branches and tags are never final resolved refs.
 
 `adw:context:sync` is an explicit local-write maintenance task. It copies the selected local/approved immutable snapshot, verifies the checksum, and updates only the vendor snapshot and manifest pins for review; it never commits, opens a PR, or runs automatically from `check` or normal CI.
 

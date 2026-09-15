@@ -75,7 +75,7 @@ ADW defaults inner feature/bugfix integration to minimal validation. Release-lin
 
 ### Deployment
 
-All environment arguments are opaque values from the manifest enum. Generic ADW never invents or hardcodes environment names.
+All environment arguments are opaque values from the manifest enum. Generic ADW never invents or hardcodes environment names. Environment-scoped tasks also accept an optional `--target <logical-target>`. When omitted, the project chooses its declared active target; when present, the project validates it against its own inventory. A target is a bounded logical identifier only—not a provider, namespace, host, remote ID, endpoint, credential, or child-command argument.
 
 ```text
 adw:deploy:config:pull <environment>
@@ -114,7 +114,9 @@ adw:context:check
 adw:context:sync
 ```
 
-`check` is side-effect-free drift/provenance inspection. `sync` explicitly refreshes pinned vendored task and non-secret variable snapshots and creates a reviewable diff. Normal ADW and CI execution never updates context snapshots implicitly.
+`adw:context:check` is read-only and only operates when the manifest declares a trusted, checksummed release index. It records the consumer generic pin, selected latest compatible immutable ref/version, index path, and one of `current`, `update-available`, `update-required`, `incompatible-major`, or `lookup-unavailable`. `require-current-compatible` blocks stale pins and unavailable lookup in CI. Moving branches and tags are never final resolved refs.
+
+`adw:context:sync` is an explicit local-write maintenance task. It copies the selected local/approved immutable snapshot, verifies the checksum, and updates only the vendor snapshot and manifest pins for review; it never commits, opens a PR, or runs automatically from `check` or normal CI.
 
 ## Include precedence and offline operation
 

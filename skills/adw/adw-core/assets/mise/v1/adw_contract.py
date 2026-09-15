@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -46,6 +47,7 @@ TOP_LEVEL_FIELDS = {
     "capabilities",
     "verification",
     "required_secret_env",
+    "context_freshness",
 }
 CANONICAL_TASKS = {
     "adw:describe",
@@ -122,6 +124,7 @@ CHECKSUM_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 GIT_COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 COMPATIBILITY_PATTERN = re.compile(r"^>=(\d+)\.(\d+)\.(\d+),<(\d+)\.(\d+)\.(\d+)$")
 RUN_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+LOGICAL_TARGET_PATTERN = re.compile(r"^[a-z][a-z0-9-]{0,62}$")
 TOP_LEVEL_FIELDS = {
     "schema_version",
     "contract",
@@ -132,6 +135,7 @@ TOP_LEVEL_FIELDS = {
     "capabilities",
     "verification",
     "required_secret_env",
+    "context_freshness",
 }
 SOURCE_FIELDS = {"layer", "ref", "checksum", "path"}
 CAPABILITY_FIELDS = {"status", "side_effect", "environments", "source"}
@@ -218,6 +222,13 @@ def _finding(code: str, message: str, severity: str = "error") -> dict[str, str]
     return {"code": code, "severity": severity, "message": message}
 
 
+def _arguments(environment: str | None = None, target: str | None = None) -> dict[str, str]:
+    value = {"environment": environment} if environment else {}
+    if target:
+        value["target"] = target
+    return value
+
+
 def _safe_effective_source(manifest: dict[str, Any] | None, task: str) -> dict[str, str] | None:
     if not manifest or not isinstance(manifest.get("capabilities"), dict):
         return None
@@ -241,6 +252,7 @@ def _build_evidence(
     findings: list[dict[str, str]] | None = None,
     arguments: dict[str, Any] | None = None,
     children: Iterable[str] | None = None,
+    freshness: dict[str, Any] | None = None,
     started_at: str | None = None,
 ) -> dict[str, Any]:
     if status not in STATUSES:
@@ -259,6 +271,7 @@ def _build_evidence(
         "arguments": arguments or {},
         "findings": findings or [],
         "children": list(children or []),
+        **({"freshness": freshness} if freshness is not None else {}),
     }
 
 
@@ -287,6 +300,7 @@ def _result(
     arguments: dict[str, Any] | None = None,
     children: Iterable[str] | None = None,
     payload: dict[str, Any] | None = None,
+    freshness: dict[str, Any] | None = None,
     started_at: str | None = None,
 ) -> Result:
     try:
@@ -306,6 +320,7 @@ def _result(
         findings=findings,
         arguments=arguments,
         children=children,
+        freshness=freshness,
         started_at=started_at,
     )
     _persist(project_root, manifest, evidence)
@@ -513,6 +528,17 @@ def validate_manifest(manifest: dict[str, Any]) -> list[dict[str, str]]:
                     )
                 )
     required_secret_env = manifest.get("required_secret_env", [])
+    context_freshness = manifest.get("context_freshness")
+    if context_freshness is not None:
+        if not isinstance(context_freshness, dict) or set(context_freshness) != {"policy", "index"}:
+            findings.append(_finding("freshness.config", "context_freshness requires policy and trusted index"))
+        else:
+            index = context_freshness.get("index")
+            if context_freshness.get("policy") not in {"advisory", "require-current-compatible"} or not isinstance(index, dict) or set(index) != {"path", "checksum"}:
+                findings.append(_finding("freshness.config", "context_freshness policy or index is invalid"))
+            elif not isinstance(index.get("path"), str) or Path(index["path"]).is_absolute() or ".." in Path(index["path"]).parts or not isinstance(index.get("checksum"), str) or not CHECKSUM_PATTERN.fullmatch(index["checksum"]):
+                findings.append(_finding("freshness.index", "context freshness index path/checksum is invalid"))
+    required_secret_env = manifest.get("required_secret_env", [])
     if not isinstance(required_secret_env, list) or any(
         not isinstance(item, str) or not re.fullmatch(r"[A-Z][A-Z0-9_]*", item)
         for item in required_secret_env
@@ -558,6 +584,99 @@ def _validate_source_files(project_root: Path, manifest: dict[str, Any]) -> list
                 )
             )
     return findings
+
+
+def _version(value: str) -> tuple[int, int, int] | None:
+    match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", value)
+    return tuple(int(part) for part in match.groups()) if match else None
+
+
+def _resolve_freshness(root: Path, manifest: dict[str, Any]) -> tuple[dict[str, Any] | None, dict[str, Any] | None, list[dict[str, str]]]:
+    config = manifest.get("context_freshness")
+    if not isinstance(config, dict) or set(config) != {"policy", "index"} or config.get("policy") not in {"advisory", "require-current-compatible"}:
+        return None, None, [_finding("freshness.config", "context_freshness requires policy and trusted index")]
+    index_config = config.get("index")
+    if not isinstance(index_config, dict) or set(index_config) != {"path", "checksum"}:
+        return config, None, [_finding("freshness.index", "trusted index requires path and checksum")]
+    path, checksum = index_config.get("path"), index_config.get("checksum")
+    if not isinstance(path, str) or Path(path).is_absolute() or ".." in Path(path).parts or not isinstance(checksum, str) or not CHECKSUM_PATTERN.fullmatch(checksum):
+        return config, None, [_finding("freshness.index", "trusted index path/checksum is invalid")]
+    try:
+        raw = (root / path).read_bytes()
+        if "sha256:" + hashlib.sha256(raw).hexdigest() != checksum:
+            raise ValueError("checksum mismatch")
+        index = json.loads(raw)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        return config, None, [_finding("freshness.lookup", f"trusted index unavailable ({type(exc).__name__})")]
+    if not isinstance(index, dict) or index.get("schema_version") != "1.0.0" or not isinstance(index.get("releases"), list):
+        return config, None, [_finding("freshness.index", "trusted index has an invalid shape")]
+    match = COMPATIBILITY_PATTERN.fullmatch(manifest["contract"]["compatible"])
+    lower, upper = tuple(int(value) for value in match.groups()[:3]), tuple(int(value) for value in match.groups()[3:])
+    compatible: list[dict[str, Any]] = []
+    for release in index["releases"]:
+        if not isinstance(release, dict) or set(release) - {"version", "ref", "checksum", "snapshot_path", "required"}:
+            return config, None, [_finding("freshness.release", "trusted index contains an invalid release")]
+        version = release.get("version")
+        snapshot_path = release.get("snapshot_path")
+        if not isinstance(version, str) or _version(version) is None or not isinstance(release.get("ref"), str) or not GIT_COMMIT_PATTERN.fullmatch(release["ref"]):
+            return config, None, [_finding("freshness.release.ref", "trusted releases require SemVer and immutable 40-character refs")]
+        if not isinstance(release.get("checksum"), str) or not CHECKSUM_PATTERN.fullmatch(release["checksum"]) or not isinstance(snapshot_path, str) or Path(snapshot_path).is_absolute() or ".." in Path(snapshot_path).parts:
+            return config, None, [_finding("freshness.release", "trusted release checksum or snapshot path is invalid")]
+        if lower <= _version(version) < upper:
+            compatible.append(release)
+    return config, max(compatible, key=lambda item: _version(item["version"])) if compatible else None, []
+
+
+def context_check(project_root: Path | str, run_id: str | None = None) -> Result:
+    root = Path(project_root)
+    started = _now()
+    try:
+        manifest = _load_manifest(root)
+    except (FileNotFoundError, json.JSONDecodeError, ValueError) as exc:
+        return _result(root, None, task="adw:context:check", status="blocked", exit_code=EXIT_BLOCKED, run_id=run_id, findings=[_finding("manifest.missing", f"ADW task manifest unavailable ({type(exc).__name__})")], started_at=started)
+    findings = validate_manifest(manifest)
+    capability = manifest.get("capabilities", {}).get("adw:context:check")
+    if not findings and (not isinstance(capability, dict) or capability.get("status") != "supported"):
+        return _result(root, manifest, task="adw:context:check", status="unsupported", exit_code=0, run_id=run_id, findings=[_finding("capability.unsupported", "adw:context:check is unsupported by this project", "info")], started_at=started)
+    config, latest, lookup_findings = _resolve_freshness(root, manifest) if not findings else (None, None, [])
+    findings.extend(lookup_findings)
+    if findings:
+        return _result(root, manifest, task="adw:context:check", status="blocked" if any(item["code"] == "freshness.lookup" for item in findings) else "contract-error", exit_code=EXIT_BLOCKED if any(item["code"] == "freshness.lookup" for item in findings) else EXIT_CONTRACT_ERROR, run_id=run_id, findings=findings, freshness={"verdict": "lookup-unavailable", "lookup_source": config["index"]["path"] if config else None}, started_at=started)
+    generic = next(source for source in manifest["sources"] if source.get("layer") == "generic")
+    verdict = "incompatible-major" if latest is None else "current" if generic["ref"] == latest["ref"] else "update-required" if latest.get("required") else "update-available"
+    freshness = {"verdict": verdict, "lookup_source": config["index"]["path"], "pin": {"ref": generic["ref"], "checksum": generic["checksum"]}, "latest": {key: latest[key] for key in ("version", "ref", "checksum")} if latest else None}
+    strict = config["policy"] == "require-current-compatible" and verdict in {"update-available", "update-required", "lookup-unavailable"}
+    return _result(root, manifest, task="adw:context:check", status="blocked" if strict else "passed", exit_code=EXIT_BLOCKED if strict else 0, run_id=run_id, findings=[_finding("freshness.verdict", verdict, "warning" if verdict != "current" else "info")], freshness=freshness, payload=freshness, started_at=started)
+
+
+def context_sync(project_root: Path | str, run_id: str | None = None) -> Result:
+    root = Path(project_root)
+    check_result = context_check(root, run_id=run_id)
+    latest = check_result.evidence.get("freshness", {}).get("latest")
+    if check_result.evidence["status"] == "contract-error" or not latest:
+        return check_result
+    manifest = _load_manifest(root)
+    sync_capability = manifest.get("capabilities", {}).get("adw:context:sync")
+    if not isinstance(sync_capability, dict) or sync_capability.get("status") != "supported":
+        return _result(root, manifest, task="adw:context:sync", status="blocked", exit_code=EXIT_BLOCKED, run_id=run_id, findings=[_finding("capability.required", "adw:context:sync is unsupported by this project")])
+    _, release, findings = _resolve_freshness(root, manifest)
+    generic = next(source for source in manifest["sources"] if source.get("layer") == "generic")
+    source_path = Path(generic["path"])
+    snapshot = root / release["snapshot_path"]
+    replacement = snapshot / source_path.name
+    if findings or not replacement.is_file() or "sha256:" + hashlib.sha256(replacement.read_bytes()).hexdigest() != release["checksum"]:
+        return _result(root, manifest, task="adw:context:sync", status="contract-error", exit_code=EXIT_CONTRACT_ERROR, run_id=run_id, findings=findings or [_finding("freshness.snapshot", "trusted snapshot is missing or checksum mismatched")])
+    destination = root / source_path.parent
+    shutil.rmtree(destination, ignore_errors=True)
+    shutil.copytree(snapshot, destination)
+    for source in manifest["sources"]:
+        if source.get("layer") == "generic":
+            source["ref"], source["checksum"] = latest["ref"], latest["checksum"]
+    for capability in manifest["capabilities"].values():
+        if capability["source"].get("layer") == "generic":
+            capability["source"]["ref"], capability["source"]["checksum"] = latest["ref"], latest["checksum"]
+    _atomic_write_json(_manifest_path(root), manifest)
+    return _result(root, manifest, task="adw:context:sync", status="passed", exit_code=0, run_id=run_id, freshness=check_result.evidence["freshness"], payload=check_result.evidence["freshness"])
 
 
 def describe(project_root: Path | str, run_id: str | None = None) -> Result:
@@ -707,7 +826,7 @@ def check(
                 findings.append(_finding("task.missing", f"declared canonical task is missing from mise catalog: {task}"))
                 continue
             if task in ENVIRONMENT_TASKS and not re.fullmatch(
-                r'\s*arg\s+"<environment>"(?:\s+help="[^"]*")?\s*', usages.get(task, "")
+                r'\s*arg\s+"<environment>"(?:\s+help="[^"]*")?(?:\s*\n\s*flag\s+"--target <target>"(?:\s+help="[^"]*")?)?\s*', usages.get(task, "")
             ):
                 findings.append(
                     _finding("task.signature", f"task {task} must declare a required <environment> input")
@@ -749,8 +868,11 @@ def unsupported(
     task: str,
     run_id: str | None = None,
     environment: str | None = None,
+    target: str | None = None,
 ) -> Result:
     root = Path(project_root)
+    if target is not None and (task not in ENVIRONMENT_TASKS or not LOGICAL_TARGET_PATTERN.fullmatch(target)):
+        return _result(root, None, task=task, status="contract-error", exit_code=EXIT_CONTRACT_ERROR, run_id=run_id, findings=[_finding("target.invalid", "target must be a bounded logical identifier for an environment-scoped task")], arguments=_arguments(environment))
     try:
         manifest = _load_manifest(root)
     except FileNotFoundError:
@@ -789,7 +911,7 @@ def unsupported(
             exit_code=EXIT_CONTRACT_ERROR,
             run_id=run_id,
             findings=findings,
-            arguments={"environment": environment} if environment else {},
+            arguments=_arguments(environment, target),
         )
     return _result(
         root,
@@ -799,7 +921,7 @@ def unsupported(
         exit_code=0,
         run_id=run_id,
         findings=[_finding("capability.unsupported", f"{task} is unsupported by this project", "info")],
-        arguments={"environment": environment} if environment else {},
+        arguments=_arguments(environment, target),
     )
 
 
@@ -945,11 +1067,18 @@ def run_command(
     task: str,
     command: list[str],
     environment: str | None = None,
+    target: str | None = None,
     run_id: str | None = None,
     children: Iterable[str] | None = None,
 ) -> Result:
     root = Path(project_root)
     started = _now()
+    if target is not None and (task not in ENVIRONMENT_TASKS or not LOGICAL_TARGET_PATTERN.fullmatch(target)):
+        return _result(
+            root, None, task=task, status="contract-error", exit_code=EXIT_CONTRACT_ERROR, run_id=run_id,
+            findings=[_finding("target.invalid", "target must be a bounded logical identifier for an environment-scoped task")],
+            arguments=_arguments(environment), started_at=started,
+        )
     try:
         resolved_run_id = _run_id(run_id)
     except ValueError:
@@ -1038,7 +1167,7 @@ def run_command(
         exit_code=exit_code,
         run_id=resolved_run_id,
         findings=findings,
-        arguments={"environment": environment} if environment else {},
+        arguments=_arguments(environment, target),
         children=child_tasks,
         started_at=started,
     )
@@ -1060,15 +1189,19 @@ def build_parser() -> argparse.ArgumentParser:
     describe_parser = subparsers.add_parser("describe")
     describe_parser.set_defaults(command_name="describe")
     subparsers.add_parser("check")
+    subparsers.add_parser("context-check")
+    subparsers.add_parser("context-sync")
     unsupported_parser = subparsers.add_parser("unsupported")
     unsupported_parser.add_argument("--task", required=True)
     unsupported_parser.add_argument("--environment")
+    unsupported_parser.add_argument("--target")
     require_parser = subparsers.add_parser("require")
     require_parser.add_argument("--task", required=True)
     require_parser.add_argument("--environment")
     run_parser = subparsers.add_parser("run")
     run_parser.add_argument("--task", required=True)
     run_parser.add_argument("--environment")
+    run_parser.add_argument("--target")
     run_parser.add_argument("--child", action="append", choices=sorted(CANONICAL_TASKS), default=[])
     run_parser.add_argument("command_args", nargs=argparse.REMAINDER)
     return parser
@@ -1081,8 +1214,12 @@ def main(argv: list[str] | None = None) -> int:
         result = describe(root, run_id=args.run_id)
     elif args.command == "check":
         result = check(root, run_id=args.run_id)
+    elif args.command == "context-check":
+        result = context_check(root, run_id=args.run_id)
+    elif args.command == "context-sync":
+        result = context_sync(root, run_id=args.run_id)
     elif args.command == "unsupported":
-        result = unsupported(root, args.task, run_id=args.run_id, environment=args.environment)
+        result = unsupported(root, args.task, run_id=args.run_id, environment=args.environment, target=args.target)
     elif args.command == "require":
         result = require(root, args.task, environment=args.environment, run_id=args.run_id)
     else:
@@ -1092,6 +1229,7 @@ def main(argv: list[str] | None = None) -> int:
             args.task,
             command,
             environment=args.environment,
+            target=args.target,
             run_id=args.run_id,
             children=args.child,
         )

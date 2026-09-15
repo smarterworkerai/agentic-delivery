@@ -43,6 +43,10 @@ Each project owns its concrete task implementations and `.hermes/adw-task-manife
 
 Missing or invalid manifests fail closed. ADW does not improvise package-manager, deployment-provider, or infrastructure commands.
 
+### Vendored-context freshness
+
+A project may support `adw:context:check` with `context_freshness` in its manifest: a checksummed, project-relative trusted release index and either `advisory` or `require-current-compatible` policy. The strict policy is suitable for fast-feedback CI: `mise run adw:context:check` fails when the vendor pin is stale or the trusted lookup is unavailable. Index releases must name exact immutable Git SHAs; a branch or tag is never accepted as the resolved release. `adw:context:sync` is an explicit local-write update which leaves vendor and manifest changes for normal review; neither task commits or opens a PR.
+
 ## Install
 
 Requirements:

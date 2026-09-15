@@ -53,7 +53,7 @@ class DistributionTests(unittest.TestCase):
         self.assertFalse(schema["additionalProperties"])
         arguments = schema["properties"]["arguments"]
         self.assertFalse(arguments["additionalProperties"])
-        self.assertEqual({"environment"}, set(arguments["properties"]))
+        self.assertEqual({"environment", "target"}, set(arguments["properties"]))
         self.assertEqual("^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$", schema["properties"]["run_id"]["pattern"])
 
     def test_generic_task_snapshot_defines_exact_canonical_abi(self) -> None:

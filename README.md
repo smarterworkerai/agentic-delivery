@@ -45,7 +45,7 @@ Missing or invalid manifests fail closed. ADW does not improvise package-manager
 
 ### Vendored-context freshness
 
-A project may support `adw:context:check` with `context_freshness` in its manifest: the trusted `smarterworkerai/agentic-delivery` `main` branch, a safe release-index path, and either `advisory` or `require-current-compatible` policy. The strict policy is suitable for fast-feedback CI: `mise run adw:context:check` fails when the vendor pin is stale or the trusted upstream lookup is unavailable. Index releases must name exact immutable Git SHAs; a branch or tag is never accepted as the resolved release. `adw:context:sync` is an explicit local-write update which verifies the selected release snapshot checksum and leaves vendor and manifest changes for normal review; neither task commits or opens a PR.
+A project may support `adw:context:check` with `context_freshness` in its manifest: the trusted `smarterworkerai/agentic-delivery` `main` branch, a safe release-index path, and either `advisory` or `require-current-compatible` policy. The strict policy is suitable for fast-feedback CI: `mise run adw:context:check` fails when the vendor pin is stale or the trusted upstream lookup is unavailable. Index releases must name exact immutable Git SHAs; a branch or tag is never accepted as the resolved release. `adw:context:sync` explicitly downloads the selected immutable GitHub codeload archive, safely stages only the declared snapshot subtree, verifies its canonical `tasks.toml` checksum, then locally replaces the vendor snapshot and updates the manifest. Neither task commits or opens a PR.
 
 ## Install
 

@@ -56,6 +56,20 @@ class DistributionTests(unittest.TestCase):
         self.assertEqual({"environment", "target"}, set(arguments["properties"]))
         self.assertEqual("^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$", schema["properties"]["run_id"]["pattern"])
 
+    def test_v1_release_index_publishes_immutable_checksum_verified_snapshot(self) -> None:
+        index = json.loads((ROOT / "releases" / "adw-mise-v1.json").read_text())
+
+        self.assertEqual("1.0.0", index["schema_version"])
+        self.assertTrue(index["releases"])
+        for release in index["releases"]:
+            self.assertEqual({"version", "ref", "checksum", "snapshot_path", "required"}, set(release))
+            self.assertRegex(release["version"], r"^\d+\.\d+\.\d+$")
+            self.assertRegex(release["ref"], r"^[0-9a-f]{40}$")
+            self.assertRegex(release["checksum"], r"^sha256:[0-9a-f]{64}$")
+            self.assertFalse(Path(release["snapshot_path"]).is_absolute())
+            self.assertNotIn("..", Path(release["snapshot_path"]).parts)
+            self.assertIsInstance(release["required"], bool)
+
     def test_generic_task_snapshot_defines_exact_canonical_abi(self) -> None:
         tasks = tomllib.loads((CONTRACT_ROOT / "tasks.toml").read_text())
 

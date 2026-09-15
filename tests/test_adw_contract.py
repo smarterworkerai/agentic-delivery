@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import importlib.util
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
+import tarfile
 import tempfile
 import unittest
 
@@ -833,21 +835,36 @@ class ContractTests(unittest.TestCase):
         manifest["capabilities"]["adw:context:sync"]["status"] = "supported"
         manifest["context_freshness"] = {"policy": "advisory", "upstream": {"repository": "smarterworkerai/agentic-delivery", "branch": "main", "index_path": "releases/adw-mise-v1.json"}}
         self.write_manifest(manifest)
-        snapshot = self.root / "fixtures" / "adw-1.0.1"
-        snapshot.mkdir(parents=True)
-        (snapshot / "tasks.toml").write_text("new snapshot\n", encoding="utf-8")
-        checksum = "sha256:" + hashlib.sha256((snapshot / "tasks.toml").read_bytes()).hexdigest()
-        index = {"schema_version": "1.0.0", "releases": [{"version": "1.0.1", "ref": "2" * 40, "checksum": checksum, "snapshot_path": "fixtures/adw-1.0.1"}]}
+        snapshot_path = "skills/adw/adw-core/assets/mise/v1"
+        snapshot_files = {"tasks.toml": b"new snapshot\n", "contract.md": b"snapshot contract\n"}
+        checksum = "sha256:" + hashlib.sha256(snapshot_files["tasks.toml"]).hexdigest()
+        index = {"schema_version": "1.0.0", "releases": [{"version": "1.0.1", "ref": "2" * 40, "checksum": checksum, "snapshot_path": snapshot_path}]}
+
+        archive_buffer = io.BytesIO()
+        with tarfile.open(fileobj=archive_buffer, mode="w:gz") as archive:
+            for directory in (f"agentic-delivery-{'2' * 40}", f"agentic-delivery-{'2' * 40}/{snapshot_path}"):
+                member = tarfile.TarInfo(directory)
+                member.type = tarfile.DIRTYPE
+                archive.addfile(member)
+            for name, contents in snapshot_files.items():
+                member = tarfile.TarInfo(f"agentic-delivery-{'2' * 40}/{snapshot_path}/{name}")
+                member.size = len(contents)
+                archive.addfile(member, io.BytesIO(contents))
+        archive_bytes = archive_buffer.getvalue()
+
         class Response:
+            def __init__(self, payload: bytes): self.payload = payload
             def __enter__(self): return self
             def __exit__(self, *args): return False
-            def read(self): return json.dumps(index).encode("utf-8")
+            def read(self): return self.payload
+        def fetch(request, timeout):
+            return Response(json.dumps(index).encode("utf-8") if request.full_url.endswith("releases/adw-mise-v1.json") else archive_bytes)
         from unittest.mock import patch
-        with patch("urllib.request.urlopen", return_value=Response()):
+        with patch("urllib.request.urlopen", side_effect=fetch):
             sync = self.contract.context_sync(self.root, run_id="run-context-sync")
         saved = json.loads((self.root / ".hermes" / "adw-task-manifest.json").read_text(encoding="utf-8"))
         index["releases"][0]["ref"] = "main"
-        with patch("urllib.request.urlopen", return_value=Response()):
+        with patch("urllib.request.urlopen", side_effect=fetch):
             rejected = self.contract.context_check(self.root, run_id="run-moving-ref")
 
         self.assertEqual(0, sync.exit_code)

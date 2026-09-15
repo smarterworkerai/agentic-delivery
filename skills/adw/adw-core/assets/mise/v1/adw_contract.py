@@ -6,6 +6,7 @@ import argparse
 from collections import namedtuple
 from datetime import datetime, timezone
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -13,6 +14,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import uuid
 from typing import Any, Iterable
@@ -625,6 +627,47 @@ def _resolve_freshness(root: Path, manifest: dict[str, Any]) -> tuple[dict[str, 
     return config, max(compatible, key=lambda item: _version(item["version"])) if compatible else None, []
 
 
+def _fetch_release_snapshot(release: dict[str, Any], destination: Path) -> list[dict[str, str]]:
+    """Download one immutable upstream archive and safely materialize its declared subtree."""
+    repository, ref, snapshot_path = "smarterworkerai/agentic-delivery", release["ref"], release["snapshot_path"]
+    url = f"https://codeload.github.com/{repository}/tar.gz/{ref}"
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url), timeout=30) as response:
+            archive_bytes = response.read()
+        archive = tarfile.open(fileobj=io.BytesIO(archive_bytes), mode="r:gz")
+    except Exception as exc:
+        return [_finding("freshness.snapshot", f"trusted snapshot unavailable ({type(exc).__name__})")]
+    prefix_parts = tuple(Path(snapshot_path).parts)
+    extracted = 0
+    try:
+        with archive:
+            for member in archive.getmembers():
+                parts = tuple(Path(member.name).parts)
+                if len(parts) <= len(prefix_parts) or parts[1:1 + len(prefix_parts)] != prefix_parts:
+                    continue
+                relative_parts = parts[1 + len(prefix_parts):]
+                if not relative_parts:
+                    if member.isdir():
+                        continue
+                    return [_finding("freshness.snapshot", "trusted snapshot archive contains an unsafe entry")]
+                relative = Path(*relative_parts)
+                if member.isdir():
+                    continue
+                if relative.is_absolute() or ".." in relative.parts or not member.isfile():
+                    return [_finding("freshness.snapshot", "trusted snapshot archive contains an unsafe entry")]
+                source = archive.extractfile(member)
+                if source is None:
+                    return [_finding("freshness.snapshot", "trusted snapshot archive cannot be read")]
+                target = destination / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with source, target.open("wb") as output:
+                    shutil.copyfileobj(source, output)
+                extracted += 1
+    except (OSError, tarfile.TarError) as exc:
+        return [_finding("freshness.snapshot", f"trusted snapshot extraction failed ({type(exc).__name__})")]
+    return [] if extracted else [_finding("freshness.snapshot", "trusted snapshot does not contain the declared path")]
+
+
 def context_check(project_root: Path | str, run_id: str | None = None) -> Result:
     root = Path(project_root)
     started = _now()
@@ -658,22 +701,40 @@ def context_sync(project_root: Path | str, run_id: str | None = None) -> Result:
     if not isinstance(sync_capability, dict) or sync_capability.get("status") != "supported":
         return _result(root, manifest, task="adw:context:sync", status="blocked", exit_code=EXIT_BLOCKED, run_id=run_id, findings=[_finding("capability.required", "adw:context:sync is unsupported by this project")])
     _, release, findings = _resolve_freshness(root, manifest)
+    if release is None:
+        return _result(root, manifest, task="adw:context:sync", status="contract-error", exit_code=EXIT_CONTRACT_ERROR, run_id=run_id, findings=findings or [_finding("freshness.release", "no compatible trusted release is available")])
     generic = next(source for source in manifest["sources"] if source.get("layer") == "generic")
     source_path = Path(generic["path"])
-    snapshot = root / release["snapshot_path"]
-    replacement = snapshot / source_path.name
-    if findings or not replacement.is_file() or "sha256:" + hashlib.sha256(replacement.read_bytes()).hexdigest() != release["checksum"]:
-        return _result(root, manifest, task="adw:context:sync", status="contract-error", exit_code=EXIT_CONTRACT_ERROR, run_id=run_id, findings=findings or [_finding("freshness.snapshot", "trusted snapshot is missing or checksum mismatched")])
     destination = root / source_path.parent
-    shutil.rmtree(destination, ignore_errors=True)
-    shutil.copytree(snapshot, destination)
-    for source in manifest["sources"]:
-        if source.get("layer") == "generic":
-            source["ref"], source["checksum"] = latest["ref"], latest["checksum"]
-    for capability in manifest["capabilities"].values():
-        if capability["source"].get("layer") == "generic":
-            capability["source"]["ref"], capability["source"]["checksum"] = latest["ref"], latest["checksum"]
-    _atomic_write_json(_manifest_path(root), manifest)
+    staging = destination.parent / f".{destination.name}.adw-sync-{uuid.uuid4().hex}"
+    backup = destination.parent / f".{destination.name}.adw-backup-{uuid.uuid4().hex}"
+    try:
+        staging.mkdir(parents=True)
+        findings = findings or _fetch_release_snapshot(release, staging)
+        replacement = staging / source_path.name
+        if findings or not replacement.is_file() or "sha256:" + hashlib.sha256(replacement.read_bytes()).hexdigest() != release["checksum"]:
+            return _result(root, manifest, task="adw:context:sync", status="contract-error", exit_code=EXIT_CONTRACT_ERROR, run_id=run_id, findings=findings or [_finding("freshness.snapshot", "trusted snapshot checksum mismatched")])
+        for source in manifest["sources"]:
+            if source.get("layer") == "generic":
+                source["ref"], source["checksum"] = latest["ref"], latest["checksum"]
+        for capability in manifest["capabilities"].values():
+            if capability["source"].get("layer") == "generic":
+                capability["source"]["ref"], capability["source"]["checksum"] = latest["ref"], latest["checksum"]
+        if destination.exists():
+            os.replace(destination, backup)
+        os.replace(staging, destination)
+        try:
+            _atomic_write_json(_manifest_path(root), manifest)
+        except Exception:
+            shutil.rmtree(destination, ignore_errors=True)
+            if backup.exists():
+                os.replace(backup, destination)
+            raise
+    except OSError as exc:
+        return _result(root, manifest, task="adw:context:sync", status="contract-error", exit_code=EXIT_CONTRACT_ERROR, run_id=run_id, findings=[_finding("freshness.snapshot", f"local snapshot update failed ({type(exc).__name__})")])
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+        shutil.rmtree(backup, ignore_errors=True)
     return _result(root, manifest, task="adw:context:sync", status="passed", exit_code=0, run_id=run_id, freshness=check_result.evidence["freshness"], payload=check_result.evidence["freshness"])
 
 

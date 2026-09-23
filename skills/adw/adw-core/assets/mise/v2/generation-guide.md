@@ -1,6 +1,6 @@
 # Generate a project ADW mise adapter
 
-Use this guide to create reviewable project-owned files that implement ADW mise task contract v1. Generation discovers facts; it does not authorize operational work.
+Use this guide to create reviewable project-owned files that implement ADW mise task contract v2. Generation discovers facts; it does not authorize operational work.
 
 ## Required output layout
 

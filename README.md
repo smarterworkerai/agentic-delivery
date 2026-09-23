@@ -33,10 +33,10 @@ These are not mise tasks.
 
 ### Deterministic project operations
 
-Projects expose supported build, test, verification, deployment, status, health, readiness, E2E, context-sync, and temporary-hotfix operations through the canonical `adw:*` ABI. The normative v1 package is:
+Projects expose supported build, test, verification, deployment, status, health, readiness, E2E, context-sync, and temporary-hotfix operations through the canonical `adw:*` ABI. The normative v2 package is:
 
 ```text
-skills/adw/adw-core/assets/mise/v1/
+skills/adw/adw-core/assets/mise/v2/
 ```
 
 Each project owns its concrete task implementations and `.hermes/adw-task-manifest.json`. Optional context includes provide only proven shared task definitions and non-secret variables. Include precedence is generic ADW → optional context → project-local override.
@@ -118,12 +118,13 @@ Repository metadata, the project adapter, and explicit human input determine bra
 
 ## Validation
 
+The **Required producer quality** check runs `python3 tools/verify_producer.py` on GitHub Actions for branch pushes and PRs. It covers the unit/distribution suite, skill validator, and direct plugin-package tests without a Hermes runtime; this producer-repository check is distinct from the `adw:verify:full` task graph required of consuming projects. It does not claim to run the Hermes Plugin Doctor or live deployments.
+
 Run from the repository root:
 
 ```bash
-python3 tools/validate_adw_skills.py
+python3 tools/verify_producer.py
 /path/to/hermes/venv/bin/python tools/validate_adw_plugin_package.py
-python3 -m unittest discover -s tests -v
 ```
 
 The plugin validator runs the real `hermes plugins doctor --ci` contract and isolated runtime-only discovery. Run it with a Python interpreter from the Hermes environment so `hermes_cli` is importable; `HERMES_BIN` may select the Doctor executable but does not replace that interpreter requirement.

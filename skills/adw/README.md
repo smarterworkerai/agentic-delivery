@@ -18,7 +18,7 @@ Do not create repo-root shared artifact directories for new ADW materials. Add o
 - `adw-core/templates/`
 - `adw-core/references/adr/`
 - `adw-core/assets/diagrams/`
-- `adw-core/assets/mise/v1/`
+- `adw-core/assets/mise/v2/`
 
 ## Skill Index
 

@@ -1,7 +1,7 @@
 ---
 name: adw-merge-feature
 description: Use when merging a validated PR into an approved target.
-version: 1.0.0
+version: 2.0.0
 author: Hermes Agent
 license: MIT
 metadata:
@@ -29,13 +29,13 @@ Load `adw-core` before using this skill. It contains the shared delivery gates, 
 ## Workflow
 
 1. Inspect PR state, checks, review status, linked issue, and validation report using `adw-core/references/playbooks/deployment_gates.md` and `adw-core/references/playbooks/release_targets.md`.
-2. Confirm the exact destination branch and, when deployment is requested, the exact opaque environment and deployment consequence with the human.
+2. Confirm the exact destination branch and, when deployment is requested, the exact opaque environment and deployment consequence with the human. A verified upfront chain authorization explicitly covering this exact branch/environment/operation satisfies this confirmation; do not request it again merely because a previous gate passed. If the scope or target changed, stop and renew authorization.
 3. Stop if PR is rejected, checks are unresolved, or target is ambiguous.
 4. Merge PR using the repository's merge policy.
 5. Verify destination branch SHA. If deployment was not explicitly requested, report the merge result and stop. Otherwise resolve the environment through the repository adapter and manifest, then run `mise run adw:check` and `mise run adw:describe`; do not infer an environment name.
-6. Run `mise run adw:deploy:config:pull <environment>` and `mise run adw:deploy:config:plan <environment>`. Inspect the plan and, after the external deployment approval gate, apply it with `mise run adw:deploy:config:apply <environment>`.
+6. Run `mise run adw:deploy:config:pull <environment>` and `mise run adw:deploy:config:plan <environment>`. Inspect the plan and, after the external deployment approval gate (which an exact, still-valid upfront chain authorization may satisfy), apply it with `mise run adw:deploy:config:apply <environment>`. Stop on unexpected secret/config drift rather than treating the earlier authorization as a waiver.
 7. Deploy with `mise run adw:deploy:apply <environment>` and inspect `mise run adw:deploy:status <environment>` evidence.
-8. Verify artifact/revision identity and runtime behavior with `mise run adw:health <environment>`, `mise run adw:readiness <environment>`, `mise run adw:e2e <environment>`, and `mise run adw:validate-deployment <environment>` according to manifest support. Persistent services require write-path validation or an explicit blocker/waiver. Load `adw-validate-regression` for deeper coverage.
+8. Verify artifact/revision identity and runtime behavior with `mise run adw:health <environment>`, `mise run adw:readiness <environment>`, and `mise run adw:validate-deployment <environment>` according to manifest support. Neither optional E2E suite is automatic; require explicit per-run authorization before executing either. Persistent services require write-path validation or an explicit blocker/waiver. Load `adw-validate-regression` for deeper coverage.
 9. Close the linked issue only when repository policy and verified delivery state say its acceptance criteria are complete. Otherwise add an intermediate status comment. Link the merged PR, destination revision, validation/deployment evidence when applicable, final status, and follow-up or rollback note using `adw-core/references/playbooks/github_traceability.md` and file-backed Markdown.
 10. Report final delivery status with `adw-core/templates/deployment_report.md` when deployment ran; otherwise report the verified merge-only result.
 
@@ -45,7 +45,7 @@ Before merge, confirm:
 
 - destination branch is correct; when deployment is requested, the adapter/manifest resolve the intended target environment
 - PR is not rejected
-- required checks passed or failures are explicitly accepted
+- the PR-attached required quality/proof check passed for the exact current head and tested tree; pending, failed, skipped, stale, or unrelated checks block merge
 - preview validation is complete when applicable
 - when deployment is requested, deployment configuration parity is proven by `adw:deploy:config:pull` and `adw:deploy:config:plan` evidence for every affected target environment
 - when deployment is requested, the approved plan is applied with `adw:deploy:config:apply` before deployment

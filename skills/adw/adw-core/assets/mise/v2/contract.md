@@ -1,10 +1,10 @@
-# ADW mise task contract v1
+# ADW mise task contract v2
 
 ## Purpose
 
 This contract defines the stable boundary between Agentic Delivery Workflow orchestration and deterministic project operations. ADW, CI, and humans invoke the same canonical mise tasks. Projects and optional context layers implement those tasks without exposing tool- or provider-specific decisions to generic ADW.
 
-The contract version is `1.0.0`. Breaking task, manifest, evidence, status, or behavioral changes require a major version bump.
+The contract and schema version is `2.0.0`. This is a breaking replacement: v1 task names are not aliases and a v1 consumer requires an explicit reviewed migration. Historic immutable v1 tags remain in Git history; the v2 directory is the only active snapshot. Breaking task, manifest, evidence, status, or behavioral changes require a major version bump.
 
 ## Ownership boundary
 
@@ -46,9 +46,9 @@ Each source record contains `layer`, `ref`, `checksum`, and project-relative `pa
 The side-effect class is fixed by task name and is validated even when the capability is declared `unsupported` (the unsupported stub itself remains non-mutating):
 
 - `read-only`: `adw:describe`, `adw:check`, `adw:deploy:config:plan`, `adw:deploy:status`, `adw:health`, `adw:readiness`, `adw:context:check`;
-- `local-write`: `adw:install`, `adw:build`, `adw:lint`, `adw:static-analysis`, `adw:test:unit`, `adw:test:integration`, `adw:verify:minimal`, `adw:verify:full`, `adw:deploy:config:pull`, `adw:context:sync`;
-- `remote-write`: `adw:deploy:config:apply`, `adw:deploy:apply`, `adw:e2e`, `adw:validate-deployment`, `adw:hotfix:apply`;
-- `destructive`: no v1 public task.
+- `local-write`: `adw:install`, `adw:build`, `adw:lint`, `adw:static-analysis`, `adw:test:unit`, `adw:test:integration:fast`, `adw:test:integration:full`, `adw:verify:minimal`, `adw:verify:full`, `adw:deploy:config:pull`, `adw:context:sync`;
+- `remote-write`: `adw:deploy:config:apply`, `adw:deploy:apply`, `adw:test:e2e:fast`, `adw:test:e2e:full`, `adw:validate-deployment`, `adw:hotfix:apply`;
+- `destructive`: no v2 public task.
 
 ### Local preparation and quality
 
@@ -58,18 +58,19 @@ adw:build
 adw:lint
 adw:static-analysis
 adw:test:unit
-adw:test:integration
+adw:test:integration:fast
+adw:test:integration:full
 adw:verify:minimal
 adw:verify:full
 ```
 
 `mise install` installs the pinned toolchain. `adw:install` prepares project dependencies.
 
-`adw:verify:minimal` runs a manifest-declared fast allowlist. It includes a fast build/compile or targeted smoke when applicable, but does not automatically add lint, static analysis, or the full test suite.
+`adw:verify:minimal` runs a manifest-declared fast allowlist. It is non-promotable feedback only and does not automatically add lint, static analysis, or the complete required quality graph.
 
-`adw:verify:full` runs every supported local quality capability required by the project, including build, lint, static analysis, unit/integration tests, and project verification. It does not launch hosted CI or subagent review.
+`adw:verify:full` runs every supported required local quality capability: build, lint, static analysis, unit and **fast** integration as declared by the project. It does not launch hosted CI or subagent review; it is not a promise to run every optional test.
 
-Both verification graphs contain only supported local-quality leaf tasks (`adw:build`, `adw:lint`, `adw:static-analysis`, `adw:test:unit`, and `adw:test:integration`). They cannot contain deployment, remote-write, aggregate, or self-referential tasks.
+Both verification graphs contain only supported local-quality leaf tasks (`adw:build`, `adw:lint`, `adw:static-analysis`, `adw:test:unit`, and `adw:test:integration:fast`). `integration:full` and both E2E suites are individually runnable optional capabilities, never automatic verification children. Non-execution of an optional suite is neither a pass nor a waiver/documentation obligation. An explicitly executed suite must report honest non-empty results through project-owned checks.
 
 ADW defaults inner feature/bugfix integration to minimal validation. Release-line integration requires full validation plus the external ADW review/approval gates.
 
@@ -85,11 +86,12 @@ adw:deploy:apply <environment>
 adw:deploy:status <environment>
 adw:health <environment>
 adw:readiness <environment>
-adw:e2e <environment>
+adw:test:e2e:fast <environment>
+adw:test:e2e:full <environment>
 adw:validate-deployment <environment>
 ```
 
-Tasks ending in `:apply` mutate state. They do not implement approval flags or interactive confirmation. ADW/human policy authorizes invocation; manifest side-effect metadata lets every caller distinguish inspection from mutation.
+Tasks ending in `:apply` mutate state. They do not implement approval flags or interactive confirmation. Both environment-scoped E2E tasks are `remote-write` and require separate per-run authorization, target validation and provider safety gates. `adw:validate-deployment` is limited to required runtime semantics (including health, readiness and project-required write-path checks); it must not invoke either E2E suite implicitly. ADW/human policy authorizes invocation; manifest side-effect metadata lets every caller distinguish inspection from mutation.
 
 Projects encode provider methods, routes, payloads, redaction, live-ID lookup, polling, readback, and idempotency in project-owned tasks/helpers.
 
@@ -114,7 +116,7 @@ adw:context:check
 adw:context:sync
 ```
 
-`adw:context:check` is read-only and only operates when the manifest declares the trusted `smarterworkerai/agentic-delivery` `main` branch plus a safe release-index path. It retrieves that upstream index over HTTPS, records the consumer generic pin and selected latest compatible immutable ref/version, and returns one of `current`, `update-available`, `update-required`, `incompatible-major`, or `lookup-unavailable`. `require-current-compatible` blocks stale pins and unavailable lookup in CI. Moving branches and tags are never final resolved refs.
+`adw:context:check` is read-only and only operates when the manifest declares exactly one generic source and the trusted `smarterworkerai/agentic-delivery` `main` branch plus a safe release-index path. It retrieves that upstream index over HTTPS, records the consumer generic pin and selected latest compatible immutable ref/version, and returns one of `current`, `update-available`, `update-required`, `incompatible-major`, or `lookup-unavailable`. `current` requires both immutable ref and snapshot checksum to match; a same-ref/different-checksum pin is a contract error. `require-current-compatible` blocks stale pins and unavailable lookup in CI. Moving branches and tags are never final resolved refs.
 
 `adw:context:sync` is an explicit local-write maintenance task. It downloads the selected immutable GitHub codeload archive, safely stages only the index-declared snapshot subtree, verifies the canonical `tasks.toml` checksum, and atomically replaces only the vendor snapshot before updating manifest pins for review; it never commits, opens a PR, or runs automatically from `check` or normal CI.
 
@@ -164,7 +166,7 @@ Tasks print concise human-readable progress and write separate redacted JSON evi
 
 Project and context task implementations should invoke `adw_contract.py run --task <task> [--environment <value>] [--child <canonical-task>]... -- <command>`. The adapter validates the complete manifest and source checksums before execution. A nonzero child exit becomes the public `failed` exit class `1`; the raw child exit remains in the evidence finding. The adapter persists only the selected target environment name and declared canonical child task names, and does not persist child command arguments or environment-variable values. Only aggregate tasks may declare unique, non-self-referential children. Unsupported generic stubs use `adw_contract.py unsupported`, return zero only when the manifest declares that canonical task unsupported, and record `unsupported`.
 
-An aggregate may report `passed` only after every declared child evidence file exists under the same run ID and its run ID, task name, status, and exit class validate. `adw:verify:minimal` and `adw:verify:full` must declare exactly the corresponding manifest verification graph.
+An aggregate may report `passed` only after every declared child evidence file exists under the same run ID and its run ID, task name, status, exit class, contract/schema version, effective source, source revision and execution window validate. Child evidence must have been generated during this aggregate execution; reusing a previous result with the same run ID is a contract error. `adw:verify:minimal` and `adw:verify:full` must declare exactly the corresponding manifest verification graph.
 
 The JSON Schemas enforce closed structure and directly expressible constraints. The dependency-free Python validator is normative for cross-object invariants that Draft 2020-12 cannot compare dynamically, including supported-capability verification coverage and source-registry/file containment checks.
 

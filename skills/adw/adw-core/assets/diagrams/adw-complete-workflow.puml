@@ -22,6 +22,7 @@ partition "ADW Agent" {
 partition Human {
   :Approve the implementation path when required;
   :Explicitly approve the exact PR source branch, target branch, and replacement/deletion effect;
+  :For full rollout, approve the exact adapter-declared promotion and deployment route at this first confirmation;
 }
 
 partition "ADW Agent" {
@@ -54,7 +55,7 @@ partition "ADW Agent" {
   if (Disposable preview declared?) then (yes)
     :Plan/apply preview configuration through canonical tasks;
     :Deploy and inspect canonical status evidence;
-    :Run supported health, readiness, E2E, and deployment validation;
+    :Run supported health, readiness, and deployment validation; optional E2E only with explicit run authorization;
   endif
   :Run adw:verify:full for release-class targets;
   if (Validation incomplete or failed?) then (yes)
@@ -63,9 +64,22 @@ partition "ADW Agent" {
   endif
 }
 
-partition Human {
-  :Explicitly approve exact merge target;
-  :State whether deployment is requested and approve its exact target if so;
+partition "ADW Agent" {
+  if (Exact full-rollout grant still valid?) then (yes)
+    :Recheck the exact target and every quality/review/preview gate; continue without repeat confirmation;
+  else (no)
+    if (Full rollout requested but exact grant cannot be verified or route changed?) then (yes)
+      :Stop; re-propose the exact route and rerun any stale gates;
+      partition Human {
+        :Explicitly authorize the new exact route and deployment consequences before continuation;
+      }
+    else (ordinary chain)
+      partition Human {
+        :Explicitly approve exact merge target;
+        :State whether deployment is requested and approve its exact target if so;
+      }
+    endif
+  endif
 }
 
 partition "ADW Agent" {
@@ -75,7 +89,7 @@ partition "ADW Agent" {
     :Resolve opaque environment from manifest and adapter;
     :Plan/apply configuration through canonical tasks;
     :Deploy through adw:deploy:apply;
-    :Verify status, identity, health, readiness, E2E, and business semantics as supported;
+    :Verify status, identity, health, readiness, and business semantics; run optional E2E only with explicit run authorization;
     if (Deployment regression?) then (yes)
       :Preserve failed-state evidence;
       :Request exact rollback approval;

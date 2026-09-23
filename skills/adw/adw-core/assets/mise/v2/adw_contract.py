@@ -22,8 +22,8 @@ import urllib.request
 
 
 CONTRACT_NAME = "adw-mise-task-contract"
-CONTRACT_VERSION = "1.0.0"
-SCHEMA_VERSION = "1.0.0"
+CONTRACT_VERSION = "2.0.0"
+SCHEMA_VERSION = "2.0.0"
 EXIT_FAILED = 1
 EXIT_BLOCKED = 20
 EXIT_CONTRACT_ERROR = 21
@@ -60,7 +60,8 @@ CANONICAL_TASKS = {
     "adw:lint",
     "adw:static-analysis",
     "adw:test:unit",
-    "adw:test:integration",
+    "adw:test:integration:fast",
+    "adw:test:integration:full",
     "adw:verify:minimal",
     "adw:verify:full",
     "adw:deploy:config:pull",
@@ -70,7 +71,8 @@ CANONICAL_TASKS = {
     "adw:deploy:status",
     "adw:health",
     "adw:readiness",
-    "adw:e2e",
+    "adw:test:e2e:fast",
+    "adw:test:e2e:full",
     "adw:validate-deployment",
     "adw:hotfix:apply",
     "adw:context:check",
@@ -84,7 +86,8 @@ TASK_SIDE_EFFECTS = {
     "adw:lint": "local-write",
     "adw:static-analysis": "local-write",
     "adw:test:unit": "local-write",
-    "adw:test:integration": "local-write",
+    "adw:test:integration:fast": "local-write",
+    "adw:test:integration:full": "local-write",
     "adw:verify:minimal": "local-write",
     "adw:verify:full": "local-write",
     "adw:deploy:config:pull": "local-write",
@@ -94,7 +97,8 @@ TASK_SIDE_EFFECTS = {
     "adw:deploy:status": "read-only",
     "adw:health": "read-only",
     "adw:readiness": "read-only",
-    "adw:e2e": "remote-write",
+    "adw:test:e2e:fast": "remote-write",
+    "adw:test:e2e:full": "remote-write",
     "adw:validate-deployment": "remote-write",
     "adw:hotfix:apply": "remote-write",
     "adw:context:check": "read-only",
@@ -108,7 +112,8 @@ ENVIRONMENT_TASKS = {
     "adw:deploy:status",
     "adw:health",
     "adw:readiness",
-    "adw:e2e",
+    "adw:test:e2e:fast",
+    "adw:test:e2e:full",
     "adw:validate-deployment",
     "adw:hotfix:apply",
 }
@@ -118,9 +123,9 @@ LOCAL_QUALITY_TASKS = {
     "adw:lint",
     "adw:static-analysis",
     "adw:test:unit",
-    "adw:test:integration",
+    "adw:test:integration:fast",
 }
-MINIMAL_SMOKE_TASKS = {"adw:build", "adw:test:unit", "adw:test:integration"}
+MINIMAL_SMOKE_TASKS = {"adw:build", "adw:test:unit", "adw:test:integration:fast"}
 SECRET_KEY_PATTERN = re.compile(r"(?:password|token|secret|credential|private[_-]?key)", re.I)
 ALLOWED_SECRET_METADATA_KEYS = {"required_secret_env"}
 CHECKSUM_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
@@ -533,6 +538,10 @@ def validate_manifest(manifest: dict[str, Any]) -> list[dict[str, str]]:
     required_secret_env = manifest.get("required_secret_env", [])
     context_freshness = manifest.get("context_freshness")
     if context_freshness is not None:
+        if not isinstance(sources, list) or sum(
+            isinstance(source, dict) and source.get("layer") == "generic" for source in sources
+        ) != 1:
+            findings.append(_finding("freshness.source", "context_freshness requires exactly one generic source"))
         upstream = context_freshness.get("upstream") if isinstance(context_freshness, dict) else None
         if not isinstance(context_freshness, dict) or set(context_freshness) != {"policy", "upstream"} or context_freshness.get("policy") not in {"advisory", "require-current-compatible"} or not isinstance(upstream, dict) or set(upstream) != {"repository", "branch", "index_path"} or upstream.get("repository") != "smarterworkerai/agentic-delivery" or upstream.get("branch") != "main" or not isinstance(upstream.get("index_path"), str) or Path(upstream["index_path"]).is_absolute() or ".." in Path(upstream["index_path"]).parts:
             findings.append(_finding("freshness.config", "context_freshness requires trusted smarterworkerai/agentic-delivery main upstream"))
@@ -623,6 +632,8 @@ def _resolve_freshness(root: Path, manifest: dict[str, Any]) -> tuple[dict[str, 
         if not isinstance(release.get("checksum"), str) or not CHECKSUM_PATTERN.fullmatch(release["checksum"]) or not isinstance(snapshot_path, str) or Path(snapshot_path).is_absolute() or ".." in Path(snapshot_path).parts:
             return config, None, [_finding("freshness.release", "trusted release checksum or snapshot path is invalid")]
         if lower <= _version(version) < upper:
+            if snapshot_path != "skills/adw/adw-core/assets/mise/v2":
+                return config, None, [_finding("freshness.release", "compatible release must point to the v2 snapshot") ]
             compatible.append(release)
     return config, max(compatible, key=lambda item: _version(item["version"])) if compatible else None, []
 
@@ -684,6 +695,10 @@ def context_check(project_root: Path | str, run_id: str | None = None) -> Result
     if findings:
         return _result(root, manifest, task="adw:context:check", status="blocked" if any(item["code"] == "freshness.lookup" for item in findings) else "contract-error", exit_code=EXIT_BLOCKED if any(item["code"] == "freshness.lookup" for item in findings) else EXIT_CONTRACT_ERROR, run_id=run_id, findings=findings, freshness={"verdict": "lookup-unavailable", "lookup_source": config.get("lookup_source") if config else None}, started_at=started)
     generic = next(source for source in manifest["sources"] if source.get("layer") == "generic")
+    if latest is not None and generic["ref"] == latest["ref"] and generic["checksum"] != latest["checksum"]:
+        return _result(root, manifest, task="adw:context:check", status="contract-error", exit_code=EXIT_CONTRACT_ERROR,
+                       run_id=run_id, findings=[_finding("freshness.checksum", "pinned generic ref and release checksum disagree")],
+                       freshness={"verdict": "pin-mismatch", "lookup_source": config.get("lookup_source") if config else None}, started_at=started)
     verdict = "incompatible-major" if latest is None else "current" if generic["ref"] == latest["ref"] else "update-required" if latest.get("required") else "update-available"
     freshness = {"verdict": verdict, "lookup_source": config["lookup_source"], "pin": {"ref": generic["ref"], "checksum": generic["checksum"]}, "latest": {key: latest[key] for key in ("version", "ref", "checksum")} if latest else None}
     strict = config["policy"] == "require-current-compatible" and verdict in {"update-available", "update-required", "lookup-unavailable"}
@@ -878,6 +893,9 @@ def check(
             usages = {}
     else:
         names = set(task_names)
+    # A retired v1 name must not remain as a runnable alias in a v2 catalog.
+    for retired in sorted({"adw:test:integration", "adw:e2e"} & names):
+        findings.append(_finding("task.retired", f"v1 task is forbidden in the v2 catalog: {retired}"))
     capabilities = manifest.get("capabilities", {})
     if isinstance(capabilities, dict):
         for task in sorted(capabilities):
@@ -1090,9 +1108,13 @@ def _validate_child_evidence(
     manifest: dict[str, Any],
     run_id: str,
     child_tasks: list[str],
+    aggregate_started_at: str,
 ) -> tuple[str, int, list[dict[str, str]]]:
     findings: list[dict[str, str]] = []
     child_statuses: list[str] = []
+    expected_revision = _source_revision(root)
+    window_start = datetime.fromisoformat(aggregate_started_at)
+    window_end = datetime.now(timezone.utc)
     expected_exits = {"passed": 0, "unsupported": 0, "failed": 1, "blocked": 20, "contract-error": 21}
     evidence_root = _evidence_root(root, manifest)
     for child in child_tasks:
@@ -1108,6 +1130,20 @@ def _validate_child_evidence(
             continue
         if status not in expected_exits or evidence.get("exit_code") != expected_exits[status]:
             findings.append(_finding("evidence.child_status", f"child evidence status/exit mismatch for {child}"))
+            continue
+        try:
+            child_start = datetime.fromisoformat(evidence["started_at"])
+            child_finish = datetime.fromisoformat(evidence["finished_at"])
+            valid_window = (child_start.tzinfo is not None and child_finish.tzinfo is not None
+                            and window_start <= child_start <= child_finish <= window_end)
+        except (KeyError, TypeError, ValueError):
+            valid_window = False
+        if (not valid_window or evidence.get("source_revision") != expected_revision
+                or evidence.get("effective_source") != manifest["capabilities"][child]["source"]
+                or evidence.get("contract_version") != CONTRACT_VERSION
+                or evidence.get("schema_version") != SCHEMA_VERSION
+                or evidence.get("children") != []):
+            findings.append(_finding("evidence.child_provenance", f"child evidence provenance mismatch for {child}"))
             continue
         child_statuses.append(status)
     if findings:
@@ -1159,8 +1195,11 @@ def run_command(
     child_tasks = list(children or [])
     aggregate_tasks = {"adw:verify:minimal", "adw:verify:full", "adw:validate-deployment", "adw:hotfix:apply"}
     invalid_children = sorted(set(child_tasks) - CANONICAL_TASKS)
+    forbidden_optional = {"adw:test:integration:full", "adw:test:e2e:fast", "adw:test:e2e:full"}
     child_error = None
-    if child_tasks and task not in aggregate_tasks:
+    if set(child_tasks) & forbidden_optional:
+        child_error = "optional full integration and E2E suites cannot be aggregate children"
+    elif child_tasks and task not in aggregate_tasks:
         child_error = f"{task} is not an aggregate task and cannot declare child evidence"
     elif task in child_tasks:
         child_error = f"{task} cannot declare itself as child evidence"
@@ -1216,7 +1255,7 @@ def run_command(
         _finding("command.exit", f"project task command exited with code {normalized_child_exit}", severity)
     ]
     if exit_code == 0 and child_tasks:
-        status, exit_code, child_findings = _validate_child_evidence(root, manifest, resolved_run_id, child_tasks)
+        status, exit_code, child_findings = _validate_child_evidence(root, manifest, resolved_run_id, child_tasks, started)
         findings.extend(child_findings)
     return _result(
         root,

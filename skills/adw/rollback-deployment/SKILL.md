@@ -1,7 +1,7 @@
 ---
 name: adw-rollback-deployment
 description: Use when restoring a failed deployment through policy.
-version: 1.0.0
+version: 2.0.0
 author: Hermes Agent
 license: MIT
 metadata:
@@ -42,7 +42,7 @@ Load `adw-core` before using this skill. Resolve shared artifacts from the `adw-
 7. Run `mise run adw:check` and `mise run adw:describe`. Stop on manifest, provenance, or capability errors.
 8. Run `mise run adw:deploy:config:pull <environment>` and `mise run adw:deploy:config:plan <environment>`. Inspect the plan, then invoke `mise run adw:deploy:config:apply <environment>` only under the approved rollback/deployment gate.
 9. Deploy with `mise run adw:deploy:apply <environment>` and inspect `mise run adw:deploy:status <environment>` evidence.
-10. Verify the intended restored identity and runtime behavior with manifest-supported `adw:health`, `adw:readiness`, `adw:e2e`, and `adw:validate-deployment` tasks.
+10. Verify the intended restored identity and runtime behavior with manifest-supported `adw:health`, `adw:readiness`, and `adw:validate-deployment` tasks. Both E2E suites remain separate optional remote-write tasks under per-run approval.
 11. Update the bug issue and `adw-core/templates/rollback_report.md` with failed/restored identities, stateful-risk decisions, canonical evidence, impact, and fix-forward work.
 
 ## Safety Boundary

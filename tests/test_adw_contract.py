@@ -12,7 +12,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-MODULE_PATH = ROOT / "skills" / "adw" / "adw-core" / "assets" / "mise" / "v1" / "adw_contract.py"
+MODULE_PATH = ROOT / "skills" / "adw" / "adw-core" / "assets" / "mise" / "v2" / "adw_contract.py"
 
 
 def load_contract_module():
@@ -80,11 +80,11 @@ def valid_manifest() -> dict:
         },
     })
     return {
-        "schema_version": "1.0.0",
+        "schema_version": "2.0.0",
         "contract": {
             "name": "adw-mise-task-contract",
-            "version": "1.0.0",
-            "compatible": ">=1.0.0,<2.0.0",
+            "version": "2.0.0",
+            "compatible": ">=2.0.0,<3.0.0",
         },
         "project": {"id": "example/service"},
         "evidence": {"root": ".hermes/evidence"},
@@ -151,6 +151,117 @@ class ContractTests(unittest.TestCase):
     def read_only_evidence_files(self) -> list[Path]:
         return list((self.root / ".hermes" / "evidence").glob("*/*.json"))
 
+    def test_v2_rejects_v1_capabilities_and_contract(self) -> None:
+        manifest = valid_manifest()
+        self.assertIn("adw:test:integration:fast", self.contract.CANONICAL_TASKS)
+        self.assertIn("adw:test:integration:full", self.contract.CANONICAL_TASKS)
+        self.assertIn("adw:test:e2e:fast", self.contract.CANONICAL_TASKS)
+        self.assertIn("adw:test:e2e:full", self.contract.CANONICAL_TASKS)
+        for retired in ("adw:test:integration", "adw:e2e"):
+            self.assertNotIn(retired, self.contract.CANONICAL_TASKS)
+            manifest["capabilities"][retired] = manifest["capabilities"]["adw:build"]
+        self.assertTrue(any(f["code"] == "capabilities.name" for f in self.contract.validate_manifest(manifest)))
+        del manifest["capabilities"]["adw:test:integration"]
+        del manifest["capabilities"]["adw:e2e"]
+        manifest["contract"]["version"] = "1.0.0"
+        self.assertTrue(any(f["code"] == "contract.version" for f in self.contract.validate_manifest(manifest)))
+
+    def test_context_check_rejects_same_ref_with_different_checksum(self) -> None:
+        manifest = valid_manifest()
+        manifest["capabilities"]["adw:context:check"]["status"] = "supported"
+        manifest["context_freshness"] = {"policy": "advisory", "upstream": {
+            "repository": "smarterworkerai/agentic-delivery", "branch": "main",
+            "index_path": "releases/adw-mise-v2.json",
+        }}
+        self.write_manifest(manifest)
+        source = manifest["sources"][0]
+        index = {"schema_version": "1.0.0", "releases": [{
+            "version": "2.0.0", "ref": source["ref"],
+            "checksum": "sha256:" + "f" * 64,
+            "snapshot_path": "skills/adw/adw-core/assets/mise/v2", "required": True,
+        }]}
+        from unittest.mock import patch
+        with patch("urllib.request.urlopen") as fetch:
+            fetch.return_value.__enter__.return_value.read.return_value = json.dumps(index).encode()
+            result = self.contract.context_check(self.root)
+        self.assertNotEqual("current", result.evidence.get("freshness", {}).get("verdict"))
+        self.assertNotEqual(0, result.exit_code)
+
+    def test_context_check_rejects_missing_generic_source_without_crashing(self) -> None:
+        manifest = valid_manifest()
+        generic = manifest["sources"].pop(0)
+        project = manifest["sources"][0]
+        for capability in manifest["capabilities"].values():
+            if capability["source"] == generic:
+                capability["source"] = project
+        manifest["capabilities"]["adw:context:check"]["status"] = "supported"
+        manifest["context_freshness"] = {"policy": "advisory", "upstream": {
+            "repository": "smarterworkerai/agentic-delivery", "branch": "main",
+            "index_path": "releases/adw-mise-v2.json",
+        }}
+        self.write_manifest(manifest)
+        result = self.contract.context_check(self.root)
+        self.assertEqual(self.contract.EXIT_CONTRACT_ERROR, result.exit_code)
+        self.assertTrue(any(f["code"] == "freshness.source" for f in result.evidence["findings"]))
+
+    def test_fresh_child_evidence_must_match_aggregate_execution_and_source(self) -> None:
+        manifest = valid_manifest()
+        self.write_manifest(manifest)
+        run_id = "reused-child-run"
+        child = self.contract.run_command(self.root, "adw:build", ["python3", "-c", "pass"], run_id=run_id)
+        self.assertEqual(0, child.exit_code)
+        result = self.contract.run_command(self.root, "adw:verify:minimal", ["python3", "-c", "pass"], run_id=run_id, children=["adw:build"])
+        self.assertEqual(self.contract.EXIT_CONTRACT_ERROR, result.exit_code)
+        self.assertTrue(any(f["code"] == "evidence.child_provenance" for f in result.evidence["findings"]))
+
+        # Even a freshly timed child cannot substitute evidence from another source.
+        def child_during_aggregate(*args, **kwargs):
+            data = self.contract._build_evidence(self.root, manifest, task="adw:build",
+                status="passed", exit_code=0, run_id=run_id)
+            data["effective_source"] = manifest["sources"][0]
+            self.contract._persist(self.root, manifest, data)
+            return type("Done", (), {"returncode": 0})()
+        from unittest.mock import patch
+        original_run = self.contract.subprocess.run
+        with patch.object(self.contract.subprocess, "run", side_effect=lambda args, **kwargs:
+                          original_run(args, **kwargs) if args[0] == "git" else child_during_aggregate(args, **kwargs)):
+            result = self.contract.run_command(self.root, "adw:verify:minimal", ["python3", "-c", "pass"], run_id=run_id, children=["adw:build"])
+        self.assertEqual(self.contract.EXIT_CONTRACT_ERROR, result.exit_code)
+        self.assertTrue(any(f["code"] == "evidence.child_provenance" for f in result.evidence["findings"]))
+
+    def test_deployment_aggregate_cannot_hide_optional_e2e(self) -> None:
+        manifest = valid_manifest()
+        manifest["capabilities"]["adw:validate-deployment"].update(status="supported", environments=["preview"])
+        self.write_manifest(manifest)
+        marker = self.root / "ran"
+        for optional in ("adw:test:e2e:fast", "adw:test:e2e:full", "adw:test:integration:full"):
+            with self.subTest(optional=optional):
+                result = self.contract.run_command(
+                    self.root, "adw:validate-deployment",
+                    ["python3", "-c", f"from pathlib import Path; Path({str(marker)!r}).touch()"],
+                    environment="preview", children=[optional],
+                )
+                self.assertEqual(self.contract.EXIT_CONTRACT_ERROR, result.exit_code)
+                self.assertFalse(marker.exists())
+
+    def test_v2_catalog_rejects_retired_aliases(self) -> None:
+        manifest = valid_manifest()
+        self.write_manifest(manifest)
+        names, sources, usages = self.catalog_metadata(manifest)
+        names.update({"adw:test:integration", "adw:e2e"})
+        result = self.contract.check(self.root, names, sources, usages)
+        self.assertEqual(self.contract.EXIT_CONTRACT_ERROR, result.exit_code)
+        self.assertEqual(2, sum(item["code"] == "task.retired" for item in result.evidence["findings"]))
+
+    def test_optional_suites_cannot_enter_verification_graph(self) -> None:
+        manifest = valid_manifest()
+        for optional in ("adw:test:integration:full", "adw:test:e2e:fast", "adw:test:e2e:full"):
+            for graph in ("minimal", "full"):
+                with self.subTest(optional=optional, graph=graph):
+                    candidate = json.loads(json.dumps(manifest))
+                    candidate["verification"][graph].append(optional)
+                    self.assertTrue(any(f["code"] == "verification.child" for f in self.contract.validate_manifest(candidate)))
+
     def test_describe_emits_manifest_summary_and_atomic_evidence(self) -> None:
         self.write_manifest()
 
@@ -213,13 +324,13 @@ class ContractTests(unittest.TestCase):
 
     def test_check_rejects_omitted_canonical_capability(self) -> None:
         manifest = valid_manifest()
-        del manifest["capabilities"]["adw:e2e"]
+        del manifest["capabilities"]["adw:test:e2e:fast"]
         self.write_manifest(manifest)
 
         result = self.contract.check(self.root, task_names=set(self.contract.CANONICAL_TASKS), run_id="run-capability-missing")
 
         self.assertEqual(self.contract.EXIT_CONTRACT_ERROR, result.exit_code)
-        self.assertTrue(any("adw:e2e" in finding["message"] for finding in result.evidence["findings"]))
+        self.assertTrue(any("adw:test:e2e:fast" in finding["message"] for finding in result.evidence["findings"]))
 
     def test_check_rejects_source_path_escape_even_with_registered_source(self) -> None:
         manifest = valid_manifest()
@@ -351,7 +462,7 @@ class ContractTests(unittest.TestCase):
 
     def test_manifest_rejects_incompatible_or_non_exact_contract_version(self) -> None:
         incompatible = valid_manifest()
-        incompatible["contract"]["compatible"] = ">=2.0.0,<3.0.0"
+        incompatible["contract"]["compatible"] = ">=1.0.0,<2.0.0"
         self.write_manifest(incompatible)
         range_result = self.contract.check(
             project_root=self.root,
@@ -361,7 +472,7 @@ class ContractTests(unittest.TestCase):
         self.assertTrue(any(item["code"] == "contract.compatible" for item in range_result.evidence["findings"]))
 
         non_exact = valid_manifest()
-        non_exact["contract"]["version"] = "1.1.0"
+        non_exact["contract"]["version"] = "2.1.0"
         self.write_manifest(non_exact)
         version_result = self.contract.check(
             project_root=self.root,
@@ -543,7 +654,11 @@ class ContractTests(unittest.TestCase):
         passed = self.contract.run_command(
             self.root,
             "adw:verify:minimal",
-            ["python3", "-c", "print('ok')"],
+            ["python3", "-c", (
+                "import runpy; m=runpy.run_path(" + repr(str(MODULE_PATH)) + "); "
+                "m['run_command'](" + repr(str(self.root)) + ", 'adw:build', "
+                "['python3', '-c', 'pass'], run_id='run-command-pass')"
+            )],
             run_id="run-command-pass",
             children=["adw:build"],
         )
@@ -774,13 +889,13 @@ class ContractTests(unittest.TestCase):
             "upstream": {
                 "repository": "smarterworkerai/agentic-delivery",
                 "branch": "main",
-                "index_path": "releases/adw-mise-v1.json",
+                "index_path": "releases/adw-mise-v2.json",
             },
         }
         self.write_manifest(manifest)
         index = {"schema_version": "1.0.0", "releases": [{
-            "version": "1.0.1", "ref": "2" * 40,
-            "checksum": manifest["sources"][0]["checksum"], "snapshot_path": "fixtures/adw-1.0.1",
+            "version": "2.0.1", "ref": "2" * 40,
+            "checksum": manifest["sources"][0]["checksum"], "snapshot_path": "skills/adw/adw-core/assets/mise/v2",
         }]}
 
         class Response:
@@ -794,7 +909,7 @@ class ContractTests(unittest.TestCase):
 
         self.assertEqual(self.contract.EXIT_BLOCKED, result.exit_code)
         self.assertEqual("update-available", result.evidence["freshness"]["verdict"])
-        self.assertIn("raw.githubusercontent.com/smarterworkerai/agentic-delivery/main/releases/adw-mise-v1.json", fetch.call_args.args[0].full_url)
+        self.assertIn("raw.githubusercontent.com/smarterworkerai/agentic-delivery/main/releases/adw-mise-v2.json", fetch.call_args.args[0].full_url)
 
     def test_context_check_is_read_only_and_strictly_fails_stale_fixture(self) -> None:
         manifest = valid_manifest()
@@ -803,14 +918,14 @@ class ContractTests(unittest.TestCase):
         manifest["capabilities"]["adw:context:sync"]["status"] = "supported"
         manifest["context_freshness"] = {
             "policy": "require-current-compatible",
-            "upstream": {"repository": "smarterworkerai/agentic-delivery", "branch": "main", "index_path": "releases/adw-mise-v1.json"},
+            "upstream": {"repository": "smarterworkerai/agentic-delivery", "branch": "main", "index_path": "releases/adw-mise-v2.json"},
         }
         self.write_manifest(manifest)
         index = {
             "schema_version": "1.0.0",
             "releases": [{
-                "version": "1.0.1", "ref": "2" * 40, "checksum": generic["checksum"],
-                "snapshot_path": "fixtures/adw-1.0.1",
+                "version": "2.0.1", "ref": "2" * 40, "checksum": generic["checksum"],
+                "snapshot_path": "skills/adw/adw-core/assets/mise/v2",
             }],
         }
         class Response:
@@ -833,12 +948,12 @@ class ContractTests(unittest.TestCase):
         manifest = valid_manifest()
         manifest["capabilities"]["adw:context:check"]["status"] = "supported"
         manifest["capabilities"]["adw:context:sync"]["status"] = "supported"
-        manifest["context_freshness"] = {"policy": "advisory", "upstream": {"repository": "smarterworkerai/agentic-delivery", "branch": "main", "index_path": "releases/adw-mise-v1.json"}}
+        manifest["context_freshness"] = {"policy": "advisory", "upstream": {"repository": "smarterworkerai/agentic-delivery", "branch": "main", "index_path": "releases/adw-mise-v2.json"}}
         self.write_manifest(manifest)
-        snapshot_path = "skills/adw/adw-core/assets/mise/v1"
+        snapshot_path = "skills/adw/adw-core/assets/mise/v2"
         snapshot_files = {"tasks.toml": b"new snapshot\n", "contract.md": b"snapshot contract\n"}
         checksum = "sha256:" + hashlib.sha256(snapshot_files["tasks.toml"]).hexdigest()
-        index = {"schema_version": "1.0.0", "releases": [{"version": "1.0.1", "ref": "2" * 40, "checksum": checksum, "snapshot_path": snapshot_path}]}
+        index = {"schema_version": "1.0.0", "releases": [{"version": "2.0.1", "ref": "2" * 40, "checksum": checksum, "snapshot_path": snapshot_path}]}
 
         archive_buffer = io.BytesIO()
         with tarfile.open(fileobj=archive_buffer, mode="w:gz") as archive:
@@ -858,7 +973,7 @@ class ContractTests(unittest.TestCase):
             def __exit__(self, *args): return False
             def read(self): return self.payload
         def fetch(request, timeout):
-            return Response(json.dumps(index).encode("utf-8") if request.full_url.endswith("releases/adw-mise-v1.json") else archive_bytes)
+            return Response(json.dumps(index).encode("utf-8") if request.full_url.endswith("releases/adw-mise-v2.json") else archive_bytes)
         from unittest.mock import patch
         with patch("urllib.request.urlopen", side_effect=fetch):
             sync = self.contract.context_sync(self.root, run_id="run-context-sync")

@@ -113,7 +113,7 @@
       "type": "object"
     }
   },
-  "$id": "https://github.com/smarterworkerai/agentic-delivery/skills/adw/adw-core/assets/mise/v1/schemas/adw-task-manifest.schema.json",
+  "$id": "https://github.com/smarterworkerai/agentic-delivery/skills/adw/adw-core/assets/mise/v2/schemas/adw-task-manifest.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
@@ -206,7 +206,7 @@
             }
           }
         },
-        "adw:e2e": {
+        "adw:test:e2e:fast": {
           "$ref": "#/$defs/capability",
           "properties": {
             "side_effect": {
@@ -262,7 +262,7 @@
             }
           }
         },
-        "adw:test:integration": {
+        "adw:test:integration:fast": {
           "$ref": "#/$defs/capability",
           "properties": {
             "side_effect": {
@@ -301,6 +301,22 @@
               "const": "local-write"
             }
           }
+        },
+        "adw:test:integration:full": {
+          "$ref": "#/$defs/capability",
+          "properties": {
+            "side_effect": {
+              "const": "local-write"
+            }
+          }
+        },
+        "adw:test:e2e:full": {
+          "$ref": "#/$defs/capability",
+          "properties": {
+            "side_effect": {
+              "const": "remote-write"
+            }
+          }
         }
       },
       "required": [
@@ -311,7 +327,7 @@
         "adw:lint",
         "adw:static-analysis",
         "adw:test:unit",
-        "adw:test:integration",
+        "adw:test:integration:fast",
         "adw:verify:minimal",
         "adw:verify:full",
         "adw:deploy:config:pull",
@@ -321,11 +337,13 @@
         "adw:deploy:status",
         "adw:health",
         "adw:readiness",
-        "adw:e2e",
+        "adw:test:e2e:fast",
         "adw:validate-deployment",
         "adw:hotfix:apply",
         "adw:context:check",
-        "adw:context:sync"
+        "adw:context:sync",
+        "adw:test:integration:full",
+        "adw:test:e2e:full"
       ],
       "type": "object"
     },
@@ -340,7 +358,7 @@
           "const": "adw-mise-task-contract"
         },
         "version": {
-          "const": "1.0.0"
+          "const": "2.0.0"
         }
       },
       "required": [
@@ -362,7 +380,9 @@
       "additionalProperties": false,
       "properties": {
         "root": {
-          "const": ".hermes/evidence"
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
         }
       },
       "required": [
@@ -392,7 +412,7 @@
       "uniqueItems": true
     },
     "schema_version": {
-      "const": "1.0.0"
+      "const": "2.0.0"
     },
     "sources": {
       "items": {
@@ -410,7 +430,7 @@
               "adw:build",
               "adw:lint",
               "adw:static-analysis",
-              "adw:test:integration",
+              "adw:test:integration:fast",
               "adw:test:unit"
             ]
           },
@@ -432,7 +452,7 @@
             },
             {
               "contains": {
-                "const": "adw:test:integration"
+                "const": "adw:test:integration:fast"
               }
             }
           ],
@@ -441,7 +461,7 @@
               "adw:build",
               "adw:lint",
               "adw:static-analysis",
-              "adw:test:integration",
+              "adw:test:integration:fast",
               "adw:test:unit"
             ]
           },
@@ -470,18 +490,29 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "repository": {"const": "smarterworkerai/agentic-delivery"},
-            "branch": {"const": "main"},
+            "repository": {
+              "const": "smarterworkerai/agentic-delivery"
+            },
+            "branch": {
+              "const": "main"
+            },
             "index_path": {
               "type": "string",
               "minLength": 1,
               "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
             }
           },
-          "required": ["repository", "branch", "index_path"]
+          "required": [
+            "repository",
+            "branch",
+            "index_path"
+          ]
         }
       },
-      "required": ["policy", "upstream"]
+      "required": [
+        "policy",
+        "upstream"
+      ]
     }
   },
   "required": [

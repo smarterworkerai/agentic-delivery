@@ -120,19 +120,6 @@
       },
       "status": "supported"
     },
-    "adw:e2e": {
-      "environments": [
-        "review"
-      ],
-      "side_effect": "remote-write",
-      "source": {
-        "checksum": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-        "layer": "project",
-        "path": "mise-helper/tasks.toml",
-        "ref": "HEAD"
-      },
-      "status": "supported"
-    },
     "adw:health": {
       "environments": [
         "review"
@@ -205,17 +192,6 @@
       },
       "status": "supported"
     },
-    "adw:test:integration": {
-      "environments": [],
-      "side_effect": "local-write",
-      "source": {
-        "checksum": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-        "layer": "project",
-        "path": "mise-helper/tasks.toml",
-        "ref": "HEAD"
-      },
-      "status": "supported"
-    },
     "adw:test:unit": {
       "environments": [],
       "side_effect": "local-write",
@@ -261,12 +237,60 @@
         "ref": "HEAD"
       },
       "status": "supported"
+    },
+    "adw:test:integration:fast": {
+      "environments": [],
+      "side_effect": "local-write",
+      "source": {
+        "checksum": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "layer": "project",
+        "path": "mise-helper/tasks.toml",
+        "ref": "HEAD"
+      },
+      "status": "supported"
+    },
+    "adw:test:integration:full": {
+      "environments": [],
+      "side_effect": "local-write",
+      "source": {
+        "checksum": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "layer": "project",
+        "path": "mise-helper/tasks.toml",
+        "ref": "HEAD"
+      },
+      "status": "supported"
+    },
+    "adw:test:e2e:fast": {
+      "environments": [
+        "review"
+      ],
+      "side_effect": "remote-write",
+      "source": {
+        "checksum": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "layer": "project",
+        "path": "mise-helper/tasks.toml",
+        "ref": "HEAD"
+      },
+      "status": "supported"
+    },
+    "adw:test:e2e:full": {
+      "environments": [
+        "review"
+      ],
+      "side_effect": "remote-write",
+      "source": {
+        "checksum": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "layer": "project",
+        "path": "mise-helper/tasks.toml",
+        "ref": "HEAD"
+      },
+      "status": "supported"
     }
   },
   "contract": {
-    "compatible": ">=1.0.0,<2.0.0",
+    "compatible": ">=2.0.0,<3.0.0",
     "name": "adw-mise-task-contract",
-    "version": "1.0.0"
+    "version": "2.0.0"
   },
   "environments": [
     "review"
@@ -278,7 +302,7 @@
     "id": "fixture/service"
   },
   "required_secret_env": [],
-  "schema_version": "1.0.0",
+  "schema_version": "2.0.0",
   "sources": [
     {
       "checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -299,7 +323,7 @@
       "adw:lint",
       "adw:static-analysis",
       "adw:test:unit",
-      "adw:test:integration"
+      "adw:test:integration:fast"
     ],
     "minimal": [
       "adw:build",

@@ -11,7 +11,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CONTRACT_ROOT = ROOT / "skills" / "adw" / "adw-core" / "assets" / "mise" / "v1"
+CONTRACT_ROOT = ROOT / "skills" / "adw" / "adw-core" / "assets" / "mise" / "v2"
 LEGACY_MAIN_SHA = "8c6e649af2067f80b0fbe2ec12f07c2b3d02e3f0"
 
 
@@ -40,7 +40,15 @@ class DistributionTests(unittest.TestCase):
         for task, side_effect in self.contract.TASK_SIDE_EFFECTS.items():
             self.assertEqual(side_effect, capability_schemas[task]["properties"]["side_effect"]["const"])
         self.assertFalse(capability_schema["additionalProperties"])
+        self.assertNotIn("adw:e2e", capability_schemas)
+        self.assertNotIn("adw:test:integration", capability_schemas)
+        for optional in ("adw:test:integration:full", "adw:test:e2e:fast", "adw:test:e2e:full"):
+            self.assertIn(optional, capability_schemas)
+            self.assertNotIn(optional, schema["properties"]["verification"]["properties"]["full"]["items"]["enum"])
         self.assertIn("path", schema["$defs"]["source"]["required"])
+        root_schema = schema["properties"]["evidence"]["properties"]["root"]
+        self.assertRegex("custom/evidence", root_schema["pattern"])
+        self.assertNotRegex("../outside", root_schema["pattern"])
         expected_verification_tasks = sorted(self.contract.LOCAL_QUALITY_TASKS)
         self.assertEqual(expected_verification_tasks, schema["properties"]["verification"]["properties"]["minimal"]["items"]["enum"])
         self.assertEqual(expected_verification_tasks, schema["properties"]["verification"]["properties"]["full"]["items"]["enum"])
@@ -57,8 +65,8 @@ class DistributionTests(unittest.TestCase):
         self.assertEqual({"environment", "target"}, set(arguments["properties"]))
         self.assertEqual("^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$", schema["properties"]["run_id"]["pattern"])
 
-    def test_v1_release_index_publishes_immutable_checksum_verified_snapshot(self) -> None:
-        index = json.loads((ROOT / "releases" / "adw-mise-v1.json").read_text())
+    def test_v2_release_index_publishes_immutable_checksum_verified_snapshot(self) -> None:
+        index = json.loads((ROOT / "releases" / "adw-mise-v2.json").read_text())
 
         self.assertEqual("1.0.0", index["schema_version"])
         self.assertTrue(index["releases"])
@@ -81,6 +89,11 @@ class DistributionTests(unittest.TestCase):
                 text=True,
             )
             self.assertIn("_fetch_release_snapshot", snapshot_contract)
+            snapshot_template = subprocess.check_output(
+                ["git", "show", f"{release['ref']}:{release['snapshot_path']}/templates/mise.toml"],
+                cwd=ROOT, text=True,
+            )
+            self.assertEqual(release["version"], tomllib.loads(snapshot_template)["vars"]["adw_contract_version"])
 
     def test_generic_task_snapshot_defines_exact_canonical_abi(self) -> None:
         tasks = tomllib.loads((CONTRACT_ROOT / "tasks.toml").read_text())
@@ -110,6 +123,7 @@ class DistributionTests(unittest.TestCase):
 
         self.assertEqual("2026.9.5", template["min_version"]["hard"])
         self.assertEqual("2026.9.5", template["vars"]["adw_mise_tested_version"])
+        self.assertEqual("2.0.0", template["vars"]["adw_contract_version"])
         self.assertEqual(
             [
                 "mise-helper/vendor/agentic-delivery/tasks.toml",
@@ -195,7 +209,7 @@ class DistributionTests(unittest.TestCase):
         adapter_template = (skills_root / "adw-core" / "templates" / "project_adw_adapter.md").read_text()
         delegation_brief = (skills_root / "adw-core" / "templates" / "delegation" / "task_brief.md").read_text()
 
-        self.assertIn("assets/mise/v1/generation-guide.md", core)
+        self.assertIn("assets/mise/v2/generation-guide.md", core)
         self.assertIn("There is no ad-hoc fallback", core)
         self.assertIn("mise run adw:check", implementation)
         self.assertIn("mise run adw:verify:minimal", implementation)
@@ -210,19 +224,110 @@ class DistributionTests(unittest.TestCase):
             "adw:deploy:apply",
             "adw:health",
             "adw:readiness",
-            "adw:e2e",
             "adw:validate-deployment",
         ):
             self.assertIn(task, testing)
             self.assertIn(task, merging)
         self.assertIn("adw:verify:full", regression)
-        self.assertIn("adw:e2e", regression)
+        self.assertIn("adw:test:e2e:fast", regression)
         self.assertIn("adw:deploy:config:plan", rollback)
         self.assertIn("adw:deploy:apply", rollback)
         self.assertIn(".hermes/adw-task-manifest.json", adapter_template)
         self.assertIn("mise run adw:check", adapter_template)
         self.assertNotIn("Dokploy", merging)
         self.assertNotIn("Dokploy", rollback)
+
+    def test_v2_package_metadata_is_consistent(self) -> None:
+        self.assertIn("version: 2.0.0", (ROOT / "plugin.yaml").read_text())
+        skills = sorted((ROOT / "skills" / "adw").glob("*/SKILL.md"))
+        self.assertEqual(14, len(skills))
+        for skill in skills:
+            self.assertIn("version: 2.0.0", skill.read_text(), str(skill))
+
+    def test_producer_pr_quality_is_required_and_portable(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "producer-quality.yml").read_text()
+        runner = (ROOT / "tools" / "verify_producer.py").read_text()
+        self.assertIn("pull_request:", workflow)
+        self.assertIn("push:", workflow)
+        self.assertIn("Required producer quality", workflow)
+        self.assertIn("python3 tools/verify_producer.py", workflow)
+        self.assertIn("fetch-depth: 0", workflow)  # historical snapshot and legacy audit tests
+        for required in ("unittest", "validate_adw_skills.py", "validate_manifest_and_entrypoint", "validate_registry_and_skills", "validate_router_behavior"):
+            self.assertIn(required, runner)
+        self.assertNotIn("validate_plugin_doctor()", runner)
+
+    def test_chain_full_rollout_requires_bounded_upfront_authorization_and_every_gate(self) -> None:
+        skills_root = ROOT / "skills" / "adw"
+        chain = (skills_root / "chain" / "SKILL.md").read_text()
+        merging = (skills_root / "merge-feature" / "SKILL.md").read_text()
+        gates = (skills_root / "adw-core" / "references" / "playbooks" / "deployment_gates.md").read_text()
+        for term in (
+            "full-rollout opt-in", "single upfront authorization", "exact release route",
+            "demo", "main", "new, explicit proposal and authorization",
+            "quality", "review", "preview", "deployment parity",
+        ):
+            self.assertIn(term, chain)
+        self.assertIn("upfront chain authorization", merging)
+        self.assertIn("upfront chain authorization", gates)
+        self.assertIn("No authorization is inherited from a generic chain request", chain)
+        self.assertIn("Stop and ask the human to approve the chain plan before creating branches", chain)
+        self.assertIn("The first confirmation remains mandatory", chain)
+        self.assertIn("Expected implementation commits within the approved feature scope do not alone invalidate", chain)
+        self.assertIn("A change to an already reviewed or validated tree invalidates its old proof", chain)
+        self.assertIn("a changed target/route, unapproved scope change", chain)
+        self.assertIn("The grant has no time-based expiry", chain)
+        self.assertIn("failed, pending, or stale", chain)
+        self.assertIn("Never silently waive a gate", chain)
+        self.assertNotIn("A generic chain command authorizes full rollout", chain)
+        preview = (skills_root / "adw-core" / "references" / "playbooks" / "preview_deployments.md").read_text()
+        release = (skills_root / "adw-core" / "references" / "playbooks" / "release_targets.md").read_text()
+        diagram = (skills_root / "adw-core" / "assets" / "diagrams" / "adw-complete-workflow.puml").read_text()
+        self.assertIn("exact, still-valid upfront chain authorization", preview)
+        self.assertIn("preview-only grant never expands", preview)
+        self.assertIn("first confirmed proposal", release)
+        self.assertIn("no unapproved drift", release)
+        self.assertIn("at this first confirmation", diagram)
+        self.assertIn("continue without repeat confirmation", diagram)
+        decision = diagram.index("if (Exact full-rollout grant still valid?)")
+        yes = diagram.index("continue without repeat confirmation", decision)
+        no = diagram.index("else (no)", decision)
+        exceptional = diagram.index("if (Full rollout requested but exact grant cannot be verified or route changed?)", no)
+        renewed = diagram.index("Explicitly authorize the new exact route and deployment consequences", exceptional)
+        ordinary = diagram.index("else (ordinary chain)", renewed)
+        approval = diagram.index("Explicitly approve exact merge target", ordinary)
+        end = diagram.index("endif", ordinary)
+        self.assertLess(yes, no)
+        self.assertLess(no, exceptional)
+        self.assertLess(exceptional, renewed)
+        self.assertLess(renewed, ordinary)
+        self.assertLess(ordinary, approval)
+        self.assertLess(approval, end)
+        self.assertNotIn("partition Human {", diagram[decision:no])
+        from xml.etree import ElementTree
+        import re
+        import zlib
+        svg = skills_root / "adw-core" / "assets" / "diagrams" / "adw-complete-workflow.svg"
+        rendered = svg.read_text()
+        labels = [node.text or "" for node in ElementTree.fromstring(rendered).iter() if node.tag.endswith("text")]
+        for label in (
+            "at this first confirmation", "continue without repeat confirmation",
+            "Explicitly authorize the new exact route and deployment consequences",
+            "Explicitly approve exact merge target",
+            "optional E2E only with explicit run authorization",
+        ):
+            self.assertTrue(any(label in text for text in labels), label)
+        # PlantUML embeds its compressed source in the SVG. Comparing the decoded
+        # source catches stale renderings even if all of the expected labels remain.
+        encoded = re.search(r"<\?plantuml-src ([^?]+)\?>", rendered)
+        if encoded is None:
+            self.fail("Rendered SVG has no embedded PlantUML source")
+        alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_"
+        data = bytearray()
+        for offset in range(0, len(encoded.group(1)) - 3, 4):
+            a, b, c, d = (alphabet.index(char) for char in encoded.group(1)[offset:offset + 4])
+            data.extend(((a << 2) | (b >> 4), ((b << 4) & 240) | (c >> 2), ((c << 6) & 192) | d))
+        embedded = zlib.decompress(data, -15).decode()
+        self.assertEqual(embedded.strip(), diagram.split("\n", 1)[1].rsplit("@enduml", 1)[0].strip())
 
     def test_workflow_policy_requires_exact_pr_route_and_keeps_deployment_optional(self) -> None:
         skills_root = ROOT / "skills" / "adw"

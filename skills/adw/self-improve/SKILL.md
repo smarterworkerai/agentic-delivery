@@ -1,7 +1,7 @@
 ---
 name: adw-self-improve
 description: Use when persisting an approved ADW workflow improvement.
-version: 1.0.0
+version: 2.0.0
 author: Hermes Agent
 license: MIT
 metadata:

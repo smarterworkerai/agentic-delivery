@@ -6,7 +6,7 @@
   "adw:lint",
   "adw:static-analysis",
   "adw:test:unit",
-  "adw:test:integration",
+  "adw:test:integration:fast",
   "adw:verify:minimal",
   "adw:verify:full",
   "adw:deploy:config:pull",
@@ -16,9 +16,11 @@
   "adw:deploy:status",
   "adw:health",
   "adw:readiness",
-  "adw:e2e",
+  "adw:test:e2e:fast",
   "adw:validate-deployment",
   "adw:hotfix:apply",
   "adw:context:check",
-  "adw:context:sync"
+  "adw:context:sync",
+  "adw:test:integration:full",
+  "adw:test:e2e:full"
 ]

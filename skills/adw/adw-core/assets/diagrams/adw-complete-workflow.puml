@@ -68,13 +68,12 @@ partition "ADW Agent" {
   if (Exact full-rollout grant still valid?) then (yes)
     :Recheck the exact target and every quality/review/preview gate; continue without repeat confirmation;
   else (no)
-    :Request separate merge and deployment decisions for an ordinary chain, or renew an expired full-rollout grant;
+    :Stop for separate merge and deployment decisions, or renewal of an expired full-rollout grant;
+    partition Human {
+      :For ordinary chains, explicitly approve exact merge target;
+      :For ordinary chains, state whether deployment is requested and approve its exact target if so;
+    }
   endif
-}
-
-partition Human {
-  :For ordinary chains, explicitly approve exact merge target;
-  :For ordinary chains, state whether deployment is requested and approve its exact target if so;
 }
 
 partition "ADW Agent" {
@@ -84,7 +83,7 @@ partition "ADW Agent" {
     :Resolve opaque environment from manifest and adapter;
     :Plan/apply configuration through canonical tasks;
     :Deploy through adw:deploy:apply;
-    :Verify status, identity, health, readiness, E2E, and business semantics as supported;
+    :Verify status, identity, health, readiness, and business semantics; run optional E2E only with explicit run authorization;
     if (Deployment regression?) then (yes)
       :Preserve failed-state evidence;
       :Request exact rollback approval;

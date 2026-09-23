@@ -262,7 +262,26 @@ class DistributionTests(unittest.TestCase):
         self.assertIn("no unapproved drift", release)
         self.assertIn("at this first confirmation", diagram)
         self.assertIn("continue without repeat confirmation", diagram)
-        self.assertIn("Request separate merge and deployment decisions", diagram)
+        decision = diagram.index("if (Exact full-rollout grant still valid?)")
+        yes = diagram.index("continue without repeat confirmation", decision)
+        no = diagram.index("else (no)", decision)
+        human = diagram.index("partition Human {", no)
+        approval = diagram.index("For ordinary chains, explicitly approve exact merge target", human)
+        end = diagram.index("endif", human)
+        self.assertLess(yes, no)
+        self.assertLess(no, human)
+        self.assertLess(human, approval)
+        self.assertLess(approval, end)
+        self.assertNotIn("partition Human {", diagram[decision:no])
+        from xml.etree import ElementTree
+        svg = skills_root / "adw-core" / "assets" / "diagrams" / "adw-complete-workflow.svg"
+        labels = [node.text or "" for node in ElementTree.parse(svg).iter() if node.tag.endswith("text")]
+        for label in (
+            "at this first confirmation", "continue without repeat confirmation",
+            "For ordinary chains, explicitly approve exact merge target",
+            "optional E2E only with explicit run authorization",
+        ):
+            self.assertTrue(any(label in text for text in labels), label)
 
     def test_workflow_policy_requires_exact_pr_route_and_keeps_deployment_optional(self) -> None:
         skills_root = ROOT / "skills" / "adw"

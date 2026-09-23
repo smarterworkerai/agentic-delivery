@@ -22,6 +22,7 @@ partition "ADW Agent" {
 partition Human {
   :Approve the implementation path when required;
   :Explicitly approve the exact PR source branch, target branch, and replacement/deletion effect;
+  :For full rollout, approve the exact adapter-declared promotion and deployment route at this first confirmation;
 }
 
 partition "ADW Agent" {
@@ -54,7 +55,7 @@ partition "ADW Agent" {
   if (Disposable preview declared?) then (yes)
     :Plan/apply preview configuration through canonical tasks;
     :Deploy and inspect canonical status evidence;
-    :Run supported health, readiness, E2E, and deployment validation;
+    :Run supported health, readiness, and deployment validation; optional E2E only with explicit run authorization;
   endif
   :Run adw:verify:full for release-class targets;
   if (Validation incomplete or failed?) then (yes)
@@ -63,9 +64,17 @@ partition "ADW Agent" {
   endif
 }
 
+partition "ADW Agent" {
+  if (Exact full-rollout grant still valid?) then (yes)
+    :Recheck the exact target and every quality/review/preview gate; continue without repeat confirmation;
+  else (no)
+    :Request separate merge and deployment decisions for an ordinary chain, or renew an expired full-rollout grant;
+  endif
+}
+
 partition Human {
-  :Explicitly approve exact merge target;
-  :State whether deployment is requested and approve its exact target if so;
+  :For ordinary chains, explicitly approve exact merge target;
+  :For ordinary chains, state whether deployment is requested and approve its exact target if so;
 }
 
 partition "ADW Agent" {

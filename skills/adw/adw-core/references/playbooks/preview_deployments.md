@@ -10,7 +10,7 @@ Validate a feature or bugfix revision in an adapter-declared disposable environm
 2. Stop if the PR was rejected or the environment is ambiguous.
 3. Run `mise run adw:check` and `mise run adw:describe`; treat a missing manifest, unknown environment, or unsupported required capability as blocked.
 4. Resolve the explicit opaque environment value and non-secret target metadata from the project adapter and manifest.
-5. Run `mise run adw:deploy:config:pull <environment>` and `mise run adw:deploy:config:plan <environment>`. Inspect the plan and apply it only after the external approval gate with `mise run adw:deploy:config:apply <environment>`.
+5. Run `mise run adw:deploy:config:pull <environment>` and `mise run adw:deploy:config:plan <environment>`. Inspect the plan and apply it only after the external approval gate (which an exact, still-valid upfront chain authorization for this preview target can satisfy) with `mise run adw:deploy:config:apply <environment>`. Stop on unexpected configuration or secret drift.
 6. Confirm that the intended revision has an immutable deployable identity when the project uses build artifacts. Do not substitute an older or mutable artifact.
 7. Deploy with `mise run adw:deploy:apply <environment>` and inspect `mise run adw:deploy:status <environment>` evidence.
 8. Validate with the manifest-supported `adw:health`, `adw:readiness`, and `adw:validate-deployment` tasks. Optional fast/full E2E suites are separately approved remote-write runs, never implicit deployment validation. Validate response and business semantics, not only liveness.
@@ -20,7 +20,7 @@ Validate a feature or bugfix revision in an adapter-declared disposable environm
 ## Safety Rules
 
 - Never infer an environment name or deployment target.
-- Never deploy a validation revision to a non-disposable or production-class environment without separate explicit authorization.
+- Never deploy a validation revision to a non-disposable or production-class environment without separate explicit authorization. An upfront chain authorization counts as that explicit authorization only if its first confirmed proposal named that exact non-disposable/production target and operation; a preview-only grant never expands to it.
 - Never copy secrets from another environment or overwrite live values with examples, blanks, or masked placeholders.
 - Treat preview evidence as validation, not merge approval.
 - Do not claim readiness from mutable artifact names or liveness-only checks.

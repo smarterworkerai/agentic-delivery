@@ -11,10 +11,10 @@ Read the destination branch, release target, and opaque environment value from t
 ## Procedure
 
 1. Identify the source PR/revision, destination branch when applicable, target environment, intended commit, and validation evidence.
-2. Confirm the destination and deployment consequence with the human before merge or deployment.
+2. Confirm the destination and deployment consequence with the human before merge or deployment. A verifiable upfront chain authorization from the first confirmed proposal satisfies this decision only for the exact named branch, environment, deployment target and consequence; do not re-ask merely because a gate passed. On target/route drift, request renewed authorization.
 3. Complete the repository's reviewed integration or promotion policy; do not bypass branch protection or artifact provenance.
 4. Verify the deployable artifact or revision has immutable identity tied to the intended commit when applicable.
-5. Run `adw:check` and `adw:describe`, then use `adw:deploy:config:pull`, `adw:deploy:config:plan`, and externally approved `adw:deploy:config:apply` for the explicit environment.
+5. Run `adw:check` and `adw:describe`, then use `adw:deploy:config:pull`, `adw:deploy:config:plan`, and externally approved `adw:deploy:config:apply` for the explicit environment. A still-valid exact upfront chain authorization may satisfy this approval only when the configuration plan preserves secrets and has no unapproved drift.
 6. Deploy with `adw:deploy:apply` and inspect `adw:deploy:status` evidence.
 7. Verify with the manifest-supported `adw:health`, `adw:readiness`, and `adw:validate-deployment` tasks. Optional E2E suites require separate per-run authorization and never gate promotion merely by their absence.
 8. Close or update linked issues according to `github_traceability.md`.

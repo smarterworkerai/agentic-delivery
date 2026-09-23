@@ -29,4 +29,4 @@ A context-specific proof engine may reuse prior required quality evidence only a
 
 ## Production Rule
 
-A production-class deployment requires explicit human approval even when the target is unambiguous. The manifest describes capabilities and side effects; it does not grant authorization.
+A production-class deployment requires explicit human approval even when the target is unambiguous. A verified upfront chain authorization may satisfy that approval only when the first proposal named the exact production branch, environment, deployment target and consequences, the operator explicitly chose full rollout, and all gates remain satisfied. Otherwise stop for new approval. The manifest describes capabilities and side effects; it does not grant authorization.

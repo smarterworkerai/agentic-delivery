@@ -231,6 +231,21 @@ class DistributionTests(unittest.TestCase):
         self.assertNotIn("Dokploy", merging)
         self.assertNotIn("Dokploy", rollback)
 
+    def test_chain_full_rollout_requires_bounded_upfront_authorization_and_every_gate(self) -> None:
+        skills_root = ROOT / "skills" / "adw"
+        chain = (skills_root / "chain" / "SKILL.md").read_text()
+        merging = (skills_root / "merge-feature" / "SKILL.md").read_text()
+        gates = (skills_root / "adw-core" / "references" / "playbooks" / "deployment_gates.md").read_text()
+        for term in (
+            "full-rollout opt-in", "single upfront authorization", "exact release route",
+            "demo", "main", "stop and request renewed authorization",
+            "quality", "review", "preview", "deployment parity",
+        ):
+            self.assertIn(term, chain)
+        self.assertIn("upfront chain authorization", merging)
+        self.assertIn("upfront chain authorization", gates)
+        self.assertIn("No authorization is inherited from a generic chain request", chain)
+
     def test_workflow_policy_requires_exact_pr_route_and_keeps_deployment_optional(self) -> None:
         skills_root = ROOT / "skills" / "adw"
         diagram = (skills_root / "adw-core" / "assets" / "diagrams" / "adw-complete-workflow.puml").read_text()

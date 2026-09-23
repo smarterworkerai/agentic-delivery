@@ -238,6 +238,7 @@ class DistributionTests(unittest.TestCase):
         self.assertIn("push:", workflow)
         self.assertIn("Required producer quality", workflow)
         self.assertIn("python3 tools/verify_producer.py", workflow)
+        self.assertIn("fetch-depth: 0", workflow)  # historical snapshot and legacy audit tests
         for required in ("unittest", "validate_adw_skills.py", "validate_manifest_and_entrypoint", "validate_registry_and_skills", "validate_router_behavior"):
             self.assertIn(required, runner)
         self.assertNotIn("validate_plugin_doctor()", runner)

@@ -58,12 +58,19 @@ description = "ADW contract task: adw:describe"
 dir = "{{config_root}}"
 run = "python3 mise-helper/vendor/agentic-delivery/adw_contract.py describe"
 
-["adw:e2e"]
-description = "ADW contract task: adw:e2e"
+["adw:test:e2e:fast"]
+description = "ADW contract task: adw:test:e2e:fast"
 dir = "{{config_root}}"
 usage = '''arg "<environment>" help="Target environment"
 flag "--target <target>" help="Optional logical target"'''
-run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:e2e --environment "$usage_environment" ${usage_target:+--target "$usage_target"}'
+run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:test:e2e:fast --environment "$usage_environment" ${usage_target:+--target "$usage_target"}'
+
+["adw:test:e2e:full"]
+description = "ADW contract task: adw:test:e2e:full"
+dir = "{{config_root}}"
+usage = '''arg "<environment>" help="Target environment"
+flag "--target <target>" help="Optional logical target"'''
+run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:test:e2e:full --environment "$usage_environment" ${usage_target:+--target "$usage_target"}'
 
 ["adw:health"]
 description = "ADW contract task: adw:health"
@@ -101,10 +108,15 @@ description = "ADW contract task: adw:static-analysis"
 dir = "{{config_root}}"
 run = "python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:static-analysis"
 
-["adw:test:integration"]
-description = "ADW contract task: adw:test:integration"
+["adw:test:integration:fast"]
+description = "ADW contract task: adw:test:integration:fast"
 dir = "{{config_root}}"
-run = "python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:test:integration"
+run = "python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:test:integration:fast"
+
+["adw:test:integration:full"]
+description = "ADW contract task: adw:test:integration:full"
+dir = "{{config_root}}"
+run = "python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:test:integration:full"
 
 ["adw:test:unit"]
 description = "ADW contract task: adw:test:unit"

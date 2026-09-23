@@ -16,7 +16,7 @@ Read the destination branch, release target, and opaque environment value from t
 4. Verify the deployable artifact or revision has immutable identity tied to the intended commit when applicable.
 5. Run `adw:check` and `adw:describe`, then use `adw:deploy:config:pull`, `adw:deploy:config:plan`, and externally approved `adw:deploy:config:apply` for the explicit environment.
 6. Deploy with `adw:deploy:apply` and inspect `adw:deploy:status` evidence.
-7. Verify with the manifest-supported `adw:health`, `adw:readiness`, `adw:e2e`, and `adw:validate-deployment` tasks.
+7. Verify with the manifest-supported `adw:health`, `adw:readiness`, and `adw:validate-deployment` tasks. Optional E2E suites require separate per-run authorization and never gate promotion merely by their absence.
 8. Close or update linked issues according to `github_traceability.md`.
 9. Record the integrated revision, immutable artifact identity when applicable, deployment target, canonical task evidence, and rollback notes.
 

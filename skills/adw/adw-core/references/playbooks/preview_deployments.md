@@ -13,7 +13,7 @@ Validate a feature or bugfix revision in an adapter-declared disposable environm
 5. Run `mise run adw:deploy:config:pull <environment>` and `mise run adw:deploy:config:plan <environment>`. Inspect the plan and apply it only after the external approval gate with `mise run adw:deploy:config:apply <environment>`.
 6. Confirm that the intended revision has an immutable deployable identity when the project uses build artifacts. Do not substitute an older or mutable artifact.
 7. Deploy with `mise run adw:deploy:apply <environment>` and inspect `mise run adw:deploy:status <environment>` evidence.
-8. Validate with the manifest-supported `adw:health`, `adw:readiness`, `adw:e2e`, and `adw:validate-deployment` tasks. Validate response and business semantics, not only liveness.
+8. Validate with the manifest-supported `adw:health`, `adw:readiness`, and `adw:validate-deployment` tasks. Optional fast/full E2E suites are separately approved remote-write runs, never implicit deployment validation. Validate response and business semantics, not only liveness.
 9. For persistent services, require a write-path check through the project-owned E2E/deployment-validation implementation or record an explicit blocker/waiver.
 10. Record the environment, non-secret target reference, source revision, immutable artifact identity when applicable, canonical task evidence, and validation result in the PR.
 

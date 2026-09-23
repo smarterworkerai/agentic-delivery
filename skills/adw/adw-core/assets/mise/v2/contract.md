@@ -1,10 +1,10 @@
-# ADW mise task contract v1
+# ADW mise task contract v2
 
 ## Purpose
 
 This contract defines the stable boundary between Agentic Delivery Workflow orchestration and deterministic project operations. ADW, CI, and humans invoke the same canonical mise tasks. Projects and optional context layers implement those tasks without exposing tool- or provider-specific decisions to generic ADW.
 
-The contract version is `1.0.0`. Breaking task, manifest, evidence, status, or behavioral changes require a major version bump.
+The contract and schema version is `2.0.0`. This is a breaking replacement: v1 task names are not aliases and a v1 consumer requires an explicit reviewed migration. Historic immutable v1 tags remain in Git history; the v2 directory is the only active snapshot. Breaking task, manifest, evidence, status, or behavioral changes require a major version bump.
 
 ## Ownership boundary
 
@@ -46,9 +46,9 @@ Each source record contains `layer`, `ref`, `checksum`, and project-relative `pa
 The side-effect class is fixed by task name and is validated even when the capability is declared `unsupported` (the unsupported stub itself remains non-mutating):
 
 - `read-only`: `adw:describe`, `adw:check`, `adw:deploy:config:plan`, `adw:deploy:status`, `adw:health`, `adw:readiness`, `adw:context:check`;
-- `local-write`: `adw:install`, `adw:build`, `adw:lint`, `adw:static-analysis`, `adw:test:unit`, `adw:test:integration`, `adw:verify:minimal`, `adw:verify:full`, `adw:deploy:config:pull`, `adw:context:sync`;
-- `remote-write`: `adw:deploy:config:apply`, `adw:deploy:apply`, `adw:e2e`, `adw:validate-deployment`, `adw:hotfix:apply`;
-- `destructive`: no v1 public task.
+- `local-write`: `adw:install`, `adw:build`, `adw:lint`, `adw:static-analysis`, `adw:test:unit`, `adw:test:integration:fast`, `adw:test:integration:full`, `adw:verify:minimal`, `adw:verify:full`, `adw:deploy:config:pull`, `adw:context:sync`;
+- `remote-write`: `adw:deploy:config:apply`, `adw:deploy:apply`, `adw:test:e2e:fast`, `adw:test:e2e:full`, `adw:validate-deployment`, `adw:hotfix:apply`;
+- `destructive`: no v2 public task.
 
 ### Local preparation and quality
 
@@ -58,18 +58,19 @@ adw:build
 adw:lint
 adw:static-analysis
 adw:test:unit
-adw:test:integration
+adw:test:integration:fast
+adw:test:integration:full
 adw:verify:minimal
 adw:verify:full
 ```
 
 `mise install` installs the pinned toolchain. `adw:install` prepares project dependencies.
 
-`adw:verify:minimal` runs a manifest-declared fast allowlist. It includes a fast build/compile or targeted smoke when applicable, but does not automatically add lint, static analysis, or the full test suite.
+`adw:verify:minimal` runs a manifest-declared fast allowlist. It is non-promotable feedback only and does not automatically add lint, static analysis, or the complete required quality graph.
 
-`adw:verify:full` runs every supported local quality capability required by the project, including build, lint, static analysis, unit/integration tests, and project verification. It does not launch hosted CI or subagent review.
+`adw:verify:full` runs every supported required local quality capability: build, lint, static analysis, unit and **fast** integration as declared by the project. It does not launch hosted CI or subagent review; it is not a promise to run every optional test.
 
-Both verification graphs contain only supported local-quality leaf tasks (`adw:build`, `adw:lint`, `adw:static-analysis`, `adw:test:unit`, and `adw:test:integration`). They cannot contain deployment, remote-write, aggregate, or self-referential tasks.
+Both verification graphs contain only supported local-quality leaf tasks (`adw:build`, `adw:lint`, `adw:static-analysis`, `adw:test:unit`, and `adw:test:integration:fast`). `integration:full` and both E2E suites are individually runnable optional capabilities, never automatic verification children. Non-execution of an optional suite is neither a pass nor a waiver/documentation obligation. An explicitly executed suite must report honest non-empty results through project-owned checks.
 
 ADW defaults inner feature/bugfix integration to minimal validation. Release-line integration requires full validation plus the external ADW review/approval gates.
 
@@ -85,11 +86,12 @@ adw:deploy:apply <environment>
 adw:deploy:status <environment>
 adw:health <environment>
 adw:readiness <environment>
-adw:e2e <environment>
+adw:test:e2e:fast <environment>
+adw:test:e2e:full <environment>
 adw:validate-deployment <environment>
 ```
 
-Tasks ending in `:apply` mutate state. They do not implement approval flags or interactive confirmation. ADW/human policy authorizes invocation; manifest side-effect metadata lets every caller distinguish inspection from mutation.
+Tasks ending in `:apply` mutate state. They do not implement approval flags or interactive confirmation. Both environment-scoped E2E tasks are `remote-write` and require separate per-run authorization, target validation and provider safety gates. `adw:validate-deployment` is limited to required runtime semantics (including health, readiness and project-required write-path checks); it must not invoke either E2E suite implicitly. ADW/human policy authorizes invocation; manifest side-effect metadata lets every caller distinguish inspection from mutation.
 
 Projects encode provider methods, routes, payloads, redaction, live-ID lookup, polling, readback, and idempotency in project-owned tasks/helpers.
 

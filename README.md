@@ -36,7 +36,7 @@ These are not mise tasks.
 Projects expose supported build, test, verification, deployment, status, health, readiness, E2E, context-sync, and temporary-hotfix operations through the canonical `adw:*` ABI. The normative v1 package is:
 
 ```text
-skills/adw/adw-core/assets/mise/v1/
+skills/adw/adw-core/assets/mise/v2/
 ```
 
 Each project owns its concrete task implementations and `.hermes/adw-task-manifest.json`. Optional context includes provide only proven shared task definitions and non-secret variables. Include precedence is generic ADW → optional context → project-local override.

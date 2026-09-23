@@ -11,7 +11,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CONTRACT_ROOT = ROOT / "skills" / "adw" / "adw-core" / "assets" / "mise" / "v1"
+CONTRACT_ROOT = ROOT / "skills" / "adw" / "adw-core" / "assets" / "mise" / "v2"
 LEGACY_MAIN_SHA = "8c6e649af2067f80b0fbe2ec12f07c2b3d02e3f0"
 
 
@@ -57,8 +57,8 @@ class DistributionTests(unittest.TestCase):
         self.assertEqual({"environment", "target"}, set(arguments["properties"]))
         self.assertEqual("^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$", schema["properties"]["run_id"]["pattern"])
 
-    def test_v1_release_index_publishes_immutable_checksum_verified_snapshot(self) -> None:
-        index = json.loads((ROOT / "releases" / "adw-mise-v1.json").read_text())
+    def test_v2_release_index_publishes_immutable_checksum_verified_snapshot(self) -> None:
+        index = json.loads((ROOT / "releases" / "adw-mise-v2.json").read_text())
 
         self.assertEqual("1.0.0", index["schema_version"])
         self.assertTrue(index["releases"])
@@ -195,7 +195,7 @@ class DistributionTests(unittest.TestCase):
         adapter_template = (skills_root / "adw-core" / "templates" / "project_adw_adapter.md").read_text()
         delegation_brief = (skills_root / "adw-core" / "templates" / "delegation" / "task_brief.md").read_text()
 
-        self.assertIn("assets/mise/v1/generation-guide.md", core)
+        self.assertIn("assets/mise/v2/generation-guide.md", core)
         self.assertIn("There is no ad-hoc fallback", core)
         self.assertIn("mise run adw:check", implementation)
         self.assertIn("mise run adw:verify:minimal", implementation)
@@ -210,13 +210,12 @@ class DistributionTests(unittest.TestCase):
             "adw:deploy:apply",
             "adw:health",
             "adw:readiness",
-            "adw:e2e",
             "adw:validate-deployment",
         ):
             self.assertIn(task, testing)
             self.assertIn(task, merging)
         self.assertIn("adw:verify:full", regression)
-        self.assertIn("adw:e2e", regression)
+        self.assertIn("adw:test:e2e:fast", regression)
         self.assertIn("adw:deploy:config:plan", rollback)
         self.assertIn("adw:deploy:apply", rollback)
         self.assertIn(".hermes/adw-task-manifest.json", adapter_template)

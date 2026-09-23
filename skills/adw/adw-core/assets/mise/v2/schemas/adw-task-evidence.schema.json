@@ -76,7 +76,7 @@
       "type": "object"
     }
   },
-  "$id": "https://github.com/smarterworkerai/agentic-delivery/skills/adw/adw-core/assets/mise/v1/schemas/adw-task-evidence.schema.json",
+  "$id": "https://github.com/smarterworkerai/agentic-delivery/skills/adw/adw-core/assets/mise/v2/schemas/adw-task-evidence.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "allOf": [
@@ -212,7 +212,7 @@
           "adw:lint",
           "adw:static-analysis",
           "adw:test:unit",
-          "adw:test:integration",
+          "adw:test:integration:fast",
           "adw:verify:minimal",
           "adw:verify:full",
           "adw:deploy:config:pull",
@@ -222,7 +222,6 @@
           "adw:deploy:status",
           "adw:health",
           "adw:readiness",
-          "adw:e2e",
           "adw:validate-deployment",
           "adw:hotfix:apply",
           "adw:context:check",
@@ -233,7 +232,7 @@
       "uniqueItems": true
     },
     "contract_version": {
-      "const": "1.0.0"
+      "const": "2.0.0"
     },
     "effective_source": {
       "oneOf": [
@@ -286,7 +285,7 @@
       "type": "string"
     },
     "schema_version": {
-      "const": "1.0.0"
+      "const": "2.0.0"
     },
     "source_revision": {
       "oneOf": [
@@ -322,7 +321,7 @@
         "adw:lint",
         "adw:static-analysis",
         "adw:test:unit",
-        "adw:test:integration",
+        "adw:test:integration:fast",
         "adw:verify:minimal",
         "adw:verify:full",
         "adw:deploy:config:pull",
@@ -332,11 +331,13 @@
         "adw:deploy:status",
         "adw:health",
         "adw:readiness",
-        "adw:e2e",
+        "adw:test:e2e:fast",
         "adw:validate-deployment",
         "adw:hotfix:apply",
         "adw:context:check",
-        "adw:context:sync"
+        "adw:context:sync",
+        "adw:test:integration:full",
+        "adw:test:e2e:full"
       ]
     },
     "freshness": {

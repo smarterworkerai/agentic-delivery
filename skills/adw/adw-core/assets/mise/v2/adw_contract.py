@@ -22,8 +22,8 @@ import urllib.request
 
 
 CONTRACT_NAME = "adw-mise-task-contract"
-CONTRACT_VERSION = "1.0.0"
-SCHEMA_VERSION = "1.0.0"
+CONTRACT_VERSION = "2.0.0"
+SCHEMA_VERSION = "2.0.0"
 EXIT_FAILED = 1
 EXIT_BLOCKED = 20
 EXIT_CONTRACT_ERROR = 21
@@ -60,7 +60,8 @@ CANONICAL_TASKS = {
     "adw:lint",
     "adw:static-analysis",
     "adw:test:unit",
-    "adw:test:integration",
+    "adw:test:integration:fast",
+    "adw:test:integration:full",
     "adw:verify:minimal",
     "adw:verify:full",
     "adw:deploy:config:pull",
@@ -70,7 +71,8 @@ CANONICAL_TASKS = {
     "adw:deploy:status",
     "adw:health",
     "adw:readiness",
-    "adw:e2e",
+    "adw:test:e2e:fast",
+    "adw:test:e2e:full",
     "adw:validate-deployment",
     "adw:hotfix:apply",
     "adw:context:check",
@@ -84,7 +86,8 @@ TASK_SIDE_EFFECTS = {
     "adw:lint": "local-write",
     "adw:static-analysis": "local-write",
     "adw:test:unit": "local-write",
-    "adw:test:integration": "local-write",
+    "adw:test:integration:fast": "local-write",
+    "adw:test:integration:full": "local-write",
     "adw:verify:minimal": "local-write",
     "adw:verify:full": "local-write",
     "adw:deploy:config:pull": "local-write",
@@ -94,7 +97,8 @@ TASK_SIDE_EFFECTS = {
     "adw:deploy:status": "read-only",
     "adw:health": "read-only",
     "adw:readiness": "read-only",
-    "adw:e2e": "remote-write",
+    "adw:test:e2e:fast": "remote-write",
+    "adw:test:e2e:full": "remote-write",
     "adw:validate-deployment": "remote-write",
     "adw:hotfix:apply": "remote-write",
     "adw:context:check": "read-only",
@@ -108,7 +112,8 @@ ENVIRONMENT_TASKS = {
     "adw:deploy:status",
     "adw:health",
     "adw:readiness",
-    "adw:e2e",
+    "adw:test:e2e:fast",
+    "adw:test:e2e:full",
     "adw:validate-deployment",
     "adw:hotfix:apply",
 }
@@ -118,9 +123,9 @@ LOCAL_QUALITY_TASKS = {
     "adw:lint",
     "adw:static-analysis",
     "adw:test:unit",
-    "adw:test:integration",
+    "adw:test:integration:fast",
 }
-MINIMAL_SMOKE_TASKS = {"adw:build", "adw:test:unit", "adw:test:integration"}
+MINIMAL_SMOKE_TASKS = {"adw:build", "adw:test:unit", "adw:test:integration:fast"}
 SECRET_KEY_PATTERN = re.compile(r"(?:password|token|secret|credential|private[_-]?key)", re.I)
 ALLOWED_SECRET_METADATA_KEYS = {"required_secret_env"}
 CHECKSUM_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
@@ -623,6 +628,8 @@ def _resolve_freshness(root: Path, manifest: dict[str, Any]) -> tuple[dict[str, 
         if not isinstance(release.get("checksum"), str) or not CHECKSUM_PATTERN.fullmatch(release["checksum"]) or not isinstance(snapshot_path, str) or Path(snapshot_path).is_absolute() or ".." in Path(snapshot_path).parts:
             return config, None, [_finding("freshness.release", "trusted release checksum or snapshot path is invalid")]
         if lower <= _version(version) < upper:
+            if snapshot_path != "skills/adw/adw-core/assets/mise/v2":
+                return config, None, [_finding("freshness.release", "compatible release must point to the v2 snapshot") ]
             compatible.append(release)
     return config, max(compatible, key=lambda item: _version(item["version"])) if compatible else None, []
 
@@ -878,6 +885,9 @@ def check(
             usages = {}
     else:
         names = set(task_names)
+    # A retired v1 name must not remain as a runnable alias in a v2 catalog.
+    for retired in sorted({"adw:test:integration", "adw:e2e"} & names):
+        findings.append(_finding("task.retired", f"v1 task is forbidden in the v2 catalog: {retired}"))
     capabilities = manifest.get("capabilities", {})
     if isinstance(capabilities, dict):
         for task in sorted(capabilities):
@@ -1159,8 +1169,11 @@ def run_command(
     child_tasks = list(children or [])
     aggregate_tasks = {"adw:verify:minimal", "adw:verify:full", "adw:validate-deployment", "adw:hotfix:apply"}
     invalid_children = sorted(set(child_tasks) - CANONICAL_TASKS)
+    forbidden_optional = {"adw:test:integration:full", "adw:test:e2e:fast", "adw:test:e2e:full"}
     child_error = None
-    if child_tasks and task not in aggregate_tasks:
+    if set(child_tasks) & forbidden_optional:
+        child_error = "optional full integration and E2E suites cannot be aggregate children"
+    elif child_tasks and task not in aggregate_tasks:
         child_error = f"{task} is not an aggregate task and cannot declare child evidence"
     elif task in child_tasks:
         child_error = f"{task} cannot declare itself as child evidence"

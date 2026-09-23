@@ -30,7 +30,7 @@ Load `adw-core` before using this skill. It contains the shared delivery gates, 
 
 1. Identify validation target: PR, branch, manifest environment, or artifact.
 2. Run `mise run adw:check` and `mise run adw:describe`, then select only manifest-supported canonical capabilities.
-3. For local regression, run the needed `adw:test:unit`, `adw:test:integration`, `adw:lint`, or `adw:static-analysis` tasks; use `mise run adw:verify:full` for broad/release validation. For a deployed target, pass the explicit environment to `mise run adw:e2e <environment>` and `mise run adw:validate-deployment <environment>`. Persistent services require write-path validation when runtime behavior is in scope.
+3. For local regression, run the needed `adw:test:unit`, `adw:test:integration:fast`, `adw:lint`, or `adw:static-analysis` tasks; use `mise run adw:verify:full` for broad/release validation. For a deployed target, pass the explicit environment to `mise run adw:validate-deployment <environment>`. `adw:test:integration:full` and `adw:test:e2e:fast`/`adw:test:e2e:full` are optional independent suites; require per-run approval for remote-write E2E and do not call absence a pass or require a waiver. Persistent services require write-path validation when runtime behavior is in scope.
 4. Capture task evidence, artifact identity, runtime environment, and failures.
 5. Report pass/fail with remediation recommendations using `adw-core/references/playbooks/github_traceability.md` for file-backed Markdown when posting to GitHub.
 

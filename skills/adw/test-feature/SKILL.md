@@ -35,7 +35,7 @@ Load `adw-core` before using this skill. It contains the shared delivery gates, 
 5. Resolve the preview environment from the manifest, then run `mise run adw:check` and `mise run adw:describe`. Stop if the required deployment capabilities are unsupported or the environment is not in their declared scope.
 6. When deployment configuration changes, run `mise run adw:deploy:config:pull <environment>` and `mise run adw:deploy:config:plan <environment>`. Inspect the plan; after the external ADW approval gate is satisfied, apply it with `mise run adw:deploy:config:apply <environment>`.
 7. Deploy with `mise run adw:deploy:apply <environment>` and inspect `mise run adw:deploy:status <environment>` evidence.
-8. Validate with `mise run adw:health <environment>`, `mise run adw:readiness <environment>`, `mise run adw:e2e <environment>`, and `mise run adw:validate-deployment <environment>` according to the manifest. Invoke `adw-validate-regression` for deeper coverage. Persistent services require a write-path smoke or a documented blocker/waiver.
+8. Validate with `mise run adw:health <environment>`, `mise run adw:readiness <environment>`, and `mise run adw:validate-deployment <environment>` according to the manifest. The fast/full E2E suites are separate optional remote-write runs requiring per-run approval; non-execution needs no waiver. Invoke `adw-validate-regression` for deeper coverage. Persistent services require a write-path smoke or a documented blocker/waiver.
 9. Write validation report using `adw-core/templates/validation_report.md` and the Markdown/newline hygiene rules from `adw-core/references/playbooks/github_traceability.md`.
 10. Report go/no-go recommendation.
 
@@ -72,7 +72,7 @@ Disposable preview deployments are for validation only. Do not use preview evide
 - [ ] Rejection blocks further workflow
 - [ ] Preview URL and deployment status recorded when applicable
 - [ ] Artifact identity and runtime revision/digest parity recorded when applicable
-- [ ] Smoke/E2E/manual validation result documented, including write-path checks for persistent services
+- [ ] Smoke/manual validation result documented; optional E2E only if explicitly run, including write-path checks for persistent services
 - [ ] Validation report/comment follows GitHub traceability Markdown hygiene
 
 

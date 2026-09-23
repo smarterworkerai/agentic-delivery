@@ -54,10 +54,10 @@ This skill owns the shared artifacts for portable installs:
 - `references/adr/0001-agentic-delivery-workflow.md` — ADW architecture decision.
 - `references/adr/0002-pr-as-delivery-unit.md` — PR-as-delivery-unit decision.
 - `assets/diagrams/adw-complete-workflow.puml` — workflow diagram source.
-- `assets/mise/v1/contract.md` — versioned canonical task, manifest, evidence, and status contract.
-- `assets/mise/v1/generation-guide.md` — AI-facing, diff-only project adapter generation procedure.
-- `assets/mise/v1/tasks.toml` and `assets/mise/v1/adw_contract.py` — vendorable generic stubs and contract validator/runner.
-- `assets/mise/v1/schemas/`, `templates/`, and `fixtures/` — machine schemas, variable/config templates, and conformance examples.
+- `assets/mise/v2/contract.md` — versioned canonical task, manifest, evidence, and status contract.
+- `assets/mise/v2/generation-guide.md` — AI-facing, diff-only project adapter generation procedure.
+- `assets/mise/v2/tasks.toml` and `assets/mise/v2/adw_contract.py` — vendorable generic stubs and contract validator/runner.
+- `assets/mise/v2/schemas/`, `templates/`, and `fixtures/` — machine schemas, variable/config templates, and conformance examples.
 
 The root `SOUL.md` remains the agent identity file for profiles that adopt ADW. The root README points to this skill for installable shared artifacts.
 
@@ -92,7 +92,7 @@ After implementation, generic ADW treats the repository's mise adapter as the on
 4. Interpret `unsupported` as a successful declaration of absence, never as proof that work ran. If the requested stage requires that capability, report `blocked`.
 5. Preserve task evidence from `.hermes/evidence/<run-id>/` and cite it in delivery reports. Approval and review gates remain outside mise.
 
-If the manifest is absent, stop deterministic execution as `blocked` and offer to generate a reviewable adapter diff using `assets/mise/v1/generation-guide.md`. Generation may automatically run only `mise run adw:check`; it must not run install, build, test, deployment, E2E, hotfix, or context sync tasks. There is no ad-hoc fallback to package-manager commands, provider CLIs, provider REST calls, or inferred project scripts.
+If the manifest is absent, stop deterministic execution as `blocked` and offer to generate a reviewable adapter diff using `assets/mise/v2/generation-guide.md`. Generation may automatically run only `mise run adw:check`; it must not run install, build, test, deployment, E2E, hotfix, or context sync tasks. There is no ad-hoc fallback to package-manager commands, provider CLIs, provider REST calls, or inferred project scripts.
 
 ## ADW Shared Operating Contract
 
@@ -111,7 +111,7 @@ Use the package paths below:
 - ADRs: `skills/adw/adw-core/references/adr/`
 - Diagrams: `skills/adw/adw-core/assets/diagrams/`
 - Project/context resolution: `skills/adw/adw-core/references/project_contexts.md`
-- ADW mise contract: `skills/adw/adw-core/assets/mise/v1/`
+- ADW mise contract: `skills/adw/adw-core/assets/mise/v2/`
 
 When installed into a Hermes profile, these files travel with the `adw-core` skill directory.
 
@@ -143,7 +143,7 @@ Human prompts may be minimal. Resolve missing parameters in this order:
 - [ ] Required playbooks/templates exist under this skill directory
 - [ ] Delegation templates exist under `templates/delegation/` when delegated implementation is enabled
 - [ ] Project adapter template and context-resolution reference exist under `adw-core`
-- [ ] Versioned mise contract, schemas, templates, fixtures, and validator exist under `assets/mise/v1/`
+- [ ] Versioned mise contract, schemas, templates, fixtures, and validator exist under `assets/mise/v2/`
 - [ ] Operational skills use canonical mise tasks and do not define project/provider commands
 - [ ] The canonical PlantUML workflow source exists and matches the current ADW/mise boundary
 - [ ] Root README points to `adw-core` as the package source of truth

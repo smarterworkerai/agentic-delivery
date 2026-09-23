@@ -4,7 +4,7 @@ min_version = { hard = "2026.9.5" }
 lockfile = true
 
 [vars]
-adw_contract_version = "1.0.0"
+adw_contract_version = "2.0.0"
 adw_mise_tested_version = "2026.9.5"
 
 [task_config]

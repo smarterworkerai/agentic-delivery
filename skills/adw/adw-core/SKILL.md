@@ -1,7 +1,7 @@
 ---
 name: adw-core
 description: Use before any ADW workflow. Loads shared policy and ABI.
-version: 1.0.0
+version: 2.0.0
 author: Hermes Agent
 license: MIT
 metadata:

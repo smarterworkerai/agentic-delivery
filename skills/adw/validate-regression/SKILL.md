@@ -1,7 +1,7 @@
 ---
 name: adw-validate-regression
 description: Use when running targeted or broad ADW regression checks.
-version: 1.0.0
+version: 2.0.0
 author: Hermes Agent
 license: MIT
 metadata:

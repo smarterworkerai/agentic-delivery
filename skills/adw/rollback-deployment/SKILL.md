@@ -1,7 +1,7 @@
 ---
 name: adw-rollback-deployment
 description: Use when restoring a failed deployment through policy.
-version: 1.0.0
+version: 2.0.0
 author: Hermes Agent
 license: MIT
 metadata:

@@ -1,7 +1,7 @@
 ---
 name: adw-analyze-production
 description: Use when inspecting deployment feedback or incidents.
-version: 1.0.0
+version: 2.0.0
 author: Hermes Agent
 license: MIT
 metadata:

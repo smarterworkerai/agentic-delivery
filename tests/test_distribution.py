@@ -89,6 +89,11 @@ class DistributionTests(unittest.TestCase):
                 text=True,
             )
             self.assertIn("_fetch_release_snapshot", snapshot_contract)
+            snapshot_template = subprocess.check_output(
+                ["git", "show", f"{release['ref']}:{release['snapshot_path']}/templates/mise.toml"],
+                cwd=ROOT, text=True,
+            )
+            self.assertEqual(release["version"], tomllib.loads(snapshot_template)["vars"]["adw_contract_version"])
 
     def test_generic_task_snapshot_defines_exact_canonical_abi(self) -> None:
         tasks = tomllib.loads((CONTRACT_ROOT / "tasks.toml").read_text())
@@ -118,6 +123,7 @@ class DistributionTests(unittest.TestCase):
 
         self.assertEqual("2026.9.5", template["min_version"]["hard"])
         self.assertEqual("2026.9.5", template["vars"]["adw_mise_tested_version"])
+        self.assertEqual("2.0.0", template["vars"]["adw_contract_version"])
         self.assertEqual(
             [
                 "mise-helper/vendor/agentic-delivery/tasks.toml",
@@ -230,6 +236,13 @@ class DistributionTests(unittest.TestCase):
         self.assertIn("mise run adw:check", adapter_template)
         self.assertNotIn("Dokploy", merging)
         self.assertNotIn("Dokploy", rollback)
+
+    def test_v2_package_metadata_is_consistent(self) -> None:
+        self.assertIn("version: 2.0.0", (ROOT / "plugin.yaml").read_text())
+        skills = sorted((ROOT / "skills" / "adw").glob("*/SKILL.md"))
+        self.assertEqual(14, len(skills))
+        for skill in skills:
+            self.assertIn("version: 2.0.0", skill.read_text(), str(skill))
 
     def test_producer_pr_quality_is_required_and_portable(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "producer-quality.yml").read_text()

@@ -92,7 +92,7 @@ def validate_manifest_and_entrypoint() -> None:
         raise AssertionError("missing root plugin.yaml")
     data = parse_simple_yaml(manifest)
     assert data.get("name") == "adw", data
-    assert data.get("version") == "1.0.0", data
+    assert data.get("version") == "2.0.0", data
     assert data.get("kind") == "standalone", data
     manifest_text = manifest.read_text(encoding="utf-8")
     assert_contains(manifest_text, "Agentic Delivery Workflow")

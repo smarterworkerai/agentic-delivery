@@ -3,8 +3,8 @@
   "releases": [
     {
       "version": "2.0.0",
-      "ref": "6a62fe22ec8a5d16055fec3bd2ad0473157ce3f4",
-      "checksum": "sha256:54246de4984a27a1988d6da46e35c7a8d1d99f2e95b8f47c3899a206cc6e64bb",
+      "ref": "5668b0d01dacb97786514e9cfac621825e6a68cc",
+      "checksum": "sha256:23b52408af2438776ced9d8a8f9f23f72281b32cde9782a2f4c8e6c8291c0794",
       "snapshot_path": "skills/adw/adw-core/assets/mise/v2",
       "required": true
     }

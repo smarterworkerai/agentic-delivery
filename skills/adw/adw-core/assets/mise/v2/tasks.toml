@@ -86,6 +86,13 @@ usage = '''arg "<environment>" help="Target environment"
 flag "--target <target>" help="Optional logical target"'''
 run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:hotfix:apply --environment "$usage_environment" ${usage_target:+--target "$usage_target"}'
 
+["adw:hotfix:restore"]
+description = "ADW contract task: adw:hotfix:restore"
+dir = "{{config_root}}"
+usage = '''arg "<environment>" help="Target environment"
+flag "--target <target>" help="Optional logical target"'''
+run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py unsupported --task adw:hotfix:restore --environment "$usage_environment" ${usage_target:+--target "$usage_target"}'
+
 ["adw:install"]
 description = "ADW contract task: adw:install"
 dir = "{{config_root}}"

@@ -47,7 +47,7 @@ The side-effect class is fixed by task name and is validated even when the capab
 
 - `read-only`: `adw:describe`, `adw:check`, `adw:deploy:config:plan`, `adw:deploy:status`, `adw:health`, `adw:readiness`, `adw:context:check`;
 - `local-write`: `adw:install`, `adw:build`, `adw:lint`, `adw:static-analysis`, `adw:test:unit`, `adw:test:integration:fast`, `adw:test:integration:full`, `adw:verify:minimal`, `adw:verify:full`, `adw:deploy:config:pull`, `adw:context:sync`;
-- `remote-write`: `adw:deploy:config:apply`, `adw:deploy:apply`, `adw:test:e2e:fast`, `adw:test:e2e:full`, `adw:validate-deployment`, `adw:hotfix:apply`;
+- `remote-write`: `adw:deploy:config:apply`, `adw:deploy:apply`, `adw:test:e2e:fast`, `adw:test:e2e:full`, `adw:validate-deployment`, `adw:hotfix:apply`, `adw:hotfix:restore`;
 - `destructive`: no v2 public task.
 
 ### Local preparation and quality
@@ -99,15 +99,16 @@ Projects encode provider methods, routes, payloads, redaction, live-ID lookup, p
 
 ```text
 adw:hotfix:apply <environment>
+adw:hotfix:restore <environment>
 ```
 
-This is one public aggregate. Hidden tasks and helper functions may implement its internal build, transfer, apply, and identity checks.
+The apply task is one public aggregate; the restore task is a separately approved, artifact-bound recovery operation. Hidden tasks and helper functions may implement apply's internal build, transfer, mutation, and identity checks.
 
 The capability lists its supported environments. Only those environments are disposable hotfix targets. A supported hotfix requires a clean working tree and a local HEAD that exactly equals its remote-tracking branch after readback.
 
 The artifact uses a unique non-release identity tied to the commit. Transfer transport is project/context owned. The desired artifact identity must be proven on the target and in the running deployment.
 
-If running identity is proven, `adw:hotfix:apply` returns exit code 0. A failed health/readiness check remains a prominent separate finding and does not trigger automatic rollback. No automatic rollback is required; latest hotfix wins, and restore is optional.
+If running identity is proven, `adw:hotfix:apply` returns exit code 0. A failed health/readiness check remains a prominent separate finding and does not trigger automatic rollback. No automatic rollback is required for a successful hotfix; a later restoration is an explicitly approved separate `adw:hotfix:restore <environment>` task, bound to the private restore artifact and exact target, never an automatic quality child.
 
 ### Context snapshots
 

@@ -40,6 +40,11 @@ class DistributionTests(unittest.TestCase):
         for task, side_effect in self.contract.TASK_SIDE_EFFECTS.items():
             self.assertEqual(side_effect, capability_schemas[task]["properties"]["side_effect"]["const"])
         self.assertFalse(capability_schema["additionalProperties"])
+        self.assertNotIn("adw:e2e", capability_schemas)
+        self.assertNotIn("adw:test:integration", capability_schemas)
+        for optional in ("adw:test:integration:full", "adw:test:e2e:fast", "adw:test:e2e:full"):
+            self.assertIn(optional, capability_schemas)
+            self.assertNotIn(optional, schema["properties"]["verification"]["properties"]["full"]["items"]["enum"])
         self.assertIn("path", schema["$defs"]["source"]["required"])
         expected_verification_tasks = sorted(self.contract.LOCAL_QUALITY_TASKS)
         self.assertEqual(expected_verification_tasks, schema["properties"]["verification"]["properties"]["minimal"]["items"]["enum"])

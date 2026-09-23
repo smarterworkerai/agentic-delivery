@@ -231,6 +231,17 @@ class DistributionTests(unittest.TestCase):
         self.assertNotIn("Dokploy", merging)
         self.assertNotIn("Dokploy", rollback)
 
+    def test_producer_pr_quality_is_required_and_portable(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "producer-quality.yml").read_text()
+        runner = (ROOT / "tools" / "verify_producer.py").read_text()
+        self.assertIn("pull_request:", workflow)
+        self.assertIn("push:", workflow)
+        self.assertIn("Required producer quality", workflow)
+        self.assertIn("python3 tools/verify_producer.py", workflow)
+        for required in ("unittest", "validate_adw_skills.py", "validate_manifest_and_entrypoint", "validate_registry_and_skills", "validate_router_behavior"):
+            self.assertIn(required, runner)
+        self.assertNotIn("validate_plugin_doctor()", runner)
+
     def test_chain_full_rollout_requires_bounded_upfront_authorization_and_every_gate(self) -> None:
         skills_root = ROOT / "skills" / "adw"
         chain = (skills_root / "chain" / "SKILL.md").read_text()

@@ -332,6 +332,21 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(self.contract.EXIT_CONTRACT_ERROR, result.exit_code)
         self.assertTrue(any("adw:test:e2e:fast" in finding["message"] for finding in result.evidence["findings"]))
 
+    def test_check_rejects_undeclared_adw_task(self) -> None:
+        self.write_manifest()
+        names = set(valid_manifest()["capabilities"]) | {"adw:unregistered:operation"}
+        result = self.contract.check(self.root, task_names=names, run_id="run-undeclared-task")
+        self.assertEqual(self.contract.EXIT_CONTRACT_ERROR, result.exit_code)
+        self.assertTrue(any(finding["code"] == "task.undeclared" for finding in result.evidence["findings"]))
+
+    def test_check_rejects_omitted_restore_capability(self) -> None:
+        manifest = valid_manifest()
+        del manifest["capabilities"]["adw:hotfix:restore"]
+        self.write_manifest(manifest)
+        result = self.contract.check(self.root, task_names=set(self.contract.CANONICAL_TASKS), run_id="run-restore-missing")
+        self.assertEqual(self.contract.EXIT_CONTRACT_ERROR, result.exit_code)
+        self.assertTrue(any("adw:hotfix:restore" in finding["message"] for finding in result.evidence["findings"]))
+
     def test_check_rejects_source_path_escape_even_with_registered_source(self) -> None:
         manifest = valid_manifest()
         project_source = next(source for source in manifest["sources"] if source["layer"] == "project")

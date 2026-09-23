@@ -75,6 +75,7 @@ CANONICAL_TASKS = {
     "adw:test:e2e:full",
     "adw:validate-deployment",
     "adw:hotfix:apply",
+    "adw:hotfix:restore",
     "adw:context:check",
     "adw:context:sync",
 }
@@ -101,6 +102,7 @@ TASK_SIDE_EFFECTS = {
     "adw:test:e2e:full": "remote-write",
     "adw:validate-deployment": "remote-write",
     "adw:hotfix:apply": "remote-write",
+    "adw:hotfix:restore": "remote-write",
     "adw:context:check": "read-only",
     "adw:context:sync": "local-write",
 }
@@ -116,6 +118,7 @@ ENVIRONMENT_TASKS = {
     "adw:test:e2e:full",
     "adw:validate-deployment",
     "adw:hotfix:apply",
+    "adw:hotfix:restore",
 }
 CORE_TASKS = {"adw:describe", "adw:check"}
 LOCAL_QUALITY_TASKS = {
@@ -898,6 +901,8 @@ def check(
         findings.append(_finding("task.retired", f"v1 task is forbidden in the v2 catalog: {retired}"))
     capabilities = manifest.get("capabilities", {})
     if isinstance(capabilities, dict):
+        for undeclared in sorted(name for name in names if name.startswith("adw:") and name not in capabilities):
+            findings.append(_finding("task.undeclared", f"mise ADW task is absent from the manifest: {undeclared}"))
         for task in sorted(capabilities):
             if task not in names:
                 findings.append(_finding("task.missing", f"declared canonical task is missing from mise catalog: {task}"))

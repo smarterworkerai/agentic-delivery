@@ -230,6 +230,14 @@
             }
           }
         },
+        "adw:hotfix:restore": {
+          "$ref": "#/$defs/capability",
+          "properties": {
+            "side_effect": {
+              "const": "remote-write"
+            }
+          }
+        },
         "adw:install": {
           "$ref": "#/$defs/capability",
           "properties": {
@@ -340,6 +348,7 @@
         "adw:test:e2e:fast",
         "adw:validate-deployment",
         "adw:hotfix:apply",
+        "adw:hotfix:restore",
         "adw:context:check",
         "adw:context:sync",
         "adw:test:integration:full",

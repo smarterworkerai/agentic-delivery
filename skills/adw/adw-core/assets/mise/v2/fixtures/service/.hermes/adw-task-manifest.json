@@ -146,6 +146,17 @@
       },
       "status": "supported"
     },
+    "adw:hotfix:restore": {
+      "environments": [],
+      "side_effect": "remote-write",
+      "source": {
+        "checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "layer": "generic",
+        "path": "mise-helper/vendor/agentic-delivery/tasks.toml",
+        "ref": "1111111111111111111111111111111111111111"
+      },
+      "status": "unsupported"
+    },
     "adw:install": {
       "environments": [],
       "side_effect": "local-write",

@@ -46,6 +46,9 @@ class DistributionTests(unittest.TestCase):
             self.assertIn(optional, capability_schemas)
             self.assertNotIn(optional, schema["properties"]["verification"]["properties"]["full"]["items"]["enum"])
         self.assertIn("path", schema["$defs"]["source"]["required"])
+        root_schema = schema["properties"]["evidence"]["properties"]["root"]
+        self.assertRegex("custom/evidence", root_schema["pattern"])
+        self.assertNotRegex("../outside", root_schema["pattern"])
         expected_verification_tasks = sorted(self.contract.LOCAL_QUALITY_TASKS)
         self.assertEqual(expected_verification_tasks, schema["properties"]["verification"]["properties"]["minimal"]["items"]["enum"])
         self.assertEqual(expected_verification_tasks, schema["properties"]["verification"]["properties"]["full"]["items"]["enum"])

@@ -538,6 +538,10 @@ def validate_manifest(manifest: dict[str, Any]) -> list[dict[str, str]]:
     required_secret_env = manifest.get("required_secret_env", [])
     context_freshness = manifest.get("context_freshness")
     if context_freshness is not None:
+        if not isinstance(sources, list) or sum(
+            isinstance(source, dict) and source.get("layer") == "generic" for source in sources
+        ) != 1:
+            findings.append(_finding("freshness.source", "context_freshness requires exactly one generic source"))
         upstream = context_freshness.get("upstream") if isinstance(context_freshness, dict) else None
         if not isinstance(context_freshness, dict) or set(context_freshness) != {"policy", "upstream"} or context_freshness.get("policy") not in {"advisory", "require-current-compatible"} or not isinstance(upstream, dict) or set(upstream) != {"repository", "branch", "index_path"} or upstream.get("repository") != "smarterworkerai/agentic-delivery" or upstream.get("branch") != "main" or not isinstance(upstream.get("index_path"), str) or Path(upstream["index_path"]).is_absolute() or ".." in Path(upstream["index_path"]).parts:
             findings.append(_finding("freshness.config", "context_freshness requires trusted smarterworkerai/agentic-delivery main upstream"))
@@ -691,6 +695,10 @@ def context_check(project_root: Path | str, run_id: str | None = None) -> Result
     if findings:
         return _result(root, manifest, task="adw:context:check", status="blocked" if any(item["code"] == "freshness.lookup" for item in findings) else "contract-error", exit_code=EXIT_BLOCKED if any(item["code"] == "freshness.lookup" for item in findings) else EXIT_CONTRACT_ERROR, run_id=run_id, findings=findings, freshness={"verdict": "lookup-unavailable", "lookup_source": config.get("lookup_source") if config else None}, started_at=started)
     generic = next(source for source in manifest["sources"] if source.get("layer") == "generic")
+    if latest is not None and generic["ref"] == latest["ref"] and generic["checksum"] != latest["checksum"]:
+        return _result(root, manifest, task="adw:context:check", status="contract-error", exit_code=EXIT_CONTRACT_ERROR,
+                       run_id=run_id, findings=[_finding("freshness.checksum", "pinned generic ref and release checksum disagree")],
+                       freshness={"verdict": "pin-mismatch", "lookup_source": config.get("lookup_source") if config else None}, started_at=started)
     verdict = "incompatible-major" if latest is None else "current" if generic["ref"] == latest["ref"] else "update-required" if latest.get("required") else "update-available"
     freshness = {"verdict": verdict, "lookup_source": config["lookup_source"], "pin": {"ref": generic["ref"], "checksum": generic["checksum"]}, "latest": {key: latest[key] for key in ("version", "ref", "checksum")} if latest else None}
     strict = config["policy"] == "require-current-compatible" and verdict in {"update-available", "update-required", "lookup-unavailable"}
@@ -1100,9 +1108,13 @@ def _validate_child_evidence(
     manifest: dict[str, Any],
     run_id: str,
     child_tasks: list[str],
+    aggregate_started_at: str,
 ) -> tuple[str, int, list[dict[str, str]]]:
     findings: list[dict[str, str]] = []
     child_statuses: list[str] = []
+    expected_revision = _source_revision(root)
+    window_start = datetime.fromisoformat(aggregate_started_at)
+    window_end = datetime.now(timezone.utc)
     expected_exits = {"passed": 0, "unsupported": 0, "failed": 1, "blocked": 20, "contract-error": 21}
     evidence_root = _evidence_root(root, manifest)
     for child in child_tasks:
@@ -1118,6 +1130,20 @@ def _validate_child_evidence(
             continue
         if status not in expected_exits or evidence.get("exit_code") != expected_exits[status]:
             findings.append(_finding("evidence.child_status", f"child evidence status/exit mismatch for {child}"))
+            continue
+        try:
+            child_start = datetime.fromisoformat(evidence["started_at"])
+            child_finish = datetime.fromisoformat(evidence["finished_at"])
+            valid_window = (child_start.tzinfo is not None and child_finish.tzinfo is not None
+                            and window_start <= child_start <= child_finish <= window_end)
+        except (KeyError, TypeError, ValueError):
+            valid_window = False
+        if (not valid_window or evidence.get("source_revision") != expected_revision
+                or evidence.get("effective_source") != manifest["capabilities"][child]["source"]
+                or evidence.get("contract_version") != CONTRACT_VERSION
+                or evidence.get("schema_version") != SCHEMA_VERSION
+                or evidence.get("children") != []):
+            findings.append(_finding("evidence.child_provenance", f"child evidence provenance mismatch for {child}"))
             continue
         child_statuses.append(status)
     if findings:
@@ -1229,7 +1255,7 @@ def run_command(
         _finding("command.exit", f"project task command exited with code {normalized_child_exit}", severity)
     ]
     if exit_code == 0 and child_tasks:
-        status, exit_code, child_findings = _validate_child_evidence(root, manifest, resolved_run_id, child_tasks)
+        status, exit_code, child_findings = _validate_child_evidence(root, manifest, resolved_run_id, child_tasks, started)
         findings.extend(child_findings)
     return _result(
         root,

@@ -380,7 +380,9 @@
       "additionalProperties": false,
       "properties": {
         "root": {
-          "const": ".hermes/evidence"
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
         }
       },
       "required": [

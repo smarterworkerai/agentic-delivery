@@ -166,6 +166,69 @@ class ContractTests(unittest.TestCase):
         manifest["contract"]["version"] = "1.0.0"
         self.assertTrue(any(f["code"] == "contract.version" for f in self.contract.validate_manifest(manifest)))
 
+    def test_context_check_rejects_same_ref_with_different_checksum(self) -> None:
+        manifest = valid_manifest()
+        manifest["capabilities"]["adw:context:check"]["status"] = "supported"
+        manifest["context_freshness"] = {"policy": "advisory", "upstream": {
+            "repository": "smarterworkerai/agentic-delivery", "branch": "main",
+            "index_path": "releases/adw-mise-v2.json",
+        }}
+        self.write_manifest(manifest)
+        source = manifest["sources"][0]
+        index = {"schema_version": "1.0.0", "releases": [{
+            "version": "2.0.0", "ref": source["ref"],
+            "checksum": "sha256:" + "f" * 64,
+            "snapshot_path": "skills/adw/adw-core/assets/mise/v2", "required": True,
+        }]}
+        from unittest.mock import patch
+        with patch("urllib.request.urlopen") as fetch:
+            fetch.return_value.__enter__.return_value.read.return_value = json.dumps(index).encode()
+            result = self.contract.context_check(self.root)
+        self.assertNotEqual("current", result.evidence.get("freshness", {}).get("verdict"))
+        self.assertNotEqual(0, result.exit_code)
+
+    def test_context_check_rejects_missing_generic_source_without_crashing(self) -> None:
+        manifest = valid_manifest()
+        generic = manifest["sources"].pop(0)
+        project = manifest["sources"][0]
+        for capability in manifest["capabilities"].values():
+            if capability["source"] == generic:
+                capability["source"] = project
+        manifest["capabilities"]["adw:context:check"]["status"] = "supported"
+        manifest["context_freshness"] = {"policy": "advisory", "upstream": {
+            "repository": "smarterworkerai/agentic-delivery", "branch": "main",
+            "index_path": "releases/adw-mise-v2.json",
+        }}
+        self.write_manifest(manifest)
+        result = self.contract.context_check(self.root)
+        self.assertEqual(self.contract.EXIT_CONTRACT_ERROR, result.exit_code)
+        self.assertTrue(any(f["code"] == "freshness.source" for f in result.evidence["findings"]))
+
+    def test_fresh_child_evidence_must_match_aggregate_execution_and_source(self) -> None:
+        manifest = valid_manifest()
+        self.write_manifest(manifest)
+        run_id = "reused-child-run"
+        child = self.contract.run_command(self.root, "adw:build", ["python3", "-c", "pass"], run_id=run_id)
+        self.assertEqual(0, child.exit_code)
+        result = self.contract.run_command(self.root, "adw:verify:minimal", ["python3", "-c", "pass"], run_id=run_id, children=["adw:build"])
+        self.assertEqual(self.contract.EXIT_CONTRACT_ERROR, result.exit_code)
+        self.assertTrue(any(f["code"] == "evidence.child_provenance" for f in result.evidence["findings"]))
+
+        # Even a freshly timed child cannot substitute evidence from another source.
+        def child_during_aggregate(*args, **kwargs):
+            data = self.contract._build_evidence(self.root, manifest, task="adw:build",
+                status="passed", exit_code=0, run_id=run_id)
+            data["effective_source"] = manifest["sources"][0]
+            self.contract._persist(self.root, manifest, data)
+            return type("Done", (), {"returncode": 0})()
+        from unittest.mock import patch
+        original_run = self.contract.subprocess.run
+        with patch.object(self.contract.subprocess, "run", side_effect=lambda args, **kwargs:
+                          original_run(args, **kwargs) if args[0] == "git" else child_during_aggregate(args, **kwargs)):
+            result = self.contract.run_command(self.root, "adw:verify:minimal", ["python3", "-c", "pass"], run_id=run_id, children=["adw:build"])
+        self.assertEqual(self.contract.EXIT_CONTRACT_ERROR, result.exit_code)
+        self.assertTrue(any(f["code"] == "evidence.child_provenance" for f in result.evidence["findings"]))
+
     def test_deployment_aggregate_cannot_hide_optional_e2e(self) -> None:
         manifest = valid_manifest()
         manifest["capabilities"]["adw:validate-deployment"].update(status="supported", environments=["preview"])
@@ -591,7 +654,11 @@ class ContractTests(unittest.TestCase):
         passed = self.contract.run_command(
             self.root,
             "adw:verify:minimal",
-            ["python3", "-c", "print('ok')"],
+            ["python3", "-c", (
+                "import runpy; m=runpy.run_path(" + repr(str(MODULE_PATH)) + "); "
+                "m['run_command'](" + repr(str(self.root)) + ", 'adw:build', "
+                "['python3', '-c', 'pass'], run_id='run-command-pass')"
+            )],
             run_id="run-command-pass",
             children=["adw:build"],
         )

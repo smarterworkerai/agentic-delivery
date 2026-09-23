@@ -118,7 +118,7 @@ Repository metadata, the project adapter, and explicit human input determine bra
 
 ## Validation
 
-The PR-attached **Required producer quality** check runs `python3 tools/verify_producer.py` on GitHub Actions. It covers the unit/distribution suite, skill validator, and direct plugin-package tests without a Hermes runtime; this producer-repository check is distinct from the `adw:verify:full` task graph required of consuming projects. It does not claim to run the Hermes Plugin Doctor or live deployments.
+The **Required producer quality** check runs `python3 tools/verify_producer.py` on GitHub Actions for branch pushes and PRs. It covers the unit/distribution suite, skill validator, and direct plugin-package tests without a Hermes runtime; this producer-repository check is distinct from the `adw:verify:full` task graph required of consuming projects. It does not claim to run the Hermes Plugin Doctor or live deployments.
 
 Run from the repository root:
 

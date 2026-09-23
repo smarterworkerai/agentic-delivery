@@ -238,7 +238,7 @@ class DistributionTests(unittest.TestCase):
         gates = (skills_root / "adw-core" / "references" / "playbooks" / "deployment_gates.md").read_text()
         for term in (
             "full-rollout opt-in", "single upfront authorization", "exact release route",
-            "demo", "main", "stop and request renewed authorization",
+            "demo", "main", "new, explicit proposal and authorization",
             "quality", "review", "preview", "deployment parity",
         ):
             self.assertIn(term, chain)
@@ -249,8 +249,9 @@ class DistributionTests(unittest.TestCase):
         self.assertIn("The first confirmation remains mandatory", chain)
         self.assertIn("Expected implementation commits within the approved feature scope do not alone invalidate", chain)
         self.assertIn("A change to an already reviewed or validated tree invalidates its old proof", chain)
-        self.assertIn("A changed target or release route requires renewed authorization", chain)
-        self.assertIn("failed/pending/stale quality", chain)
+        self.assertIn("a changed target/route, unapproved scope change", chain)
+        self.assertIn("The grant has no time-based expiry", chain)
+        self.assertIn("failed, pending, or stale", chain)
         self.assertIn("Never silently waive a gate", chain)
         self.assertNotIn("A generic chain command authorizes full rollout", chain)
         preview = (skills_root / "adw-core" / "references" / "playbooks" / "preview_deployments.md").read_text()
@@ -265,23 +266,43 @@ class DistributionTests(unittest.TestCase):
         decision = diagram.index("if (Exact full-rollout grant still valid?)")
         yes = diagram.index("continue without repeat confirmation", decision)
         no = diagram.index("else (no)", decision)
-        human = diagram.index("partition Human {", no)
-        approval = diagram.index("For ordinary chains, explicitly approve exact merge target", human)
-        end = diagram.index("endif", human)
+        exceptional = diagram.index("if (Full rollout requested but exact grant cannot be verified or route changed?)", no)
+        renewed = diagram.index("Explicitly authorize the new exact route and deployment consequences", exceptional)
+        ordinary = diagram.index("else (ordinary chain)", renewed)
+        approval = diagram.index("Explicitly approve exact merge target", ordinary)
+        end = diagram.index("endif", ordinary)
         self.assertLess(yes, no)
-        self.assertLess(no, human)
-        self.assertLess(human, approval)
+        self.assertLess(no, exceptional)
+        self.assertLess(exceptional, renewed)
+        self.assertLess(renewed, ordinary)
+        self.assertLess(ordinary, approval)
         self.assertLess(approval, end)
         self.assertNotIn("partition Human {", diagram[decision:no])
         from xml.etree import ElementTree
+        import re
+        import zlib
         svg = skills_root / "adw-core" / "assets" / "diagrams" / "adw-complete-workflow.svg"
-        labels = [node.text or "" for node in ElementTree.parse(svg).iter() if node.tag.endswith("text")]
+        rendered = svg.read_text()
+        labels = [node.text or "" for node in ElementTree.fromstring(rendered).iter() if node.tag.endswith("text")]
         for label in (
             "at this first confirmation", "continue without repeat confirmation",
-            "For ordinary chains, explicitly approve exact merge target",
+            "Explicitly authorize the new exact route and deployment consequences",
+            "Explicitly approve exact merge target",
             "optional E2E only with explicit run authorization",
         ):
             self.assertTrue(any(label in text for text in labels), label)
+        # PlantUML embeds its compressed source in the SVG. Comparing the decoded
+        # source catches stale renderings even if all of the expected labels remain.
+        encoded = re.search(r"<\?plantuml-src ([^?]+)\?>", rendered)
+        if encoded is None:
+            self.fail("Rendered SVG has no embedded PlantUML source")
+        alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_"
+        data = bytearray()
+        for offset in range(0, len(encoded.group(1)) - 3, 4):
+            a, b, c, d = (alphabet.index(char) for char in encoded.group(1)[offset:offset + 4])
+            data.extend(((a << 2) | (b >> 4), ((b << 4) & 240) | (c >> 2), ((c << 6) & 192) | d))
+        embedded = zlib.decompress(data, -15).decode()
+        self.assertEqual(embedded.strip(), diagram.split("\n", 1)[1].rsplit("@enduml", 1)[0].strip())
 
     def test_workflow_policy_requires_exact_pr_route_and_keeps_deployment_optional(self) -> None:
         skills_root = ROOT / "skills" / "adw"

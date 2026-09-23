@@ -68,11 +68,17 @@ partition "ADW Agent" {
   if (Exact full-rollout grant still valid?) then (yes)
     :Recheck the exact target and every quality/review/preview gate; continue without repeat confirmation;
   else (no)
-    :Stop for separate merge and deployment decisions, or renewal of an expired full-rollout grant;
-    partition Human {
-      :For ordinary chains, explicitly approve exact merge target;
-      :For ordinary chains, state whether deployment is requested and approve its exact target if so;
-    }
+    if (Full rollout requested but exact grant cannot be verified or route changed?) then (yes)
+      :Stop; re-propose the exact route and rerun any stale gates;
+      partition Human {
+        :Explicitly authorize the new exact route and deployment consequences before continuation;
+      }
+    else (ordinary chain)
+      partition Human {
+        :Explicitly approve exact merge target;
+        :State whether deployment is requested and approve its exact target if so;
+      }
+    endif
   endif
 }
 

@@ -23,5 +23,6 @@
   "adw:context:check",
   "adw:context:sync",
   "adw:test:integration:full",
-  "adw:test:e2e:full"
+  "adw:test:e2e:full",
+  "adw:local:clean"
 ]

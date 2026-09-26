@@ -4,7 +4,7 @@
 
 This contract defines the stable boundary between Agentic Delivery Workflow orchestration and deterministic project operations. ADW, CI, and humans invoke the same canonical mise tasks. Projects and optional context layers implement those tasks without exposing tool- or provider-specific decisions to generic ADW.
 
-The contract and schema version is `2.0.0`. This is a breaking replacement: v1 task names are not aliases and a v1 consumer requires an explicit reviewed migration. Historic immutable v1 tags remain in Git history; the v2 directory is the only active snapshot. Breaking task, manifest, evidence, status, or behavioral changes require a major version bump.
+The contract and schema version is `2.1.0`. Version 2.1 replaces duplicated capability source objects with stable references into a single top-level source registry and adds the optional `adw:local:clean` capability. `adw_contract.py manifest-migrate` performs the reviewed v2.0.0 to v2.1.0 manifest conversion. Historic immutable v1/v2.0 tags remain in Git history; the v2 directory is the active compatible-major snapshot. Breaking task, manifest, evidence, status, or behavioral changes require a major version bump.
 
 ## Ownership boundary
 
@@ -39,14 +39,14 @@ adw:check
 
 `adw:check` is side-effect-free. It validates the manifest, task catalog, verification graphs, effective task source paths, source SHA-256 checksums, source metadata, and evidence contract. It may invoke only `adw:describe` and unsupported stubs. It must not execute build, test, network, deployment, or E2E operations.
 
-Each source record contains `layer`, `ref`, `checksum`, and project-relative `path`. Generic and context `ref` values are immutable 40-character Git commit SHAs; project-local sources use the review commit's `HEAD`. Every capability source must exactly match an entry in the top-level source registry. `adw:check` compares resolved mise task sources to those paths and hashes the local snapshots. A later include may override an earlier layer only when the manifest records that effective source.
+The top-level `sources` object is keyed by stable source IDs. Each record contains `layer`, `ref`, `checksum`, and project-relative `path`; each capability stores only one source ID. Generic and context `ref` values are immutable 40-character Git commit SHAs; project-local sources use the review commit's `HEAD`. Missing, duplicate, malformed, and unknown source references fail closed. `adw:check` resolves source IDs, compares mise task sources to those paths and hashes each local snapshot once. A later include may override an earlier layer only when the manifest records that effective source.
 
 ### Canonical side-effect classes
 
 The side-effect class is fixed by task name and is validated even when the capability is declared `unsupported` (the unsupported stub itself remains non-mutating):
 
 - `read-only`: `adw:describe`, `adw:check`, `adw:deploy:config:plan`, `adw:deploy:status`, `adw:health`, `adw:readiness`, `adw:context:check`;
-- `local-write`: `adw:install`, `adw:build`, `adw:lint`, `adw:static-analysis`, `adw:test:unit`, `adw:test:integration:fast`, `adw:test:integration:full`, `adw:verify:minimal`, `adw:verify:full`, `adw:deploy:config:pull`, `adw:context:sync`;
+- `local-write`: `adw:install`, `adw:build`, `adw:lint`, `adw:static-analysis`, `adw:test:unit`, `adw:test:integration:fast`, `adw:test:integration:full`, `adw:verify:minimal`, `adw:verify:full`, `adw:deploy:config:pull`, `adw:context:sync`, `adw:local:clean`;
 - `remote-write`: `adw:deploy:config:apply`, `adw:deploy:apply`, `adw:test:e2e:fast`, `adw:test:e2e:full`, `adw:validate-deployment`, `adw:hotfix:apply`, `adw:hotfix:restore`;
 - `destructive`: no v2 public task.
 
@@ -120,6 +120,10 @@ adw:context:sync
 `adw:context:check` is read-only and only operates when the manifest declares exactly one generic source and the trusted `smarterworkerai/agentic-delivery` `main` branch plus a safe release-index path. It retrieves that upstream index over HTTPS, records the consumer generic pin and selected latest compatible immutable ref/version, and returns one of `current`, `update-available`, `update-required`, `incompatible-major`, or `lookup-unavailable`. `current` requires both immutable ref and snapshot checksum to match; a same-ref/different-checksum pin is a contract error. `require-current-compatible` blocks stale pins and unavailable lookup in CI. Moving branches and tags are never final resolved refs.
 
 `adw:context:sync` is an explicit local-write maintenance task. It downloads the selected immutable GitHub codeload archive, safely stages only the index-declared snapshot subtree, verifies the canonical `tasks.toml` checksum, and atomically replaces only the vendor snapshot before updating manifest pins for review; it never commits, opens a PR, or runs automatically from `check` or normal CI.
+
+### Local cleanup
+
+`adw:local:clean` is an optional local-write capability. Generic ADW declares only the ABI and an unsupported stub; a context or project layer owns the implementation. Scoped mode requires a bounded `--prefix` and may select only unused resources with matching ADW ownership markers. Aggressive mode is `--aggressive --yes`, rejects `--prefix`, and is reserved for an explicit local human operation; implementations must reject CI or implicit invocation. It may empty `/tmp` contents and prune all unused Docker containers, images, volumes, networks and build cache, but must not stop active resources. Maven and npm caches are outside both modes.
 
 ## Include precedence and offline operation
 

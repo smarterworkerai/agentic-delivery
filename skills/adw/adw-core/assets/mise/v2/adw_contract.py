@@ -22,8 +22,8 @@ import urllib.request
 
 
 CONTRACT_NAME = "adw-mise-task-contract"
-CONTRACT_VERSION = "2.0.0"
-SCHEMA_VERSION = "2.0.0"
+CONTRACT_VERSION = "2.1.0"
+SCHEMA_VERSION = "2.1.0"
 EXIT_FAILED = 1
 EXIT_BLOCKED = 20
 EXIT_CONTRACT_ERROR = 21
@@ -78,6 +78,7 @@ CANONICAL_TASKS = {
     "adw:hotfix:restore",
     "adw:context:check",
     "adw:context:sync",
+    "adw:local:clean",
 }
 TASK_SIDE_EFFECTS = {
     "adw:describe": "read-only",
@@ -105,6 +106,7 @@ TASK_SIDE_EFFECTS = {
     "adw:hotfix:restore": "remote-write",
     "adw:context:check": "read-only",
     "adw:context:sync": "local-write",
+    "adw:local:clean": "local-write",
 }
 ENVIRONMENT_TASKS = {
     "adw:deploy:config:pull",
@@ -136,6 +138,8 @@ GIT_COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 COMPATIBILITY_PATTERN = re.compile(r"^>=(\d+)\.(\d+)\.(\d+),<(\d+)\.(\d+)\.(\d+)$")
 RUN_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 LOGICAL_TARGET_PATTERN = re.compile(r"^[a-z][a-z0-9-]{0,62}$")
+SOURCE_ID_PATTERN = re.compile(r"^[a-z][a-z0-9-]{0,62}$")
+LOCAL_CLEAN_PREFIX_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]{0,62}$")
 TOP_LEVEL_FIELDS = {
     "schema_version",
     "contract",
@@ -240,16 +244,63 @@ def _arguments(environment: str | None = None, target: str | None = None) -> dic
     return value
 
 
-def _safe_effective_source(manifest: dict[str, Any] | None, task: str) -> dict[str, str] | None:
+def _resolve_capability_source(manifest: dict[str, Any] | None, task: str) -> dict[str, str] | None:
     if not manifest or not isinstance(manifest.get("capabilities"), dict):
         return None
     capability = manifest["capabilities"].get(task)
     if not isinstance(capability, dict):
         return None
-    source = capability.get("source")
-    if not isinstance(source, dict) or _validate_source(source, f"capabilities.{task}.source"):
+    source_id = capability.get("source")
+    sources = manifest.get("sources")
+    if not isinstance(source_id, str) or not isinstance(sources, dict):
+        return None
+    source = sources.get(source_id)
+    if not isinstance(source, dict) or _validate_source(source, f"sources.{source_id}"):
         return None
     return {field: source[field] for field in SOURCE_FIELDS}
+
+
+def _safe_effective_source(manifest: dict[str, Any] | None, task: str) -> dict[str, str] | None:
+    return _resolve_capability_source(manifest, task)
+
+
+def migrate_v2_manifest(manifest: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, str]]]:
+    """Convert the released v2.0 embedded-source shape to the v2.1 source registry."""
+    if manifest.get("schema_version") == SCHEMA_VERSION:
+        return manifest, []
+    if manifest.get("schema_version") != "2.0.0" or manifest.get("contract", {}).get("version") != "2.0.0":
+        return manifest, [_finding("migration.version", "only an ADW v2.0.0 manifest can migrate to v2.1.0")]
+    old_sources = manifest.get("sources")
+    capabilities = manifest.get("capabilities")
+    if not isinstance(old_sources, list) or not isinstance(capabilities, dict):
+        return manifest, [_finding("migration.shape", "v2.0.0 migration requires source and capability collections")]
+    migrated = json.loads(json.dumps(manifest))
+    registry: dict[str, dict[str, str]] = {}
+    source_ids: dict[str, str] = {}
+    for source in old_sources:
+        if not isinstance(source, dict) or _validate_source(source, "migration.source"):
+            return manifest, [_finding("migration.source", "v2.0.0 manifest contains an invalid source")]
+        source_id = source.get("layer")
+        if not isinstance(source_id, str) or source_id in registry:
+            return manifest, [_finding("migration.source", "v2.0.0 migration requires one source per layer")]
+        registry[source_id] = dict(source)
+        source_ids[json.dumps(source, sort_keys=True, separators=(",", ":"))] = source_id
+    for task, capability in migrated["capabilities"].items():
+        source = capability.get("source") if isinstance(capability, dict) else None
+        source_id = source_ids.get(json.dumps(source, sort_keys=True, separators=(",", ":"))) if isinstance(source, dict) else None
+        if source_id is None:
+            return manifest, [_finding("migration.source", f"capability source for {task} is absent from the v2.0.0 registry")]
+        capability["source"] = source_id
+    migrated["capabilities"].setdefault("adw:local:clean", {
+        "status": "unsupported",
+        "side_effect": "local-write",
+        "environments": [],
+        "source": "generic",
+    })
+    migrated["sources"] = registry
+    migrated["schema_version"] = SCHEMA_VERSION
+    migrated["contract"]["version"] = CONTRACT_VERSION
+    return migrated, []
 
 
 def _build_evidence(
@@ -435,14 +486,21 @@ def validate_manifest(manifest: dict[str, Any]) -> list[dict[str, str]]:
         if len(environments_set) != len(environments):
             findings.append(_finding("environments.unique", "environments must contain unique values"))
     sources = manifest.get("sources")
-    registered_sources: set[str] = set()
-    if not isinstance(sources, list) or not sources:
-        findings.append(_finding("sources.type", "sources must be a non-empty array"))
+    registered_sources: dict[str, dict[str, Any]] = {}
+    registered_values: set[str] = set()
+    if not isinstance(sources, dict) or not sources:
+        findings.append(_finding("sources.type", "sources must be a non-empty object keyed by stable source IDs"))
     else:
-        for index, source in enumerate(sources):
-            findings.extend(_validate_source(source, f"sources[{index}]"))
+        for source_id, source in sources.items():
+            if not isinstance(source_id, str) or not SOURCE_ID_PATTERN.fullmatch(source_id):
+                findings.append(_finding("source.id", f"invalid source ID: {source_id!r}"))
+            findings.extend(_validate_source(source, f"sources.{source_id}"))
             if isinstance(source, dict):
-                registered_sources.add(json.dumps(source, sort_keys=True, separators=(",", ":")))
+                registered_sources[source_id] = source
+                source_key = json.dumps(source, sort_keys=True, separators=(",", ":"))
+                if source_key in registered_values:
+                    findings.append(_finding("source.duplicate", f"source {source_id} duplicates another registry entry"))
+                registered_values.add(source_key)
     capabilities = manifest.get("capabilities")
     if not isinstance(capabilities, dict):
         findings.append(_finding("capabilities.type", "capabilities must be an object"))
@@ -487,14 +545,11 @@ def validate_manifest(manifest: dict[str, Any]) -> list[dict[str, str]]:
                 findings.append(
                     _finding("capabilities.environments", f"supported environment-aware task {task} requires an environment scope")
                 )
-        capability_source = capability.get("source")
-        findings.extend(_validate_source(capability_source, f"capabilities.{task}.source"))
-        if isinstance(capability_source, dict):
-            source_key = json.dumps(capability_source, sort_keys=True, separators=(",", ":"))
-            if source_key not in registered_sources:
-                findings.append(
-                    _finding("source.registry", f"capability source for {task} is missing from the sources registry")
-                )
+        source_id = capability.get("source")
+        if not isinstance(source_id, str) or not SOURCE_ID_PATTERN.fullmatch(source_id):
+            findings.append(_finding("source.id", f"capability source for {task} must be a stable source ID"))
+        elif source_id not in registered_sources:
+            findings.append(_finding("source.registry", f"capability source {source_id!r} for {task} is missing from the sources registry"))
     verification = manifest.get("verification")
     if not isinstance(verification, dict):
         findings.append(_finding("verification.type", "verification must be an object"))
@@ -541,8 +596,8 @@ def validate_manifest(manifest: dict[str, Any]) -> list[dict[str, str]]:
     required_secret_env = manifest.get("required_secret_env", [])
     context_freshness = manifest.get("context_freshness")
     if context_freshness is not None:
-        if not isinstance(sources, list) or sum(
-            isinstance(source, dict) and source.get("layer") == "generic" for source in sources
+        if not isinstance(sources, dict) or sum(
+            isinstance(source, dict) and source.get("layer") == "generic" for source in sources.values()
         ) != 1:
             findings.append(_finding("freshness.source", "context_freshness requires exactly one generic source"))
         upstream = context_freshness.get("upstream") if isinstance(context_freshness, dict) else None
@@ -564,10 +619,10 @@ def _validate_source_files(project_root: Path, manifest: dict[str, Any]) -> list
     findings: list[dict[str, str]] = []
     seen: set[tuple[str, str]] = set()
     sources = manifest.get("sources")
-    if not isinstance(sources, list):
+    if not isinstance(sources, dict):
         return findings
     project = project_root.resolve()
-    for source in sources:
+    for source in sources.values():
         if not isinstance(source, dict):
             continue
         source_path = source.get("path")
@@ -697,7 +752,11 @@ def context_check(project_root: Path | str, run_id: str | None = None) -> Result
     findings.extend(lookup_findings)
     if findings:
         return _result(root, manifest, task="adw:context:check", status="blocked" if any(item["code"] == "freshness.lookup" for item in findings) else "contract-error", exit_code=EXIT_BLOCKED if any(item["code"] == "freshness.lookup" for item in findings) else EXIT_CONTRACT_ERROR, run_id=run_id, findings=findings, freshness={"verdict": "lookup-unavailable", "lookup_source": config.get("lookup_source") if config else None}, started_at=started)
-    generic = next(source for source in manifest["sources"] if source.get("layer") == "generic")
+    generic = next((source for source in manifest["sources"].values() if source.get("layer") == "generic"), None)
+    if generic is None:
+        return _result(root, manifest, task="adw:context:check", status="contract-error", exit_code=EXIT_CONTRACT_ERROR,
+                       run_id=run_id, findings=[_finding("freshness.source", "manifest has no generic source")],
+                       freshness={"verdict": "pin-missing", "lookup_source": config.get("lookup_source") if config else None}, started_at=started)
     if latest is not None and generic["ref"] == latest["ref"] and generic["checksum"] != latest["checksum"]:
         return _result(root, manifest, task="adw:context:check", status="contract-error", exit_code=EXIT_CONTRACT_ERROR,
                        run_id=run_id, findings=[_finding("freshness.checksum", "pinned generic ref and release checksum disagree")],
@@ -708,8 +767,33 @@ def context_check(project_root: Path | str, run_id: str | None = None) -> Result
     return _result(root, manifest, task="adw:context:check", status="blocked" if strict else "passed", exit_code=EXIT_BLOCKED if strict else 0, run_id=run_id, findings=[_finding("freshness.verdict", verdict, "warning" if verdict != "current" else "info")], freshness=freshness, payload=freshness, started_at=started)
 
 
+def manifest_migrate(project_root: Path | str, run_id: str | None = None) -> Result:
+    root = Path(project_root)
+    try:
+        original = _load_manifest(root)
+    except (FileNotFoundError, json.JSONDecodeError, ValueError) as exc:
+        return _result(root, None, task="adw:context:sync", status="blocked", exit_code=EXIT_BLOCKED,
+                       run_id=run_id, findings=[_finding("manifest.missing", f"ADW task manifest unavailable ({type(exc).__name__})")])
+    migrated, findings = migrate_v2_manifest(original)
+    if not findings:
+        findings.extend(validate_manifest(migrated))
+        findings.extend(_validate_source_files(root, migrated))
+    if findings:
+        return _result(root, original, task="adw:context:sync", status="contract-error", exit_code=EXIT_CONTRACT_ERROR,
+                       run_id=run_id, findings=findings)
+    changed = migrated != original
+    if changed:
+        _atomic_write_json(_manifest_path(root), migrated)
+    return _result(root, migrated, task="adw:context:sync", status="passed", exit_code=0, run_id=run_id,
+                   findings=[_finding("migration.result", "manifest migrated to v2.1.0" if changed else "manifest already uses v2.1.0", "info")],
+                   payload={"migrated": changed})
+
+
 def context_sync(project_root: Path | str, run_id: str | None = None) -> Result:
     root = Path(project_root)
+    migration = manifest_migrate(root, run_id=run_id)
+    if migration.exit_code != 0:
+        return migration
     check_result = context_check(root, run_id=run_id)
     latest = check_result.evidence.get("freshness", {}).get("latest")
     if check_result.evidence["status"] == "contract-error" or not latest:
@@ -721,7 +805,7 @@ def context_sync(project_root: Path | str, run_id: str | None = None) -> Result:
     _, release, findings = _resolve_freshness(root, manifest)
     if release is None:
         return _result(root, manifest, task="adw:context:sync", status="contract-error", exit_code=EXIT_CONTRACT_ERROR, run_id=run_id, findings=findings or [_finding("freshness.release", "no compatible trusted release is available")])
-    generic = next(source for source in manifest["sources"] if source.get("layer") == "generic")
+    generic = next(source for source in manifest["sources"].values() if source.get("layer") == "generic")
     source_path = Path(generic["path"])
     destination = root / source_path.parent
     staging = destination.parent / f".{destination.name}.adw-sync-{uuid.uuid4().hex}"
@@ -732,12 +816,7 @@ def context_sync(project_root: Path | str, run_id: str | None = None) -> Result:
         replacement = staging / source_path.name
         if findings or not replacement.is_file() or "sha256:" + hashlib.sha256(replacement.read_bytes()).hexdigest() != release["checksum"]:
             return _result(root, manifest, task="adw:context:sync", status="contract-error", exit_code=EXIT_CONTRACT_ERROR, run_id=run_id, findings=findings or [_finding("freshness.snapshot", "trusted snapshot checksum mismatched")])
-        for source in manifest["sources"]:
-            if source.get("layer") == "generic":
-                source["ref"], source["checksum"] = latest["ref"], latest["checksum"]
-        for capability in manifest["capabilities"].values():
-            if capability["source"].get("layer") == "generic":
-                capability["source"]["ref"], capability["source"]["checksum"] = latest["ref"], latest["checksum"]
+        generic["ref"], generic["checksum"] = latest["ref"], latest["checksum"]
         if destination.exists():
             os.replace(destination, backup)
         os.replace(staging, destination)
@@ -914,7 +993,8 @@ def check(
                     _finding("task.signature", f"task {task} must declare a required <environment> input")
                 )
             actual_source = sources.get(task)
-            expected_source = capabilities[task].get("source", {}).get("path")
+            effective_source = _resolve_capability_source(manifest, task)
+            expected_source = effective_source.get("path") if effective_source else None
             if actual_source is None:
                 findings.append(_finding("task.source", f"mise catalog omits source metadata for {task}"))
                 continue
@@ -1005,6 +1085,47 @@ def unsupported(
         findings=[_finding("capability.unsupported", f"{task} is unsupported by this project", "info")],
         arguments=_arguments(environment, target),
     )
+
+
+def local_clean_contract(
+    project_root: Path | str,
+    *,
+    prefix: str | None,
+    dry_run: bool,
+    aggressive: bool,
+    yes: bool,
+    run_id: str | None = None,
+) -> Result:
+    root = Path(project_root)
+    try:
+        manifest = _load_manifest(root)
+    except (FileNotFoundError, json.JSONDecodeError, ValueError) as exc:
+        return _result(root, None, task="adw:local:clean", status="blocked", exit_code=EXIT_BLOCKED,
+                       run_id=run_id, findings=[_finding("manifest.missing", f"ADW task manifest unavailable ({type(exc).__name__})")])
+    findings = validate_manifest(manifest)
+    findings.extend(_validate_source_files(root, manifest))
+    if aggressive:
+        if prefix is not None:
+            findings.append(_finding("cleanup.mode", "--prefix is not accepted with --aggressive"))
+        if not yes:
+            findings.append(_finding("cleanup.confirmation", "--aggressive requires --yes"))
+    else:
+        if prefix is None or not LOCAL_CLEAN_PREFIX_PATTERN.fullmatch(prefix):
+            findings.append(_finding("cleanup.prefix", "normal cleanup requires a safe --prefix slug"))
+        if yes:
+            findings.append(_finding("cleanup.confirmation", "--yes is reserved for --aggressive mode"))
+    capability = manifest.get("capabilities", {}).get("adw:local:clean")
+    if not isinstance(capability, dict) or capability.get("status") != "unsupported":
+        findings.append(_finding("capability.stub", "generic adw:local:clean must remain unsupported until a context/project backend overrides it"))
+    arguments = {"mode": "aggressive" if aggressive else "scoped", "dry_run": dry_run, "confirmed": yes}
+    if prefix is not None:
+        arguments["prefix"] = prefix
+    if findings:
+        return _result(root, manifest, task="adw:local:clean", status="contract-error", exit_code=EXIT_CONTRACT_ERROR,
+                       run_id=run_id, findings=findings, arguments=arguments)
+    return _result(root, manifest, task="adw:local:clean", status="unsupported", exit_code=0, run_id=run_id,
+                   findings=[_finding("capability.unsupported", "adw:local:clean requires a context or project backend", "info")],
+                   arguments=arguments)
 
 
 def require(
@@ -1144,7 +1265,7 @@ def _validate_child_evidence(
         except (KeyError, TypeError, ValueError):
             valid_window = False
         if (not valid_window or evidence.get("source_revision") != expected_revision
-                or evidence.get("effective_source") != manifest["capabilities"][child]["source"]
+                or evidence.get("effective_source") != _resolve_capability_source(manifest, child)
                 or evidence.get("contract_version") != CONTRACT_VERSION
                 or evidence.get("schema_version") != SCHEMA_VERSION
                 or evidence.get("children") != []):
@@ -1294,6 +1415,12 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("check")
     subparsers.add_parser("context-check")
     subparsers.add_parser("context-sync")
+    subparsers.add_parser("manifest-migrate")
+    clean_parser = subparsers.add_parser("local-clean")
+    clean_parser.add_argument("--prefix")
+    clean_parser.add_argument("--dry-run", action="store_true")
+    clean_parser.add_argument("--aggressive", action="store_true")
+    clean_parser.add_argument("--yes", action="store_true")
     unsupported_parser = subparsers.add_parser("unsupported")
     unsupported_parser.add_argument("--task", required=True)
     unsupported_parser.add_argument("--environment")
@@ -1321,6 +1448,11 @@ def main(argv: list[str] | None = None) -> int:
         result = context_check(root, run_id=args.run_id)
     elif args.command == "context-sync":
         result = context_sync(root, run_id=args.run_id)
+    elif args.command == "manifest-migrate":
+        result = manifest_migrate(root, run_id=args.run_id)
+    elif args.command == "local-clean":
+        result = local_clean_contract(root, prefix=args.prefix, dry_run=args.dry_run,
+                                      aggressive=args.aggressive, yes=args.yes, run_id=args.run_id)
     elif args.command == "unsupported":
         result = unsupported(root, args.task, run_id=args.run_id, environment=args.environment, target=args.target)
     elif args.command == "require":

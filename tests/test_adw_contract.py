@@ -80,10 +80,10 @@ def valid_manifest() -> dict:
         },
     })
     return {
-        "schema_version": "2.1.0",
+        "schema_version": "2.1.1",
         "contract": {
             "name": "adw-mise-task-contract",
-            "version": "2.1.0",
+            "version": "2.1.1",
             "compatible": ">=2.0.0,<3.0.0",
         },
         "project": {"id": "example/service"},
@@ -178,10 +178,25 @@ class ContractTests(unittest.TestCase):
 
         self.assertEqual(0, result.exit_code)
         self.assertTrue(result.payload["migrated"])
-        self.assertEqual("2.1.0", saved["schema_version"])
+        self.assertEqual("2.1.1", saved["schema_version"])
         self.assertEqual({"generic", "project"}, set(saved["sources"]))
         self.assertTrue(all(isinstance(value["source"], str) for value in saved["capabilities"].values()))
         self.assertEqual([], self.contract.validate_manifest(saved))
+
+    def test_v210_manifest_migration_updates_only_patch_version(self) -> None:
+        manifest = valid_manifest()
+        manifest["schema_version"] = "2.1.0"
+        manifest["contract"]["version"] = "2.1.0"
+        self.write_manifest(manifest)
+
+        result = self.contract.manifest_migrate(self.root, run_id="run-v210-migrate")
+        saved = json.loads((self.root / ".hermes" / "adw-task-manifest.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(0, result.exit_code)
+        self.assertTrue(result.payload["migrated"])
+        self.assertEqual("2.1.1", saved["schema_version"])
+        self.assertEqual("2.1.1", saved["contract"]["version"])
+        self.assertEqual(manifest["sources"], saved["sources"])
 
     def test_local_clean_contract_enforces_scoped_and_aggressive_modes(self) -> None:
         self.write_manifest()
@@ -603,6 +618,23 @@ class ContractTests(unittest.TestCase):
 
         self.assertEqual(self.contract.EXIT_CONTRACT_ERROR, result.exit_code)
         self.assertTrue(any(item["code"] == "source.ref" for item in result.evidence["findings"]))
+
+    def test_check_accepts_multiple_optional_flags_after_environment(self) -> None:
+        manifest = valid_manifest()
+        self.write_manifest(manifest)
+        names, sources, usages = self.catalog_metadata(manifest)
+        for task in self.contract.ENVIRONMENT_TASKS:
+            usages[task] = ('arg "<environment>" help="Target environment"\n'
+                            'flag "--target <target>"\n'
+                            'flag "--execution-mode <mode>"\n'
+                            'flag "--dry-run"')
+
+        result = self.contract.check(
+            self.root, task_names=names, task_sources=sources,
+            task_usages=usages, run_id="run-multiple-flags",
+        )
+
+        self.assertEqual(0, result.exit_code)
 
     def test_check_rejects_missing_environment_input_signature(self) -> None:
         manifest = valid_manifest()

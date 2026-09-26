@@ -4,7 +4,7 @@
 
 This contract defines the stable boundary between Agentic Delivery Workflow orchestration and deterministic project operations. ADW, CI, and humans invoke the same canonical mise tasks. Projects and optional context layers implement those tasks without exposing tool- or provider-specific decisions to generic ADW.
 
-The contract and schema version is `2.1.0`. Version 2.1 replaces duplicated capability source objects with stable references into a single top-level source registry and adds the optional `adw:local:clean` capability. `adw_contract.py manifest-migrate` performs the reviewed v2.0.0 to v2.1.0 manifest conversion. Historic immutable v1/v2.0 tags remain in Git history; the v2 directory is the active compatible-major snapshot. Breaking task, manifest, evidence, status, or behavioral changes require a major version bump.
+The contract and schema version is `2.1.1`. Version 2.1 replaces duplicated capability source objects with stable references into a single top-level source registry and adds the optional `adw:local:clean` capability. `adw_contract.py manifest-migrate` performs the reviewed v2.0.0 to v2.1.1 manifest conversion. Historic immutable v1/v2.0 tags remain in Git history; the v2 directory is the active compatible-major snapshot. Breaking task, manifest, evidence, status, or behavioral changes require a major version bump.
 
 ## Ownership boundary
 

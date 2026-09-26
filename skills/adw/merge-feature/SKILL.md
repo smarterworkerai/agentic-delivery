@@ -1,7 +1,7 @@
 ---
 name: adw-merge-feature
 description: Use when merging a validated PR into an approved target.
-version: 2.1.0
+version: 2.1.1
 author: Hermes Agent
 license: MIT
 metadata:

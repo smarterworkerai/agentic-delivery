@@ -1,7 +1,7 @@
 ---
 name: adw-create-adr
 description: Use when an ADW change needs an architecture decision.
-version: 2.1.0
+version: 2.1.1
 author: Hermes Agent
 license: MIT
 metadata:

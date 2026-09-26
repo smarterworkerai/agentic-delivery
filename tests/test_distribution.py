@@ -123,7 +123,7 @@ class DistributionTests(unittest.TestCase):
 
         self.assertEqual("2026.9.5", template["min_version"]["hard"])
         self.assertEqual("2026.9.5", template["vars"]["adw_mise_tested_version"])
-        self.assertEqual("2.1.0", template["vars"]["adw_contract_version"])
+        self.assertEqual("2.1.1", template["vars"]["adw_contract_version"])
         self.assertEqual(
             [
                 "mise-helper/vendor/agentic-delivery/tasks.toml",
@@ -238,11 +238,11 @@ class DistributionTests(unittest.TestCase):
         self.assertNotIn("Dokploy", rollback)
 
     def test_v2_package_metadata_is_consistent(self) -> None:
-        self.assertIn("version: 2.1.0", (ROOT / "plugin.yaml").read_text())
+        self.assertIn("version: 2.1.1", (ROOT / "plugin.yaml").read_text())
         skills = sorted((ROOT / "skills" / "adw").glob("*/SKILL.md"))
         self.assertEqual(14, len(skills))
         for skill in skills:
-            self.assertIn("version: 2.1.0", skill.read_text(), str(skill))
+            self.assertIn("version: 2.1.1", skill.read_text(), str(skill))
 
     def test_producer_pr_quality_is_required_and_portable(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "producer-quality.yml").read_text()

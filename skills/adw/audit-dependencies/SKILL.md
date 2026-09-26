@@ -1,7 +1,7 @@
 ---
 name: adw-audit-dependencies
 description: Use when auditing dependency, build, or tooling changes.
-version: 2.1.0
+version: 2.1.1
 author: Hermes Agent
 license: MIT
 metadata:

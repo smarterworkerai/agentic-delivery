@@ -1,7 +1,7 @@
 ---
 name: adw-test-feature
 description: Use when reviewing and validating an ADW PR before merge.
-version: 2.1.0
+version: 2.1.1
 author: Hermes Agent
 license: MIT
 metadata:

@@ -18,6 +18,15 @@ description = "ADW contract task: adw:context:sync"
 dir = "{{config_root}}"
 run = "python3 mise-helper/vendor/agentic-delivery/adw_contract.py context-sync"
 
+["adw:local:clean"]
+description = "Clean explicitly selected local ADW runtime resources"
+dir = "{{config_root}}"
+usage = '''flag "--prefix <prefix>" help="Required bounded project prefix in scoped mode"
+flag "--dry-run" help="Report candidates without deleting them"
+flag "--aggressive" help="Select host-wide temporary and unused Docker cleanup"
+flag "--yes" help="Required confirmation for aggressive mode"'''
+run = 'python3 mise-helper/vendor/agentic-delivery/adw_contract.py local-clean ${usage_prefix:+--prefix "$usage_prefix"} ${usage_dry_run:+--dry-run} ${usage_aggressive:+--aggressive} ${usage_yes:+--yes}'
+
 ["adw:deploy:apply"]
 description = "ADW contract task: adw:deploy:apply"
 dir = "{{config_root}}"

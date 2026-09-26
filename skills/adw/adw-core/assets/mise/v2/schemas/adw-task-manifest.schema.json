@@ -20,7 +20,8 @@
           ]
         },
         "source": {
-          "$ref": "#/$defs/source"
+          "pattern": "^[a-z][a-z0-9-]{0,62}$",
+          "type": "string"
         },
         "status": {
           "enum": [
@@ -206,14 +207,6 @@
             }
           }
         },
-        "adw:test:e2e:fast": {
-          "$ref": "#/$defs/capability",
-          "properties": {
-            "side_effect": {
-              "const": "remote-write"
-            }
-          }
-        },
         "adw:health": {
           "$ref": "#/$defs/capability",
           "properties": {
@@ -254,6 +247,14 @@
             }
           }
         },
+        "adw:local:clean": {
+          "$ref": "#/$defs/capability",
+          "properties": {
+            "side_effect": {
+              "const": "local-write"
+            }
+          }
+        },
         "adw:readiness": {
           "$ref": "#/$defs/capability",
           "properties": {
@@ -270,7 +271,31 @@
             }
           }
         },
+        "adw:test:e2e:fast": {
+          "$ref": "#/$defs/capability",
+          "properties": {
+            "side_effect": {
+              "const": "remote-write"
+            }
+          }
+        },
+        "adw:test:e2e:full": {
+          "$ref": "#/$defs/capability",
+          "properties": {
+            "side_effect": {
+              "const": "remote-write"
+            }
+          }
+        },
         "adw:test:integration:fast": {
+          "$ref": "#/$defs/capability",
+          "properties": {
+            "side_effect": {
+              "const": "local-write"
+            }
+          }
+        },
+        "adw:test:integration:full": {
           "$ref": "#/$defs/capability",
           "properties": {
             "side_effect": {
@@ -309,22 +334,6 @@
               "const": "local-write"
             }
           }
-        },
-        "adw:test:integration:full": {
-          "$ref": "#/$defs/capability",
-          "properties": {
-            "side_effect": {
-              "const": "local-write"
-            }
-          }
-        },
-        "adw:test:e2e:full": {
-          "$ref": "#/$defs/capability",
-          "properties": {
-            "side_effect": {
-              "const": "remote-write"
-            }
-          }
         }
       },
       "required": [
@@ -352,7 +361,46 @@
         "adw:context:check",
         "adw:context:sync",
         "adw:test:integration:full",
-        "adw:test:e2e:full"
+        "adw:test:e2e:full",
+        "adw:local:clean"
+      ],
+      "type": "object"
+    },
+    "context_freshness": {
+      "additionalProperties": false,
+      "properties": {
+        "policy": {
+          "enum": [
+            "advisory",
+            "require-current-compatible"
+          ]
+        },
+        "upstream": {
+          "additionalProperties": false,
+          "properties": {
+            "branch": {
+              "const": "main"
+            },
+            "index_path": {
+              "minLength": 1,
+              "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$",
+              "type": "string"
+            },
+            "repository": {
+              "const": "smarterworkerai/agentic-delivery"
+            }
+          },
+          "required": [
+            "repository",
+            "branch",
+            "index_path"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "policy",
+        "upstream"
       ],
       "type": "object"
     },
@@ -367,7 +415,7 @@
           "const": "adw-mise-task-contract"
         },
         "version": {
-          "const": "2.0.0"
+          "const": "2.1.0"
         }
       },
       "required": [
@@ -389,9 +437,9 @@
       "additionalProperties": false,
       "properties": {
         "root": {
-          "type": "string",
           "minLength": 1,
-          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$",
+          "type": "string"
         }
       },
       "required": [
@@ -421,14 +469,17 @@
       "uniqueItems": true
     },
     "schema_version": {
-      "const": "2.0.0"
+      "const": "2.1.0"
     },
     "sources": {
-      "items": {
-        "$ref": "#/$defs/source"
+      "additionalProperties": false,
+      "minProperties": 1,
+      "patternProperties": {
+        "^[a-z][a-z0-9-]{0,62}$": {
+          "$ref": "#/$defs/source"
+        }
       },
-      "minItems": 1,
-      "type": "array"
+      "type": "object"
     },
     "verification": {
       "additionalProperties": false,
@@ -484,44 +535,6 @@
         "full"
       ],
       "type": "object"
-    },
-    "context_freshness": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "policy": {
-          "enum": [
-            "advisory",
-            "require-current-compatible"
-          ]
-        },
-        "upstream": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "repository": {
-              "const": "smarterworkerai/agentic-delivery"
-            },
-            "branch": {
-              "const": "main"
-            },
-            "index_path": {
-              "type": "string",
-              "minLength": 1,
-              "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
-            }
-          },
-          "required": [
-            "repository",
-            "branch",
-            "index_path"
-          ]
-        }
-      },
-      "required": [
-        "policy",
-        "upstream"
-      ]
     }
   },
   "required": [

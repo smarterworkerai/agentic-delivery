@@ -32,6 +32,7 @@ The root template sets `min_version = { hard = "2026.9.5" }`. This is a hard com
 5. If a context is explicitly declared, synchronize its exact task snapshot and non-secret global vars. Record one context ref/checksum for both. Context-wide vars go in `mise/conf.d/<context>.toml`.
 6. Configure task include precedence: generic snapshot, optional context snapshot, then project-local task definitions.
 7. Declare every canonical capability in `.hermes/adw-task-manifest.json` as `supported` or `unsupported`. Keep `adw:describe` and `adw:check` supported.
+   Store each provider ref/checksum once in the top-level source registry and reference it by source ID from capabilities. Declare `adw:local:clean` unsupported unless a reviewed context/project backend exists.
 8. Implement project overrides. Existing project scripts may be called in place. Put every newly created ADW/mise-specific helper and test under root `mise-helper/`.
 9. Define manifest-declared environment values and per-capability supported subsets. Reject unknown values before side effects.
 10. Define the exact `adw:verify:minimal` fast allowlist and the complete `adw:verify:full` graph.

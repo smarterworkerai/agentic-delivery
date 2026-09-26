@@ -37,7 +37,7 @@ def valid_manifest() -> dict:
             "status": "unsupported",
             "side_effect": contract.TASK_SIDE_EFFECTS[task],
             "environments": [],
-            "source": generic_source,
+            "source": "generic",
         }
         for task in load_contract_module().CANONICAL_TASKS
     }
@@ -46,58 +46,58 @@ def valid_manifest() -> dict:
             "status": "supported",
             "side_effect": "read-only",
             "environments": [],
-            "source": generic_source,
+            "source": "generic",
         },
         "adw:check": {
             "status": "supported",
             "side_effect": "read-only",
             "environments": [],
-            "source": generic_source,
+            "source": "generic",
         },
         "adw:build": {
             "status": "supported",
             "side_effect": "local-write",
             "environments": [],
-            "source": {"layer": "project", "ref": "HEAD", "checksum": "sha256:" + "b" * 64, "path": "mise-helper/tasks.toml"},
+            "source": "project",
         },
         "adw:verify:minimal": {
             "status": "supported",
             "side_effect": "local-write",
             "environments": [],
-            "source": {"layer": "project", "ref": "HEAD", "checksum": "sha256:" + "b" * 64, "path": "mise-helper/tasks.toml"},
+            "source": "project",
         },
         "adw:verify:full": {
             "status": "supported",
             "side_effect": "local-write",
             "environments": [],
-            "source": {"layer": "project", "ref": "HEAD", "checksum": "sha256:" + "b" * 64, "path": "mise-helper/tasks.toml"},
+            "source": "project",
         },
         "adw:hotfix:apply": {
             "status": "supported",
             "side_effect": "remote-write",
             "environments": ["preview"],
-            "source": {"layer": "project", "ref": "HEAD", "checksum": "sha256:" + "b" * 64, "path": "mise-helper/tasks.toml"},
+            "source": "project",
         },
     })
     return {
-        "schema_version": "2.0.0",
+        "schema_version": "2.1.0",
         "contract": {
             "name": "adw-mise-task-contract",
-            "version": "2.0.0",
+            "version": "2.1.0",
             "compatible": ">=2.0.0,<3.0.0",
         },
         "project": {"id": "example/service"},
         "evidence": {"root": ".hermes/evidence"},
         "environments": ["preview"],
-        "sources": [
-            generic_source,
-            {
+        "sources": {
+            "generic": generic_source,
+            "project": {
                 "layer": "project",
                 "ref": "HEAD",
                 "checksum": "sha256:" + "b" * 64,
                 "path": "mise-helper/tasks.toml",
             },
-        ],
+        },
         "capabilities": unsupported,
         "verification": {
             "minimal": ["adw:build"],
@@ -105,6 +105,18 @@ def valid_manifest() -> dict:
         },
         "required_secret_env": ["EXAMPLE_API_TOKEN"],
     }
+
+
+def legacy_manifest() -> dict:
+    manifest = valid_manifest()
+    manifest["schema_version"] = "2.0.0"
+    manifest["contract"]["version"] = "2.0.0"
+    sources = manifest["sources"]
+    for capability in manifest["capabilities"].values():
+        capability["source"] = dict(sources[capability["source"]])
+    manifest["sources"] = list(sources.values())
+    manifest["capabilities"].pop("adw:local:clean")
+    return manifest
 
 
 class ContractTests(unittest.TestCase):
@@ -117,7 +129,7 @@ class ContractTests(unittest.TestCase):
 
     def write_manifest(self, manifest: dict | None = None) -> Path:
         value = manifest or valid_manifest()
-        for source in value.get("sources", []):
+        for source in value.get("sources", {}).values():
             source_path = source.get("path") if isinstance(source, dict) else None
             if not isinstance(source_path, str):
                 continue
@@ -130,10 +142,6 @@ class ContractTests(unittest.TestCase):
                 candidate.write_text(f"# test source: {source_path}\n", encoding="utf-8")
             checksum = "sha256:" + hashlib.sha256(candidate.read_bytes()).hexdigest()
             source["checksum"] = checksum
-            for capability in value.get("capabilities", {}).values():
-                capability_source = capability.get("source") if isinstance(capability, dict) else None
-                if isinstance(capability_source, dict) and capability_source.get("path") == source_path:
-                    capability_source["checksum"] = checksum
         path = self.root / ".hermes" / "adw-task-manifest.json"
         path.write_text(json.dumps(value), encoding="utf-8")
         return path
@@ -141,7 +149,10 @@ class ContractTests(unittest.TestCase):
     def catalog_metadata(self, manifest: dict | None = None) -> tuple[set[str], dict[str, str], dict[str, str]]:
         value = manifest or valid_manifest()
         names = set(value["capabilities"])
-        sources = {task: capability["source"]["path"] for task, capability in value["capabilities"].items()}
+        sources = {
+            task: value["sources"][capability["source"]]["path"]
+            for task, capability in value["capabilities"].items()
+        }
         usages = {
             task: 'arg "<environment>"' if task in self.contract.ENVIRONMENT_TASKS else ""
             for task in names
@@ -150,6 +161,47 @@ class ContractTests(unittest.TestCase):
 
     def read_only_evidence_files(self) -> list[Path]:
         return list((self.root / ".hermes" / "evidence").glob("*/*.json"))
+
+
+    def test_v20_manifest_migration_writes_single_owner_source_registry(self) -> None:
+        current = valid_manifest()
+        self.write_manifest(current)
+        legacy = legacy_manifest()
+        for source in legacy["sources"]:
+            source["checksum"] = current["sources"][source["layer"]]["checksum"]
+        for capability in legacy["capabilities"].values():
+            capability["source"]["checksum"] = current["sources"][capability["source"]["layer"]]["checksum"]
+        (self.root / ".hermes" / "adw-task-manifest.json").write_text(json.dumps(legacy), encoding="utf-8")
+
+        result = self.contract.manifest_migrate(self.root, run_id="run-manifest-migrate")
+        saved = json.loads((self.root / ".hermes" / "adw-task-manifest.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(0, result.exit_code)
+        self.assertTrue(result.payload["migrated"])
+        self.assertEqual("2.1.0", saved["schema_version"])
+        self.assertEqual({"generic", "project"}, set(saved["sources"]))
+        self.assertTrue(all(isinstance(value["source"], str) for value in saved["capabilities"].values()))
+        self.assertEqual([], self.contract.validate_manifest(saved))
+
+    def test_local_clean_contract_enforces_scoped_and_aggressive_modes(self) -> None:
+        self.write_manifest()
+        scoped = self.contract.local_clean_contract(
+            self.root, prefix="mwcal2", dry_run=True, aggressive=False, yes=False, run_id="clean-scoped"
+        )
+        aggressive = self.contract.local_clean_contract(
+            self.root, prefix=None, dry_run=False, aggressive=True, yes=True, run_id="clean-aggressive"
+        )
+        invalid = (
+            self.contract.local_clean_contract(self.root, prefix=None, dry_run=False, aggressive=False, yes=False),
+            self.contract.local_clean_contract(self.root, prefix="mwcal2", dry_run=False, aggressive=True, yes=True),
+            self.contract.local_clean_contract(self.root, prefix=None, dry_run=False, aggressive=True, yes=False),
+        )
+
+        self.assertEqual((0, "unsupported"), (scoped.exit_code, scoped.evidence["status"]))
+        self.assertEqual("mwcal2", scoped.evidence["arguments"]["prefix"])
+        self.assertEqual((0, "unsupported"), (aggressive.exit_code, aggressive.evidence["status"]))
+        self.assertEqual("aggressive", aggressive.evidence["arguments"]["mode"])
+        self.assertTrue(all(result.exit_code == self.contract.EXIT_CONTRACT_ERROR for result in invalid))
 
     def test_v2_rejects_v1_capabilities_and_contract(self) -> None:
         manifest = valid_manifest()
@@ -174,7 +226,7 @@ class ContractTests(unittest.TestCase):
             "index_path": "releases/adw-mise-v2.json",
         }}
         self.write_manifest(manifest)
-        source = manifest["sources"][0]
+        source = manifest["sources"]["generic"]
         index = {"schema_version": "1.0.0", "releases": [{
             "version": "2.0.0", "ref": source["ref"],
             "checksum": "sha256:" + "f" * 64,
@@ -189,11 +241,10 @@ class ContractTests(unittest.TestCase):
 
     def test_context_check_rejects_missing_generic_source_without_crashing(self) -> None:
         manifest = valid_manifest()
-        generic = manifest["sources"].pop(0)
-        project = manifest["sources"][0]
+        manifest["sources"].pop("generic")
         for capability in manifest["capabilities"].values():
-            if capability["source"] == generic:
-                capability["source"] = project
+            if capability["source"] == "generic":
+                capability["source"] = "project"
         manifest["capabilities"]["adw:context:check"]["status"] = "supported"
         manifest["context_freshness"] = {"policy": "advisory", "upstream": {
             "repository": "smarterworkerai/agentic-delivery", "branch": "main",
@@ -218,7 +269,7 @@ class ContractTests(unittest.TestCase):
         def child_during_aggregate(*args, **kwargs):
             data = self.contract._build_evidence(self.root, manifest, task="adw:build",
                 status="passed", exit_code=0, run_id=run_id)
-            data["effective_source"] = manifest["sources"][0]
+            data["effective_source"] = manifest["sources"]["generic"]
             self.contract._persist(self.root, manifest, data)
             return type("Done", (), {"returncode": 0})()
         from unittest.mock import patch
@@ -271,7 +322,8 @@ class ContractTests(unittest.TestCase):
         self.assertEqual("passed", result.evidence["status"])
         self.assertEqual("example/service", result.payload["project"])
         self.assertEqual(["preview"], result.payload["environments"])
-        self.assertEqual("project", result.payload["capabilities"]["adw:build"]["source"]["layer"])
+        source_id = result.payload["capabilities"]["adw:build"]["source"]
+        self.assertEqual("project", result.payload["sources"][source_id]["layer"])
         files = self.read_only_evidence_files()
         self.assertEqual(1, len(files))
         self.assertFalse(any(path.suffix == ".tmp" for path in files[0].parent.iterdir()))
@@ -349,11 +401,7 @@ class ContractTests(unittest.TestCase):
 
     def test_check_rejects_source_path_escape_even_with_registered_source(self) -> None:
         manifest = valid_manifest()
-        project_source = next(source for source in manifest["sources"] if source["layer"] == "project")
-        project_source["path"] = "../outside.toml"
-        for capability in manifest["capabilities"].values():
-            if capability["source"]["layer"] == "project":
-                capability["source"] = dict(project_source)
+        manifest["sources"]["project"]["path"] = "../outside.toml"
         self.write_manifest(manifest)
         names, sources, usages = self.catalog_metadata(manifest)
 
@@ -375,13 +423,11 @@ class ContractTests(unittest.TestCase):
             "generic": "sha256:" + hashlib.sha256(b"generic").hexdigest(),
             "project": "sha256:" + hashlib.sha256(b"project").hexdigest(),
         }
-        for source in manifest["sources"]:
+        for source in manifest["sources"].values():
             source["checksum"] = checksums[source["layer"]]
-        for capability in manifest["capabilities"].values():
-            capability["source"]["checksum"] = checksums[capability["source"]["layer"]]
         self.write_manifest(manifest)
         task_sources = {
-            task: manifest["capabilities"][task]["source"]["path"]
+            task: manifest["sources"][manifest["capabilities"][task]["source"]]["path"]
             for task in self.contract.CANONICAL_TASKS
         }
         task_usages = self.catalog_metadata(manifest)[2]
@@ -412,7 +458,7 @@ class ContractTests(unittest.TestCase):
             "status": "supported",
             "side_effect": "local-write",
             "environments": [],
-            "source": incomplete_full["sources"][1],
+            "source": "project",
         }
         self.write_manifest(incomplete_full)
         full_result = self.contract.check(
@@ -427,7 +473,7 @@ class ContractTests(unittest.TestCase):
             "status": "supported",
             "side_effect": "local-write",
             "environments": [],
-            "source": invalid_minimal["sources"][1],
+            "source": "project",
         }
         invalid_minimal["verification"]["minimal"] = ["adw:lint"]
         invalid_minimal["verification"]["full"].append("adw:lint")
@@ -458,7 +504,7 @@ class ContractTests(unittest.TestCase):
         unknown_top["unexpected"] = True
         cases.append((unknown_top, "schema.additional"))
         unknown_source = valid_manifest()
-        unknown_source["sources"][0]["unexpected"] = True
+        unknown_source["sources"]["generic"]["unexpected"] = True
         cases.append((unknown_source, "source.additional"))
         unknown_capability = valid_manifest()
         unknown_capability["capabilities"]["adw:build"]["unexpected"] = True
@@ -487,7 +533,7 @@ class ContractTests(unittest.TestCase):
         self.assertTrue(any(item["code"] == "contract.compatible" for item in range_result.evidence["findings"]))
 
         non_exact = valid_manifest()
-        non_exact["contract"]["version"] = "2.1.0"
+        non_exact["contract"]["version"] = "2.0.0"
         self.write_manifest(non_exact)
         version_result = self.contract.check(
             project_root=self.root,
@@ -504,12 +550,12 @@ class ContractTests(unittest.TestCase):
             "checksum": "sha256:" + "c" * 64,
             "path": "mise-helper/vendor/example-context/tasks.toml",
         }
-        manifest["sources"].insert(1, context_source)
+        manifest["sources"]["context"] = context_source
         manifest["capabilities"]["adw:context:check"] = {
             "status": "supported",
             "side_effect": "read-only",
             "environments": [],
-            "source": context_source,
+            "source": "context",
         }
         self.write_manifest(manifest)
 
@@ -522,7 +568,7 @@ class ContractTests(unittest.TestCase):
         )
         self.assertEqual(0, passed.exit_code)
 
-        manifest["sources"][1]["ref"] = "mutable-context-tag"
+        manifest["sources"]["context"]["ref"] = "mutable-context-tag"
         self.write_manifest(manifest)
         failed = self.contract.check(
             project_root=self.root,
@@ -546,7 +592,7 @@ class ContractTests(unittest.TestCase):
 
     def test_manifest_rejects_mutable_shared_source_ref(self) -> None:
         manifest = valid_manifest()
-        generic = next(source for source in manifest["sources"] if source["layer"] == "generic")
+        generic = manifest["sources"]["generic"]
         generic["ref"] = "v1.0.0"
         self.write_manifest(manifest)
 
@@ -578,14 +624,7 @@ class ContractTests(unittest.TestCase):
 
     def test_check_rejects_implementation_source_mismatch(self) -> None:
         manifest = valid_manifest()
-        for capability in manifest["capabilities"].values():
-            capability["source"]["path"] = "mise-helper/vendor/agentic-delivery/tasks.toml"
-        manifest["capabilities"]["adw:build"]["source"] = {
-            "layer": "project",
-            "ref": "local",
-            "checksum": "sha256:" + "b" * 64,
-            "path": "mise-helper/tasks.toml",
-        }
+        manifest["sources"]["project"]["path"] = "mise-helper/tasks.toml"
         self.write_manifest(manifest)
         task_sources = {
             task: "mise-helper/vendor/agentic-delivery/tasks.toml"
@@ -622,7 +661,7 @@ class ContractTests(unittest.TestCase):
 
     def test_manifest_rejects_capability_source_missing_from_registry(self) -> None:
         manifest = valid_manifest()
-        manifest["sources"] = [source for source in manifest["sources"] if source["layer"] == "generic"]
+        manifest["sources"].pop("project")
 
         findings = self.contract.validate_manifest(manifest)
 
@@ -633,7 +672,7 @@ class ContractTests(unittest.TestCase):
         manifest = valid_manifest()
         manifest["capabilities"]["adw:hotfix:apply"]["environments"] = ["production"]
         manifest["api_token"] = "plain-text-secret"
-        manifest["capabilities"]["adw:describe"]["source"]["api_token"] = "nested-secret-value"
+        manifest["sources"]["generic"]["api_token"] = "nested-secret-value"
         self.write_manifest(manifest)
 
         result = self.contract.check(self.root, task_names=set(manifest["capabilities"]), run_id="run-invalid")
@@ -910,7 +949,7 @@ class ContractTests(unittest.TestCase):
         self.write_manifest(manifest)
         index = {"schema_version": "1.0.0", "releases": [{
             "version": "2.0.1", "ref": "2" * 40,
-            "checksum": manifest["sources"][0]["checksum"], "snapshot_path": "skills/adw/adw-core/assets/mise/v2",
+            "checksum": manifest["sources"]["generic"]["checksum"], "snapshot_path": "skills/adw/adw-core/assets/mise/v2",
         }]}
 
         class Response:
@@ -928,7 +967,7 @@ class ContractTests(unittest.TestCase):
 
     def test_context_check_is_read_only_and_strictly_fails_stale_fixture(self) -> None:
         manifest = valid_manifest()
-        generic = manifest["sources"][0]
+        generic = manifest["sources"]["generic"]
         manifest["capabilities"]["adw:context:check"]["status"] = "supported"
         manifest["capabilities"]["adw:context:sync"]["status"] = "supported"
         manifest["context_freshness"] = {
@@ -998,7 +1037,7 @@ class ContractTests(unittest.TestCase):
             rejected = self.contract.context_check(self.root, run_id="run-moving-ref")
 
         self.assertEqual(0, sync.exit_code)
-        self.assertEqual("2" * 40, saved["sources"][0]["ref"])
+        self.assertEqual("2" * 40, saved["sources"]["generic"]["ref"])
         self.assertEqual("new snapshot\n", (self.root / "mise-helper" / "vendor" / "agentic-delivery" / "tasks.toml").read_text())
         self.assertEqual(self.contract.EXIT_CONTRACT_ERROR, rejected.exit_code)
         self.assertTrue(any(item["code"] == "freshness.release.ref" for item in rejected.evidence["findings"]))

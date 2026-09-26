@@ -2,6 +2,13 @@
   "schema_version": "1.0.0",
   "releases": [
     {
+      "version": "2.1.1",
+      "ref": "0d0def93dddc09f3a67b17b744b92e40d8907216",
+      "checksum": "sha256:2970eb7e5c3181972f3d46e243dd7f286c7e195b8336daa98af8be55f0d1c2ef",
+      "snapshot_path": "skills/adw/adw-core/assets/mise/v2",
+      "required": true
+    },
+    {
       "version": "2.1.0",
       "ref": "0b8d79d8db411a370e069fe0d6bde47266b12cda",
       "checksum": "sha256:2970eb7e5c3181972f3d46e243dd7f286c7e195b8336daa98af8be55f0d1c2ef",

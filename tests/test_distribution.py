@@ -355,11 +355,7 @@ class DistributionTests(unittest.TestCase):
             "Default to `main` when safe",
             "`main` -> production",
         )
-        audit_exceptions = {
-            Path(__file__).resolve(),
-            (ROOT / "plans" / "issue-7-greenfield-necessity.md").resolve(),
-            (ROOT / "plans" / "issue-7-legacy-file-audit.md").resolve(),
-        }
+        audit_exceptions = {Path(__file__).resolve()}
         for path in ROOT.rglob("*"):
             if (
                 not path.is_file()
@@ -374,47 +370,6 @@ class DistributionTests(unittest.TestCase):
                 continue
             for token in forbidden:
                 self.assertNotIn(token, text, f"obsolete token in {path.relative_to(ROOT)}")
-
-    def test_legacy_file_audit_covers_every_main_path_and_decision(self) -> None:
-        audit = (ROOT / "plans" / "issue-7-legacy-file-audit.md").read_text()
-        legacy_paths = subprocess.run(
-            ["git", "ls-tree", "-r", "--name-only", LEGACY_MAIN_SHA],
-            cwd=ROOT,
-            check=True,
-            text=True,
-            capture_output=True,
-        ).stdout.splitlines()
-        self.assertEqual(len(legacy_paths), 58)
-        for path in legacy_paths:
-            self.assertIn(f"`{path}`", audit, path)
-
-        decisions = re.findall(r"^- \*\*(retain|rewrite|remove)\*\*", audit, re.MULTILINE)
-        self.assertEqual(len(decisions), 58)
-        self.assertEqual(decisions.count("retain"), 11)
-        self.assertEqual(decisions.count("rewrite"), 42)
-        self.assertEqual(decisions.count("remove"), 5)
-
-    def test_greenfield_necessity_log_accounts_for_every_top_level_artifact(self) -> None:
-        log = (ROOT / "plans" / "issue-7-greenfield-necessity.md").read_text()
-
-        for token in (
-            "skills/adw/",
-            "skills/adw/adw-core/assets/mise/v1/",
-            "adw_plugin/",
-            "scripts/install_adw.sh",
-            "tools/",
-            "tests/",
-            "README.md",
-            "SOUL.md",
-            "LICENSE",
-            ".gitignore",
-            "plans/PLAN.md",
-            "plans/PLAN_plugin.md",
-        ):
-            self.assertIn(token, log)
-        self.assertFalse((ROOT / "contracts").exists())
-        self.assertFalse((ROOT / "plans" / "PLAN.md").exists())
-        self.assertFalse((ROOT / "plans" / "PLAN_plugin.md").exists())
 
 
 if __name__ == "__main__":

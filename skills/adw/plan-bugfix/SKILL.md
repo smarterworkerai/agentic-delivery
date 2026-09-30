@@ -1,7 +1,7 @@
 ---
 name: adw-plan-bugfix
 description: Use when planning a bugfix through the ADW workflow.
-version: 2.1.1
+version: 2.1.2
 author: Hermes Agent
 license: MIT
 metadata:

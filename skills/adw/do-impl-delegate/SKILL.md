@@ -1,7 +1,7 @@
 ---
 name: adw-do-impl-delegate
 description: Use when delegating an approved ADW implementation.
-version: 2.1.1
+version: 2.1.2
 author: Hermes Agent
 license: MIT
 metadata:

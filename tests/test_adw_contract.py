@@ -5,6 +5,7 @@ import hashlib
 import io
 import json
 import os
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 import tarfile
 import tempfile
@@ -80,10 +81,10 @@ def valid_manifest() -> dict:
         },
     })
     return {
-        "schema_version": "2.1.1",
+        "schema_version": "2.1.2",
         "contract": {
             "name": "adw-mise-task-contract",
-            "version": "2.1.1",
+            "version": "2.1.2",
             "compatible": ">=2.0.0,<3.0.0",
         },
         "project": {"id": "example/service"},
@@ -178,7 +179,7 @@ class ContractTests(unittest.TestCase):
 
         self.assertEqual(0, result.exit_code)
         self.assertTrue(result.payload["migrated"])
-        self.assertEqual("2.1.1", saved["schema_version"])
+        self.assertEqual("2.1.2", saved["schema_version"])
         self.assertEqual({"generic", "project"}, set(saved["sources"]))
         self.assertTrue(all(isinstance(value["source"], str) for value in saved["capabilities"].values()))
         self.assertEqual([], self.contract.validate_manifest(saved))
@@ -194,8 +195,23 @@ class ContractTests(unittest.TestCase):
 
         self.assertEqual(0, result.exit_code)
         self.assertTrue(result.payload["migrated"])
-        self.assertEqual("2.1.1", saved["schema_version"])
-        self.assertEqual("2.1.1", saved["contract"]["version"])
+        self.assertEqual("2.1.2", saved["schema_version"])
+        self.assertEqual("2.1.2", saved["contract"]["version"])
+        self.assertEqual(manifest["sources"], saved["sources"])
+
+    def test_v211_manifest_migration_updates_only_patch_version(self) -> None:
+        manifest = valid_manifest()
+        manifest["schema_version"] = "2.1.1"
+        manifest["contract"]["version"] = "2.1.1"
+        self.write_manifest(manifest)
+
+        result = self.contract.manifest_migrate(self.root, run_id="run-v211-migrate")
+        saved = json.loads((self.root / ".hermes" / "adw-task-manifest.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(0, result.exit_code)
+        self.assertTrue(result.payload["migrated"])
+        self.assertEqual("2.1.2", saved["schema_version"])
+        self.assertEqual("2.1.2", saved["contract"]["version"])
         self.assertEqual(manifest["sources"], saved["sources"])
 
     def test_local_clean_contract_enforces_scoped_and_aggressive_modes(self) -> None:
@@ -342,6 +358,37 @@ class ContractTests(unittest.TestCase):
         files = self.read_only_evidence_files()
         self.assertEqual(1, len(files))
         self.assertFalse(any(path.suffix == ".tmp" for path in files[0].parent.iterdir()))
+
+    def test_cli_reserves_stdout_for_machine_payloads(self) -> None:
+        self.write_manifest()
+
+        describe_stdout = io.StringIO()
+        describe_stderr = io.StringIO()
+        with redirect_stdout(describe_stdout), redirect_stderr(describe_stderr):
+            exit_code = self.contract.main([
+                "--project-root", str(self.root), "--run-id", "run-describe-cli", "describe",
+            ])
+
+        self.assertEqual(0, exit_code)
+        self.assertEqual("example/service", json.loads(describe_stdout.getvalue())["project"])
+        self.assertEqual("adw:describe: passed\n", describe_stderr.getvalue())
+
+        task_names, task_sources, task_usages = self.catalog_metadata()
+        result = self.contract.check(
+            self.root,
+            task_names=task_names,
+            task_sources=task_sources,
+            task_usages=task_usages,
+            run_id="run-check-cli",
+        )
+        check_stdout = io.StringIO()
+        check_stderr = io.StringIO()
+        with redirect_stdout(check_stdout), redirect_stderr(check_stderr):
+            self.contract._print_result(result)
+
+        self.assertEqual(0, result.exit_code)
+        self.assertEqual("", check_stdout.getvalue())
+        self.assertEqual("adw:check: passed\n", check_stderr.getvalue())
 
     def test_check_missing_manifest_is_blocked(self) -> None:
         result = self.contract.check(self.root, task_names={"adw:describe", "adw:check"}, run_id="run-missing")

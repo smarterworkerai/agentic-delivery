@@ -415,7 +415,7 @@
           "const": "adw-mise-task-contract"
         },
         "version": {
-          "const": "2.1.1"
+          "const": "2.1.2"
         }
       },
       "required": [
@@ -469,7 +469,7 @@
       "uniqueItems": true
     },
     "schema_version": {
-      "const": "2.1.1"
+      "const": "2.1.2"
     },
     "sources": {
       "additionalProperties": false,

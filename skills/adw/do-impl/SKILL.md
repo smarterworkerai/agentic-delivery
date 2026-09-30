@@ -1,7 +1,7 @@
 ---
 name: adw-do-impl
 description: Use when implementing an approved ADW plan directly.
-version: 2.1.1
+version: 2.1.2
 author: Hermes Agent
 license: MIT
 metadata:

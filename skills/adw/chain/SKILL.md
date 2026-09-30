@@ -1,7 +1,7 @@
 ---
 name: adw-chain
 description: Use when coordinating an approved multi-stage ADW flow.
-version: 2.1.1
+version: 2.1.2
 author: Hermes Agent
 license: MIT
 metadata:

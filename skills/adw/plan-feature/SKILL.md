@@ -1,7 +1,7 @@
 ---
 name: adw-plan-feature
 description: Use when planning a feature through the ADW workflow.
-version: 2.1.1
+version: 2.1.2
 author: Hermes Agent
 license: MIT
 metadata:

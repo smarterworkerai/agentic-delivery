@@ -4,7 +4,7 @@
 
 This contract defines the stable boundary between Agentic Delivery Workflow orchestration and deterministic project operations. ADW, CI, and humans invoke the same canonical mise tasks. Projects and optional context layers implement those tasks without exposing tool- or provider-specific decisions to generic ADW.
 
-The contract and schema version is `2.1.1`. Version 2.1 replaces duplicated capability source objects with stable references into a single top-level source registry and adds the optional `adw:local:clean` capability. `adw_contract.py manifest-migrate` performs the reviewed v2.0.0 to v2.1.1 manifest conversion. Historic immutable v1/v2.0 tags remain in Git history; the v2 directory is the active compatible-major snapshot. Breaking task, manifest, evidence, status, or behavioral changes require a major version bump.
+The contract and schema version is `2.1.2`. Version 2.1 replaces duplicated capability source objects with stable references into a single top-level source registry and adds the optional `adw:local:clean` capability. `adw_contract.py manifest-migrate` performs the reviewed v2.0.0 to v2.1.2 manifest conversion. Historic immutable v1/v2.0 tags remain in Git history; the v2 directory is the active compatible-major snapshot. Breaking task, manifest, evidence, status, or behavioral changes require a major version bump.
 
 ## Ownership boundary
 
@@ -167,7 +167,7 @@ Skipped and unsupported work must never be represented as passed.
 
 ## Evidence
 
-Tasks print concise human-readable progress and write separate redacted JSON evidence conforming to `schemas/adw-task-evidence.schema.json`.
+Tasks print concise human-readable progress to stderr and write separate redacted JSON evidence conforming to `schemas/adw-task-evidence.schema.json`. When a task returns a machine-readable payload, such as `adw:describe`, stdout contains only that JSON payload.
 
 Project and context task implementations should invoke `adw_contract.py run --task <task> [--environment <value>] [--child <canonical-task>]... -- <command>`. The adapter validates the complete manifest and source checksums before execution. A nonzero child exit becomes the public `failed` exit class `1`; the raw child exit remains in the evidence finding. The adapter persists only the selected target environment name and declared canonical child task names, and does not persist child command arguments or environment-variable values. Only aggregate tasks may declare unique, non-self-referential children. Unsupported generic stubs use `adw_contract.py unsupported`, return zero only when the manifest declares that canonical task unsupported, and record `unsupported`.
 

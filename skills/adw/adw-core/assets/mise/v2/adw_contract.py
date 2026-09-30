@@ -22,8 +22,8 @@ import urllib.request
 
 
 CONTRACT_NAME = "adw-mise-task-contract"
-CONTRACT_VERSION = "2.1.1"
-SCHEMA_VERSION = "2.1.1"
+CONTRACT_VERSION = "2.1.2"
+SCHEMA_VERSION = "2.1.2"
 EXIT_FAILED = 1
 EXIT_BLOCKED = 20
 EXIT_CONTRACT_ERROR = 21
@@ -269,16 +269,17 @@ def migrate_v2_manifest(manifest: dict[str, Any]) -> tuple[dict[str, Any], list[
     if manifest.get("schema_version") == SCHEMA_VERSION:
         return manifest, []
     contract = manifest.get("contract")
-    if (manifest.get("schema_version") == "2.1.0" and isinstance(contract, dict)
-            and contract.get("version") == "2.1.0"):
+    patch_version = manifest.get("schema_version")
+    if (patch_version in {"2.1.0", "2.1.1"} and isinstance(contract, dict)
+            and contract.get("version") == patch_version):
         if not isinstance(manifest.get("sources"), dict) or not isinstance(manifest.get("capabilities"), dict):
-            return manifest, [_finding("migration.shape", "v2.1.0 migration requires source and capability registries")]
+            return manifest, [_finding("migration.shape", "v2.1.x migration requires source and capability registries")]
         migrated = json.loads(json.dumps(manifest))
         migrated["schema_version"] = SCHEMA_VERSION
         migrated["contract"]["version"] = CONTRACT_VERSION
         return migrated, []
     if manifest.get("schema_version") != "2.0.0" or not isinstance(contract, dict) or contract.get("version") != "2.0.0":
-        return manifest, [_finding("migration.version", "only an ADW v2.0.0 or v2.1.0 manifest can migrate to v2.1.1")]
+        return manifest, [_finding("migration.version", "only an ADW v2.0.0 or v2.1.x manifest can migrate to v2.1.2")]
     old_sources = manifest.get("sources")
     capabilities = manifest.get("capabilities")
     if not isinstance(old_sources, list) or not isinstance(capabilities, dict):
@@ -794,7 +795,7 @@ def manifest_migrate(project_root: Path | str, run_id: str | None = None) -> Res
     if changed:
         _atomic_write_json(_manifest_path(root), migrated)
     return _result(root, migrated, task="adw:context:sync", status="passed", exit_code=0, run_id=run_id,
-                   findings=[_finding("migration.result", "manifest migrated to v2.1.1" if changed else "manifest already uses v2.1.1", "info")],
+                   findings=[_finding("migration.result", "manifest migrated to v2.1.2" if changed else "manifest already uses v2.1.2", "info")],
                    payload={"migrated": changed})
 
 
@@ -1409,9 +1410,9 @@ def run_command(
 
 
 def _print_result(result: Result) -> None:
-    print(f"{result.evidence['task']}: {result.evidence['status']}")
+    print(f"{result.evidence['task']}: {result.evidence['status']}", file=sys.stderr)
     for finding in result.evidence["findings"]:
-        print(f"- {finding['severity']}: {finding['message']}")
+        print(f"- {finding['severity']}: {finding['message']}", file=sys.stderr)
     if result.payload:
         print(json.dumps(result.payload, indent=2, sort_keys=True))
 

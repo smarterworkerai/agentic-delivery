@@ -1,0 +1,14 @@
+{
+  "name": "agentic-delivery",
+  "description": "Agentic Delivery Workflow skills for Claude Code",
+  "owner": {
+    "name": "smarterworkerai"
+  },
+  "plugins": [
+    {
+      "name": "agentic-delivery",
+      "source": "./",
+      "description": "PR-centric delivery skills with explicit human gates and a fail-closed mise task contract"
+    }
+  ]
+}

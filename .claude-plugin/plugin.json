@@ -1,0 +1,19 @@
+{
+  "name": "agentic-delivery",
+  "displayName": "Agentic Delivery Workflow",
+  "version": "2.2.0",
+  "description": "Agent skills and a fail-closed task contract for PR-centric software delivery, from plan to verified deploy",
+  "author": {
+    "name": "smarterworkerai"
+  },
+  "homepage": "https://github.com/smarterworkerai/agentic-delivery",
+  "repository": "https://github.com/smarterworkerai/agentic-delivery",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "delivery",
+    "devops",
+    "mise"
+  ],
+  "skills": "./skills/adw/"
+}

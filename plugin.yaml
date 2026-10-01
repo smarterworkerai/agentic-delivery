@@ -1,6 +1,6 @@
 name: adw
-version: 2.1.2
-description: "Agentic Delivery Workflow slash command router."
+version: 2.2.0
+description: "Thin Hermes compatibility entrypoint for the Agentic Delivery Workflow router."
 author: smarterworkerai
 license: MIT
 homepage: https://github.com/smarterworkerai/agentic-delivery

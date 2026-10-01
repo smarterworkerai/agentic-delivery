@@ -1,5 +1,5 @@
-"""Hermes plugin entrypoint for the Agentic Delivery Workflow router."""
+"""Thin root shim for Hermes plugin discovery."""
 
-from .adw_plugin.router import register
+from .integrations.hermes.adw_plugin.router import register
 
 __all__ = ["register"]

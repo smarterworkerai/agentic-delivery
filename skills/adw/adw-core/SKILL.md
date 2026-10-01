@@ -1,150 +1,75 @@
 ---
 name: adw-core
-description: Use before any ADW workflow. Loads shared policy and ABI.
-version: 2.1.2
-author: Hermes Agent
+description: >-
+  Loads ADW delivery rules, project adapter resolution, shared playbooks, and the fail-closed mise task contract. Use before another ADW skill, when adopting ADW in a repository, or when working with .adw/adw-task-manifest.json or the legacy .hermes project directory.
 license: MIT
+compatibility: Requires git and the GitHub CLI. Deterministic steps require mise and an ADW task manifest.
 metadata:
-  hermes:
-    tags: [adw, core, delivery-workflow, playbooks, templates]
-    related_skills: [adw-plan-feature, adw-plan-bugfix, adw-do-impl, adw-test-feature, adw-merge-feature, adw-validate-regression, adw-chain, adw-self-improve]
+  suite: agentic-delivery
+  version: "2.2.0"
+  author: smarterworkerai
+  requires: none
+  hermes-tags: "adw core delivery-workflow playbooks task-contract"
+  hermes-related-skills: "adw-plan adw-do-impl adw-test-feature adw-merge-feature adw-chain"
+  human-gate: "—"
 ---
-
 # ADW Core
 
-## Overview
+## When to use / when not
 
-`adw-core` is the package source of truth for the Agentic Delivery Workflow shared operating material. Load it before using any specific `adw-*` workflow skill so the agent has the same gates, templates, playbooks, ADR context, and workflow diagram regardless of which Hermes profile installed the skills.
+Load this skill before any ADW workflow and when adopting the task contract in a repository. Use it for shared policy, project/context resolution, deterministic task rules, and adapter generation. Do not use it as permission to merge, deploy, roll back, handle secrets, destroy resources, or rewrite history.
 
-The workflow skills intentionally stay small and operational. This core skill carries the shared artifacts they depend on.
+## Project and context resolution
 
-## When to Use
+1. Inspect the repository and current Git/issue/PR state.
+2. Read the project adapter from `.adw/ADW.md`, or `.hermes/ADW.md` in an existing project.
+3. Load any context helper named by that adapter.
+4. Resolve remaining safe facts from the repository; ask when more than one candidate exists or the consequence is unsafe.
 
-Use this skill whenever:
+The ADW project directory is `.adw/`, or `.hermes/` for existing projects. If both exist, stop with `contract-error`; never choose one silently. New generic projects use `.adw/`. A selected context may require `.hermes/` until that context adopts `.adw/`.
 
-- starting any Agentic Delivery Workflow cycle;
-- loading `adw-plan-feature`, `adw-plan-bugfix`, `adw-do-impl`, `adw-do-impl-delegate`, `adw-test-feature`, `adw-merge-feature`, or another `adw-*` skill;
-- installing the ADW skillset into a separate Hermes profile;
-- checking delivery gates, templates, playbooks, ADRs, or the workflow diagram;
-- validating whether an ADW skill can be used without the full repository checked out.
+## Deterministic operations
 
-Do not use this skill as a replacement for the workflow-specific skills. Use it as the shared context layer, then load the operational skill for the current stage.
+1. Require `<project-dir>/adw-task-manifest.json` and run `mise run adw:check` before any build, verification, deployment, health, readiness, E2E, hotfix, cleanup, or context task.
+2. Run `mise run adw:describe` to discover declared capabilities, environments, and effective sources.
+3. Invoke only the canonical `adw:*` task required by the active skill. Treat environment and target names as opaque manifest values.
+4. Trust the task's exit code and redacted evidence under `<project-dir>/evidence/<run-id>/`; never upgrade `skipped`, `unsupported`, `blocked`, or `contract-error` to success.
 
-## Packaged Shared Artifacts
+If the manifest is absent, stop deterministic execution as `blocked`. There is no ad-hoc fallback to package-manager commands, provider CLIs, provider APIs, or inferred scripts.
 
-This skill owns the shared artifacts for portable installs:
+## Parameter resolution
 
-- `references/playbooks/deployment_gates.md` — review, preview, merge, and deployment gates.
-- `references/playbooks/github_traceability.md` — branch, issue, PR, and status-linking rules.
-- `references/playbooks/incident_response.md` — production incident response flow.
-- `references/playbooks/pr_reviewing.md` — review expectations and rejection handling.
-- `references/playbooks/preview_deployments.md` — preview deployment safety model.
-- `references/playbooks/release_targets.md` — adapter-owned release target, deployment, and rollback rules.
-- `templates/implementation_plan.md` — feature implementation plan template.
-- `templates/bugfix_plan.md` — bugfix plan template.
-- `templates/github_issue_feature.md` — feature issue template.
-- `templates/github_issue_bugfix.md` — bug issue template.
-- `templates/pull_request.md` — PR body template.
-- `templates/validation_report.md` — validation report template.
-- `templates/deployment_report.md` — deployment report template.
-- `templates/rollback_report.md` — rollback report template.
-- `templates/delegation/` — backend-neutral delegated implementation handoff/result templates.
-- `templates/project_adw_adapter.md` — generic project `.hermes/ADW.md` adapter template.
-- `references/project_contexts.md` — generic project adapter and context helper resolution contract.
-- `references/adr/0001-agentic-delivery-workflow.md` — ADW architecture decision.
-- `references/adr/0002-pr-as-delivery-unit.md` — PR-as-delivery-unit decision.
-- `assets/diagrams/adw-complete-workflow.puml` — workflow diagram source.
-- `assets/mise/v2/contract.md` — versioned canonical task, manifest, evidence, and status contract.
-- `assets/mise/v2/generation-guide.md` — AI-facing, diff-only project adapter generation procedure.
-- `assets/mise/v2/tasks.toml` and `assets/mise/v2/adw_contract.py` — vendorable generic stubs and contract validator/runner.
-- `assets/mise/v2/schemas/`, `templates/`, and `fixtures/` — machine schemas, variable/config templates, and conformance examples.
+Resolve missing inputs in this order: repository state → project adapter → context helper → explicit human question. State safe inferences before continuing. Inference never authorizes a risky action.
 
-The root `SOUL.md` remains the agent identity file for profiles that adopt ADW. The root README points to this skill for installable shared artifacts.
+## Status format
 
-## Required Usage Pattern
+```markdown
+### Status
+<current stage>
 
-1. Load `adw-core` first.
-2. Read the playbook/template relevant to the current stage when needed.
-3. Load exactly one operational `adw-*` skill for the next workflow step.
-4. Keep generated delivery artifacts linked to branch, issue, PR, preview, merge, and deployment state.
-5. Report status using the ADW status/final report format.
-6. For short or context-specific human commands, resolve project/environment details through a repository adapter such as `.hermes/ADW.md` and any adapter-declared context helper. Do not hard-code organization or project defaults into generic ADW skills.
+### Completed
+- <artifact/result>
 
-Example:
+### Risks / Blockers
+- <risk or "None">
 
-```text
-Use adw-core and adw-plan-feature for the requested feature.
+### Next
+- <recommended next action>
 ```
 
-Then later:
+## Adapter generation
 
-```text
-Use adw-core and adw-do-impl for the approved implementation issue.
-```
+Use `assets/mise/v2/generation-guide.md` and `assets/project_adw_adapter.md` to create a reviewable adapter diff. Generation may automatically run only `mise run adw:check`; it must not run install, quality, deployment, E2E, hotfix, cleanup, or context-sync tasks.
 
-## Deterministic Project Operations
+Shared operational detail is in `references/`; the stable contract snapshot remains at `assets/mise/v2/`.
 
-After implementation, generic ADW treats the repository's mise adapter as the only executable interface for deterministic project operations.
+## Guardrails
 
-1. If `.hermes/adw-task-manifest.json` exists, run `mise run adw:check` before any build, verification, deployment, health, readiness, E2E, hotfix, or context task.
-2. Run `mise run adw:describe` when capability, environment, or effective-source discovery is needed. Read the manifest rather than inventing environment names.
-3. Invoke only the canonical `adw:*` task required by the operational skill. Pass the selected environment as the task's explicit opaque argument.
-4. Interpret `unsupported` as a successful declaration of absence, never as proof that work ran. If the requested stage requires that capability, report `blocked`.
-5. Preserve task evidence from `.hermes/evidence/<run-id>/` and cite it in delivery reports. Approval and review gates remain outside mise.
-
-If the manifest is absent, stop deterministic execution as `blocked` and offer to generate a reviewable adapter diff using `assets/mise/v2/generation-guide.md`. Generation may automatically run only `mise run adw:check`; it must not run install, build, test, deployment, E2E, hotfix, or context sync tasks. There is no ad-hoc fallback to package-manager commands, provider CLIs, provider REST calls, or inferred project scripts.
-
-## ADW Shared Operating Contract
-
-All ADW workflow skills belong to one PR-centric pipeline:
-
-```text
-Plan → Branch → Issue → Implementation → PR → Review → Preview → Validation → Merge → Deployment
-```
-
-Shared artifacts are packaged here, not duplicated into individual workflow skills. When a workflow skill says to use a template or playbook, resolve it from this `adw-core` package.
-
-Use the package paths below:
-
-- Playbooks: `skills/adw/adw-core/references/playbooks/`
-- Templates: `skills/adw/adw-core/templates/`
-- ADRs: `skills/adw/adw-core/references/adr/`
-- Diagrams: `skills/adw/adw-core/assets/diagrams/`
-- Project/context resolution: `skills/adw/adw-core/references/project_contexts.md`
-- ADW mise contract: `skills/adw/adw-core/assets/mise/v2/`
-
-When installed into a Hermes profile, these files travel with the `adw-core` skill directory.
-
-## Parameter Resolution
-
-Human prompts may be minimal. Resolve missing parameters in this order:
-
-1. Inspect current repository, branch, issue, PR, and deployment metadata.
-2. Check `adw-core` playbooks, templates, ADRs, and the root `SOUL.md` if available.
-3. Read the repository-local project adapter when present, for example `.hermes/ADW.md`.
-4. Load or inspect any context helper declared by the adapter.
-5. If exactly one safe candidate exists, state the inferred assumption and ask the human to confirm before proceeding.
-6. If multiple candidates exist or the consequence is unsafe, ask for explicit human input.
-7. Never treat inference as approval for merge, production deployment, rollback, secret handling, destructive infrastructure changes, or history rewrite.
-
-## Common Pitfalls
-
-1. Installing only a workflow skill such as `adw-plan-feature` and expecting repo-root `playbooks/` or `templates/` to be available. Install/load `adw-core` with the workflow skills.
-2. Treating root-level repository layout as the runtime package contract. The portable package contract is this skill directory.
-3. Duplicating templates into individual workflow skills. Update the central `adw-core` artifact instead.
-4. Editing the workflow diagram without keeping it synchronized with the current ADW/mise responsibility boundary.
-5. Using an operational skill without first checking review, preview, merge, or deployment gates from the shared playbooks.
-6. Putting project-specific defaults into generic ADW skills instead of a project adapter or context helper.
-
-## Verification Checklist
-
-- [ ] `adw-core` is installed in the target Hermes profile
-- [ ] The operational `adw-*` skill lists or requires `adw-core`
-- [ ] Required playbooks/templates exist under this skill directory
-- [ ] Delegation templates exist under `templates/delegation/` when delegated implementation is enabled
-- [ ] Project adapter template and context-resolution reference exist under `adw-core`
-- [ ] Versioned mise contract, schemas, templates, fixtures, and validator exist under `assets/mise/v2/`
-- [ ] Operational skills use canonical mise tasks and do not define project/provider commands
-- [ ] The canonical PlantUML workflow source exists and matches the current ADW/mise boundary
-- [ ] Root README points to `adw-core` as the package source of truth
-- [ ] `tools/validate_adw_skills.py` passes
+<!-- adw:guardrails:start -->
+- Never fake or upgrade results; `skipped` and `unsupported` are not `passed`.
+- Run no deterministic operation without a valid manifest; report `blocked` and do not improvise commands.
+- Require explicit human approval for merge, production-class deploy, rollback, secrets, destructive changes, and history rewrites.
+- Inference is never approval.
+- Resolve missing parameters through `adw-core`: repository → adapter → context → ask.
+- Report status, completed work, risks/blockers, and the next action.
+<!-- adw:guardrails:end -->

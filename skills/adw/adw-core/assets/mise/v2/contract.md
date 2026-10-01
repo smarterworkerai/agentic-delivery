@@ -4,7 +4,7 @@
 
 This contract defines the stable boundary between Agentic Delivery Workflow orchestration and deterministic project operations. ADW, CI, and humans invoke the same canonical mise tasks. Projects and optional context layers implement those tasks without exposing tool- or provider-specific decisions to generic ADW.
 
-The contract and schema version is `2.1.2`. Version 2.1 replaces duplicated capability source objects with stable references into a single top-level source registry and adds the optional `adw:local:clean` capability. `adw_contract.py manifest-migrate` performs the reviewed v2.0.0 to v2.1.2 manifest conversion. Historic immutable v1/v2.0 tags remain in Git history; the v2 directory is the active compatible-major snapshot. Breaking task, manifest, evidence, status, or behavioral changes require a major version bump.
+The contract and schema version is `2.2.0`. Version 2.2 adds `.adw/` project-directory support while retaining `.hermes/` for existing projects; both present is a contract error. Version 2.1 introduced the source registry and `adw:local:clean`. `adw_contract.py manifest-migrate` performs reviewed compatible-v2 migration to 2.2.0. Historic immutable v1/v2.0 tags remain in Git history; the v2 directory is the active compatible-major snapshot. Breaking task, manifest, evidence, status, or behavioral changes require a major version bump.
 
 ## Ownership boundary
 
@@ -16,13 +16,15 @@ CI calls mise tasks directly. CI does not invoke ADW stages, and ADW does not in
 
 ## Project files
 
-The machine source of truth is `.hermes/adw-task-manifest.json`. `.hermes/ADW.md` is narrative and references the manifest instead of duplicating structured capability or environment data.
+The ADW project directory is `.adw/`, or `.hermes/` for existing projects. Both present is `contract-error`; neither present is `blocked`. New generic adapters use `.adw/`, while a selected context that hard-codes `.hermes/` continues to use the legacy directory.
+
+The machine source of truth is the ADW project directory's `adw-task-manifest.json`. `.adw/ADW.md` (or `.hermes/ADW.md` for an existing project) is narrative and references the manifest instead of duplicating structured capability or environment data.
 
 New ADW/mise-specific helper code and its tests belong under project-root `mise-helper/`. Existing project scripts may remain in their established locations and be called by tasks.
 
-Evidence defaults to `.hermes/evidence/<run-id>/` and must be Git-ignored.
+Evidence defaults to `<project-dir>/evidence/<run-id>/` and must be Git-ignored.
 
-The project config declares a hard minimum mise version. This contract snapshot was tested with `2026.9.5`; newer compatible mise releases are allowed. Exact reproducibility applies to project tools through explicit versions and `mise.lock`, not by locking the mise executable itself.
+The project config declares a hard minimum mise version. The compatibility floor remains `2026.9.5` after validation with both `2026.9.5` and `2026.9.13`; newer compatible mise releases are allowed. Exact reproducibility applies to project tools through explicit versions and `mise.lock`, not by locking the mise executable itself.
 
 ## Fixed task ABI
 
@@ -181,7 +183,7 @@ Writes are atomic. Secret values, credentials, raw private endpoints, and privat
 
 ## Manifest absence
 
-If `.hermes/adw-task-manifest.json` is absent, ADW returns `blocked` and offers generation of a reviewable adapter diff. It does not infer and execute ad-hoc project commands.
+If the ADW project manifest is absent, ADW returns `blocked` and offers generation of a reviewable adapter diff. It does not infer and execute ad-hoc project commands.
 
 ## Context neutrality
 

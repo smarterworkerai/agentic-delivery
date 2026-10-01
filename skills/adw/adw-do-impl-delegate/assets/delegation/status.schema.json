@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/smarterworkerai/agentic-delivery/skills/adw/adw-do-impl-delegate/assets/delegation/status.schema.json",
+  "title": "ADW delegated implementation status",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "delivery_ref": { "type": "string", "minLength": 1 },
+        "branch": { "type": "string", "minLength": 1 },
+        "commit": {
+          "oneOf": [
+            { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+            { "type": "null" }
+          ]
+        },
+        "verification": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "task": { "type": "string", "minLength": 1 },
+              "status": {
+                "enum": ["passed", "failed", "skipped", "unsupported", "blocked", "contract-error"]
+              },
+              "evidence": { "type": ["string", "null"] }
+            },
+            "required": ["task", "status", "evidence"]
+          }
+        },
+        "risks": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "merge_performed": { "const": false },
+        "deployment_performed": { "const": false }
+      },
+      "required": [
+        "delivery_ref",
+        "branch",
+        "commit",
+        "verification",
+        "risks",
+        "merge_performed",
+        "deployment_performed"
+      ]
+    }
+  },
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "state": {
+      "enum": ["ready", "running", "blocked", "review", "correction_requested", "done", "failed"]
+    },
+    "started_at": {
+      "oneOf": [
+        { "type": "string", "format": "date-time" },
+        { "type": "null" }
+      ]
+    },
+    "completed_at": {
+      "oneOf": [
+        { "type": "string", "format": "date-time" },
+        { "type": "null" }
+      ]
+    },
+    "model": { "type": ["string", "null"] },
+    "result": {
+      "oneOf": [
+        { "$ref": "#/$defs/result" },
+        { "type": "null" }
+      ]
+    },
+    "error": { "type": ["string", "null"] }
+  },
+  "required": ["run_id", "state", "started_at", "completed_at", "model", "result", "error"],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "state": { "enum": ["running", "blocked", "review", "correction_requested", "done", "failed"] }
+        },
+        "required": ["state"]
+      },
+      "then": {
+        "properties": {
+          "started_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "state": { "enum": ["done", "failed"] } },
+        "required": ["state"]
+      },
+      "then": {
+        "properties": {
+          "completed_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "state": { "const": "done" } },
+        "required": ["state"]
+      },
+      "then": {
+        "properties": {
+          "result": { "$ref": "#/$defs/result" },
+          "error": { "type": "null" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "state": { "const": "failed" } },
+        "required": ["state"]
+      },
+      "then": {
+        "properties": {
+          "error": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  ]
+}

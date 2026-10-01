@@ -1,227 +1,111 @@
 #!/usr/bin/env python3
-"""Validate the ADW Hermes-compatible skill package."""
+"""Validate the Agent Skills distribution and Hermes installer invariants."""
 from __future__ import annotations
 
 import ast
+from pathlib import Path
 import re
 import sys
-from pathlib import Path
+
+import build_skills
+
 
 ROOT = Path(__file__).resolve().parents[1]
-EXPECTED = {
-    "adw-core": "skills/adw/adw-core/SKILL.md",
-    "adw-plan-feature": "skills/adw/plan-feature/SKILL.md",
-    "adw-plan-bugfix": "skills/adw/plan-bugfix/SKILL.md",
-    "adw-do-impl": "skills/adw/do-impl/SKILL.md",
-    "adw-do-impl-delegate": "skills/adw/do-impl-delegate/SKILL.md",
-    "adw-test-feature": "skills/adw/test-feature/SKILL.md",
-    "adw-merge-feature": "skills/adw/merge-feature/SKILL.md",
-    "adw-rollback-deployment": "skills/adw/rollback-deployment/SKILL.md",
-    "adw-validate-regression": "skills/adw/validate-regression/SKILL.md",
-    "adw-create-adr": "skills/adw/create-adr/SKILL.md",
-    "adw-audit-dependencies": "skills/adw/audit-dependencies/SKILL.md",
-    "adw-analyze-production": "skills/adw/analyze-production/SKILL.md",
-    "adw-chain": "skills/adw/chain/SKILL.md",
-    "adw-self-improve": "skills/adw/self-improve/SKILL.md",
-}
-CORE_SHARED = [
-    "skills/adw/adw-core/references/playbooks/preview_deployments.md",
-    "skills/adw/adw-core/references/playbooks/pr_reviewing.md",
-    "skills/adw/adw-core/references/playbooks/release_targets.md",
-    "skills/adw/adw-core/references/playbooks/incident_response.md",
-    "skills/adw/adw-core/references/playbooks/github_traceability.md",
-    "skills/adw/adw-core/references/playbooks/deployment_gates.md",
-    "skills/adw/adw-core/templates/implementation_plan.md",
-    "skills/adw/adw-core/templates/bugfix_plan.md",
-    "skills/adw/adw-core/templates/github_issue_feature.md",
-    "skills/adw/adw-core/templates/github_issue_bugfix.md",
-    "skills/adw/adw-core/templates/pull_request.md",
-    "skills/adw/adw-core/templates/validation_report.md",
-    "skills/adw/adw-core/templates/deployment_report.md",
-    "skills/adw/adw-core/templates/rollback_report.md",
-    "skills/adw/adw-core/templates/delegation/task_brief.md",
-    "skills/adw/adw-core/templates/delegation/environment.md",
-    "skills/adw/adw-core/templates/delegation/constraints.md",
-    "skills/adw/adw-core/templates/delegation/acceptance_criteria.md",
-    "skills/adw/adw-core/templates/delegation/input_artifacts.md",
-    "skills/adw/adw-core/templates/delegation/output_summary.md",
-    "skills/adw/adw-core/templates/delegation/status.schema.json",
-    "skills/adw/adw-core/templates/project_adw_adapter.md",
-    "skills/adw/adw-core/references/project_contexts.md",
-    "skills/adw/adw-core/references/adr/0001-agentic-delivery-workflow.md",
-    "skills/adw/adw-core/references/adr/0002-pr-as-delivery-unit.md",
-    "skills/adw/adw-core/assets/diagrams/adw-complete-workflow.puml",
+REQUIRED = (
     "skills/adw/adw-core/assets/mise/v2/contract.md",
     "skills/adw/adw-core/assets/mise/v2/generation-guide.md",
     "skills/adw/adw-core/assets/mise/v2/adw_contract.py",
     "skills/adw/adw-core/assets/mise/v2/tasks.toml",
     "skills/adw/adw-core/assets/mise/v2/schemas/adw-task-manifest.schema.json",
     "skills/adw/adw-core/assets/mise/v2/schemas/adw-task-evidence.schema.json",
-    "skills/adw/adw-core/assets/mise/v2/templates/mise.toml",
-    "skills/adw/adw-core/assets/mise/v2/templates/project-vars.example.toml",
-    "skills/adw/adw-core/assets/mise/v2/templates/context-vars.example.toml",
-    "skills/adw/adw-core/assets/mise/v2/fixtures/library/.hermes/adw-task-manifest.json",
-    "skills/adw/adw-core/assets/mise/v2/fixtures/library/task-names.json",
-    "skills/adw/adw-core/assets/mise/v2/fixtures/service/.hermes/adw-task-manifest.json",
-    "skills/adw/adw-core/assets/mise/v2/fixtures/service/task-names.json",
-]
-REQUIRED_ROOT = [
-    "SOUL.md",
-    "skills/adw/README.md",
-]
-OBSOLETE_ROOT_SHARED_DIRS = [
-    "playbooks",
-    "templates",
-    "adr",
-    "docs/diagrams",
-]
+    "skills/adw/adw-core/assets/project_adw_adapter.md",
+    "skills/adw/adw-core/references/deployment_gates.md",
+    "skills/adw/adw-core/references/github_traceability.md",
+    "skills/adw/adw-core/references/incident_response.md",
+    "skills/adw/adw-core/references/pr_reviewing.md",
+    "skills/adw/adw-core/references/preview_deployments.md",
+    "skills/adw/adw-core/references/release_targets.md",
+    "integrations/hermes/plugin.yaml",
+    "integrations/hermes/__init__.py",
+    "integrations/hermes/SOUL.md",
+    "integrations/hermes/install_adw.sh",
+    ".claude-plugin/plugin.json",
+    ".claude-plugin/marketplace.json",
+    "docs/architecture.md",
+    "docs/releasing.md",
+    "README.md",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "CONTRIBUTING.md",
+    "AGENTS.md",
+)
 
 
-def parse_frontmatter(text: str) -> tuple[dict[str, str], str]:
-    if not text.startswith("---\n"):
-        raise ValueError("frontmatter must start at byte 0")
-    end = text.find("\n---\n", 4)
-    if end == -1:
-        raise ValueError("frontmatter closing delimiter missing")
-    raw = text[4:end]
-    body = text[end + 5 :].strip()
-    data: dict[str, str] = {}
-    for line in raw.splitlines():
-        if not line.strip() or line.startswith("  ") or line.startswith("    "):
-            continue
-        if ":" in line:
-            key, value = line.split(":", 1)
-            data[key.strip()] = value.strip().strip('"')
-    return data, body
-
-
-def validate_skill(name: str, relpath: str) -> list[str]:
-    path = ROOT / relpath
-    errors: list[str] = []
-    if not path.exists():
-        return [f"missing {relpath}"]
-    text = path.read_text(encoding="utf-8")
-    try:
-        meta, body = parse_frontmatter(text)
-    except ValueError as exc:
-        return [f"{relpath}: {exc}"]
-    if meta.get("name") != name:
-        errors.append(f"{relpath}: expected name {name!r}, got {meta.get('name')!r}")
-    desc = meta.get("description", "")
-    if not desc:
-        errors.append(f"{relpath}: missing description")
-    if len(desc) > 1024:
-        errors.append(f"{relpath}: description exceeds 1024 characters")
-    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", name):
-        errors.append(f"{relpath}: invalid skill name format")
-    if not body:
-        errors.append(f"{relpath}: empty body")
-    for required in ["## Overview", "## When to Use", "## Common Pitfalls", "## Verification Checklist", "## ADW Shared Operating Contract"]:
-        if required not in text:
-            errors.append(f"{relpath}: missing {required}")
-    if name != "adw-core":
-        if "## Required Context" not in text:
-            errors.append(f"{relpath}: missing ## Required Context")
-        if "related_skills: [adw-core" not in text and "adw-core" not in text.split("---", 2)[1]:
-            errors.append(f"{relpath}: missing adw-core in frontmatter related_skills")
-        if "repo-root `playbooks/`, `templates/`, `adr/`, or `docs/`" not in text:
-            errors.append(f"{relpath}: missing portable install warning")
-        if "`.hermes/ADW.md`" not in text or "context helper" not in text:
-            errors.append(f"{relpath}: missing project adapter/context helper loading guidance")
-    return errors
-
-
-def extract_bash_array(script_text: str, name: str) -> list[str]:
-    match = re.search(rf"^{name}=\(\n(?P<body>.*?)^\)", script_text, re.MULTILINE | re.DOTALL)
+def extract_bash_array(text: str, name: str) -> list[str]:
+    match = re.search(rf"^{name}=\(\n(?P<body>.*?)^\)", text, re.MULTILINE | re.DOTALL)
     if not match:
         raise ValueError(f"missing bash array {name}")
-    values: list[str] = []
+    values = []
     for line in match.group("body").splitlines():
         line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        values.append(ast.literal_eval(line))
+        if line and not line.startswith("#"):
+            values.append(ast.literal_eval(line))
     return values
 
 
-def validate_installer() -> list[str]:
+def validate_installer(skill_names: set[str]) -> list[str]:
     errors: list[str] = []
-    script_path = ROOT / "scripts/install_adw.sh"
-    if not script_path.exists():
-        return ["missing scripts/install_adw.sh"]
-    script_text = script_path.read_text(encoding="utf-8")
-    for token in (
+    installer = ROOT / "integrations/hermes/install_adw.sh"
+    text = installer.read_text(encoding="utf-8")
+    for invariant in (
         '[[ "${ADW_REF}" =~ ^[0-9a-f]{40}$ ]]',
         '[[ "${ADW_ARCHIVE_SHA256}" =~ ^[0-9a-f]{64}$ ]]',
-        'ACTUAL_ARCHIVE_SHA256=$(archive_sha256',
         '[[ "${ACTUAL_ARCHIVE_SHA256}" == "${ADW_ARCHIVE_SHA256}" ]]',
-        '[[ "${HERMES_HOME_DIR}" != "/" ]]',
         'OWNER_MARKER=".agentic-delivery-owner"',
-        'ADW_REPLACE_UNMANAGED',
-        'log "Preflight validation"',
+        '[[ "${HERMES_HOME_DIR}" != "/" ]]',
         'plugins doctor "${SOURCE_DIR}" --ci',
         'plugins doctor "${STAGED_PLUGIN}" --ci',
         'plugins doctor "${PLUGIN_TARGET}" --ci',
-        'rollback_activation',
+        "rollback_activation",
+        "LEGACY_INSTALLED_SKILL_NAMES",
+        'POLICIES+=("owned-remove")',
     ):
-        if token not in script_text:
-            errors.append(f"scripts/install_adw.sh: missing safety invariant {token}")
-    for obsolete in ('ADW_REF="${ADW_REF:-main}"', "ADW_REMOVE_EXISTING", 'plugins disable "agentic-delivery"'):
-        if obsolete in script_text:
-            errors.append(f"scripts/install_adw.sh: obsolete installer behavior remains: {obsolete}")
-    if script_text.index('log "Preflight validation"') > script_text.index('TARGETS=()'):
-        errors.append("scripts/install_adw.sh: preflight must complete before target activation")
-    if 'tar -C "${SOURCE_DIR}" --exclude=' in script_text:
-        errors.append("scripts/install_adw.sh: plugin install must not copy the entire repository")
+        if invariant not in text:
+            errors.append(f"integrations/hermes/install_adw.sh: missing safety invariant {invariant}")
     try:
-        skill_dirs = extract_bash_array(script_text, "ADW_SKILLS")
-        installed_names = extract_bash_array(script_text, "ADW_INSTALLED_SKILL_NAMES")
-    except ValueError as exc:
-        return [f"scripts/install_adw.sh: {exc}"]
-    expected_dirs = [Path(relpath).parent.name for relpath in EXPECTED.values()]
-    expected_names = list(EXPECTED)
-    if skill_dirs != expected_dirs:
-        errors.append(f"scripts/install_adw.sh: ADW_SKILLS mismatch; expected {expected_dirs}, got {skill_dirs}")
-    if installed_names != expected_names:
-        errors.append(f"scripts/install_adw.sh: ADW_INSTALLED_SKILL_NAMES mismatch; expected {expected_names}, got {installed_names}")
-    verification_section = script_text.split('log "Post-install verification"', 1)[-1]
-    if "ADW_INSTALLED_SKILL_NAMES" not in verification_section:
-        errors.append("scripts/install_adw.sh: post-install verification must iterate over every ADW_INSTALLED_SKILL_NAMES entry")
-    if 'skill_file="${HERMES_HOME_DIR}/skills/adw/${skill_name}/SKILL.md"' not in verification_section:
-        errors.append("scripts/install_adw.sh: post-install verification must inspect each installed skill file")
-    if 'grep -Eq "^name:[[:space:]]*${skill_name}[[:space:]]*$"' not in verification_section:
-        errors.append("scripts/install_adw.sh: post-install verification must validate installed skill names from SKILL.md")
+        installed = set(extract_bash_array(text, "ADW_SKILLS"))
+    except (ValueError, SyntaxError) as exc:
+        return [f"integrations/hermes/install_adw.sh: {exc}"]
+    if installed != skill_names:
+        errors.append(f"installer skills mismatch: expected {sorted(skill_names)}, got {sorted(installed)}")
+    if "skills/_shared" in text or '"_shared"' in text:
+        errors.append("installer must exclude skills/_shared")
     return errors
 
 
 def main() -> int:
-    errors: list[str] = []
-    for name, relpath in EXPECTED.items():
-        errors.extend(validate_skill(name, relpath))
-    for relpath in REQUIRED_ROOT + CORE_SHARED:
-        if not (ROOT / relpath).exists():
-            errors.append(f"missing required artifact {relpath}")
-    for relpath in OBSOLETE_ROOT_SHARED_DIRS:
-        if (ROOT / relpath).exists():
-            errors.append(f"obsolete root shared artifact directory still exists: {relpath}")
-    readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
-    for token in [
-        "adw-core",
-        "Package Source of Truth",
-        "ADW and mise Boundary",
-        "Workflow Skills",
-    ]:
-        if token not in readme_text:
-            errors.append(f"README missing {token}")
-    for obsolete in ["docs/diagrams/adw-complete-workflow", "playbooks/ —", "templates/ —", "adr/ —", "skills/agentic-delivery", "feature/initial-skills"]:
-        if obsolete in readme_text:
-            errors.append(f"README contains obsolete reference: {obsolete}")
-    errors.extend(validate_installer())
+    errors = build_skills.validate_all(ROOT)
+    skills, discovery_errors = build_skills.discover_skills(ROOT)
+    errors.extend(discovery_errors)
+    names = {skill.name for skill in skills}
+    for relative in REQUIRED:
+        if not (ROOT / relative).is_file():
+            errors.append(f"missing required artifact {relative}")
+    for obsolete in (
+        "skills/adw/README.md",
+        "skills/adw/adw-core/templates",
+        "skills/adw/adw-core/assets/diagrams",
+        "skills/adw/plan-feature",
+        "skills/adw/plan-bugfix",
+    ):
+        if (ROOT / obsolete).exists():
+            errors.append(f"obsolete artifact remains: {obsolete}")
+    errors.extend(validate_installer(names))
     if errors:
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)
         return 1
-    print(f"OK: {len(EXPECTED)} ADW skills and {len(CORE_SHARED)} adw-core shared artifacts validated")
+    print(f"OK: {len(skills)} spec-conformant ADW skills and integration artifacts validated")
     return 0
 
 

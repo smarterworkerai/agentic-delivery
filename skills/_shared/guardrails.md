@@ -1,0 +1,6 @@
+- Never fake or upgrade results; `skipped` and `unsupported` are not `passed`.
+- Run no deterministic operation without a valid manifest; report `blocked` and do not improvise commands.
+- Require explicit human approval for merge, production-class deploy, rollback, secrets, destructive changes, and history rewrites.
+- Inference is never approval.
+- Resolve missing parameters through `adw-core`: repository → adapter → context → ask.
+- Report status, completed work, risks/blockers, and the next action.

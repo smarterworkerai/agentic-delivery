@@ -22,8 +22,8 @@ import urllib.request
 
 
 CONTRACT_NAME = "adw-mise-task-contract"
-CONTRACT_VERSION = "2.1.2"
-SCHEMA_VERSION = "2.1.2"
+CONTRACT_VERSION = "2.2.0"
+SCHEMA_VERSION = "2.2.0"
 EXIT_FAILED = 1
 EXIT_BLOCKED = 20
 EXIT_CONTRACT_ERROR = 21
@@ -173,8 +173,24 @@ def _new_run_id() -> str:
     return f"adw-{uuid.uuid4()}"
 
 
+class ProjectDirectoryConflict(ValueError):
+    """Raised when both supported ADW project directories exist."""
+
+
+def _project_directory(project_root: Path) -> Path:
+    modern = project_root / ".adw"
+    legacy = project_root / ".hermes"
+    if modern.exists() and legacy.exists():
+        raise ProjectDirectoryConflict("both .adw and .hermes exist; keep exactly one ADW project directory")
+    if modern.exists():
+        return modern
+    if legacy.exists():
+        return legacy
+    return modern
+
+
 def _manifest_path(project_root: Path) -> Path:
-    return project_root / ".hermes" / "adw-task-manifest.json"
+    return _project_directory(project_root) / "adw-task-manifest.json"
 
 
 def _load_manifest(project_root: Path) -> dict[str, Any]:
@@ -206,7 +222,7 @@ def _safe_task_filename(task: str) -> str:
 
 
 def _evidence_root(project_root: Path, manifest: dict[str, Any] | None) -> Path:
-    configured = ".hermes/evidence"
+    configured = f"{_project_directory(project_root).name}/evidence"
     if manifest:
         evidence = manifest.get("evidence")
         if isinstance(evidence, dict) and isinstance(evidence.get("root"), str):
@@ -270,7 +286,7 @@ def migrate_v2_manifest(manifest: dict[str, Any]) -> tuple[dict[str, Any], list[
         return manifest, []
     contract = manifest.get("contract")
     patch_version = manifest.get("schema_version")
-    if (patch_version in {"2.1.0", "2.1.1"} and isinstance(contract, dict)
+    if (patch_version in {"2.1.0", "2.1.1", "2.1.2"} and isinstance(contract, dict)
             and contract.get("version") == patch_version):
         if not isinstance(manifest.get("sources"), dict) or not isinstance(manifest.get("capabilities"), dict):
             return manifest, [_finding("migration.shape", "v2.1.x migration requires source and capability registries")]
@@ -279,7 +295,7 @@ def migrate_v2_manifest(manifest: dict[str, Any]) -> tuple[dict[str, Any], list[
         migrated["contract"]["version"] = CONTRACT_VERSION
         return migrated, []
     if manifest.get("schema_version") != "2.0.0" or not isinstance(contract, dict) or contract.get("version") != "2.0.0":
-        return manifest, [_finding("migration.version", "only an ADW v2.0.0 or v2.1.x manifest can migrate to v2.1.2")]
+        return manifest, [_finding("migration.version", "only an ADW v2.0.0 or v2.1.x manifest can migrate to v2.2.0")]
     old_sources = manifest.get("sources")
     capabilities = manifest.get("capabilities")
     if not isinstance(old_sources, list) or not isinstance(capabilities, dict):
@@ -351,7 +367,9 @@ def _persist(project_root: Path, manifest: dict[str, Any] | None, evidence: dict
     try:
         root = _evidence_root(project_root, manifest)
     except ValueError:
-        root = project_root.resolve() / ".hermes" / "evidence"
+        # Error evidence still needs a bounded location. `.adw` is the new-project
+        # default, but this fallback never resolves a manifest or grants precedence.
+        root = project_root.resolve() / ".adw" / "evidence"
     directory = (root / evidence["run_id"]).resolve()
     if directory != root and root not in directory.parents:
         raise ValueError("evidence run directory must remain inside evidence.root")
@@ -752,6 +770,8 @@ def context_check(project_root: Path | str, run_id: str | None = None) -> Result
     started = _now()
     try:
         manifest = _load_manifest(root)
+    except ProjectDirectoryConflict as exc:
+        return _result(root, None, task="adw:context:check", status="contract-error", exit_code=EXIT_CONTRACT_ERROR, run_id=run_id, findings=[_finding("project.directory", str(exc))], started_at=started)
     except (FileNotFoundError, json.JSONDecodeError, ValueError) as exc:
         return _result(root, None, task="adw:context:check", status="blocked", exit_code=EXIT_BLOCKED, run_id=run_id, findings=[_finding("manifest.missing", f"ADW task manifest unavailable ({type(exc).__name__})")], started_at=started)
     findings = validate_manifest(manifest)
@@ -781,6 +801,9 @@ def manifest_migrate(project_root: Path | str, run_id: str | None = None) -> Res
     root = Path(project_root)
     try:
         original = _load_manifest(root)
+    except ProjectDirectoryConflict as exc:
+        return _result(root, None, task="adw:context:sync", status="contract-error", exit_code=EXIT_CONTRACT_ERROR,
+                       run_id=run_id, findings=[_finding("project.directory", str(exc))])
     except (FileNotFoundError, json.JSONDecodeError, ValueError) as exc:
         return _result(root, None, task="adw:context:sync", status="blocked", exit_code=EXIT_BLOCKED,
                        run_id=run_id, findings=[_finding("manifest.missing", f"ADW task manifest unavailable ({type(exc).__name__})")])
@@ -795,7 +818,7 @@ def manifest_migrate(project_root: Path | str, run_id: str | None = None) -> Res
     if changed:
         _atomic_write_json(_manifest_path(root), migrated)
     return _result(root, migrated, task="adw:context:sync", status="passed", exit_code=0, run_id=run_id,
-                   findings=[_finding("migration.result", "manifest migrated to v2.1.2" if changed else "manifest already uses v2.1.2", "info")],
+                   findings=[_finding("migration.result", "manifest migrated to v2.2.0" if changed else "manifest already uses v2.2.0", "info")],
                    payload={"migrated": changed})
 
 
@@ -869,7 +892,7 @@ def describe(project_root: Path | str, run_id: str | None = None) -> Result:
             status="contract-error",
             exit_code=EXIT_CONTRACT_ERROR,
             run_id=run_id,
-            findings=[_finding("manifest.invalid", f"ADW task manifest is invalid: {exc}")],
+            findings=[_finding("project.directory", str(exc))] if isinstance(exc, ProjectDirectoryConflict) else [_finding("manifest.invalid", f"ADW task manifest is invalid: {exc}")],
             started_at=started,
         )
     findings = validate_manifest(manifest)
@@ -967,7 +990,7 @@ def check(
             status="contract-error",
             exit_code=EXIT_CONTRACT_ERROR,
             run_id=run_id,
-            findings=[_finding("manifest.invalid", f"ADW task manifest is invalid: {exc}")],
+            findings=[_finding("project.directory", str(exc))] if isinstance(exc, ProjectDirectoryConflict) else [_finding("manifest.invalid", f"ADW task manifest is invalid: {exc}")],
             started_at=started,
         )
     findings = validate_manifest(manifest)
@@ -1067,7 +1090,7 @@ def unsupported(
             status="contract-error",
             exit_code=EXIT_CONTRACT_ERROR,
             run_id=run_id,
-            findings=[_finding("manifest.invalid", f"ADW task manifest is invalid: {exc}")],
+            findings=[_finding("project.directory", str(exc))] if isinstance(exc, ProjectDirectoryConflict) else [_finding("manifest.invalid", f"ADW task manifest is invalid: {exc}")],
         )
     findings = validate_manifest(manifest)
     findings.extend(_validate_source_files(root, manifest))
@@ -1111,6 +1134,9 @@ def local_clean_contract(
     root = Path(project_root)
     try:
         manifest = _load_manifest(root)
+    except ProjectDirectoryConflict as exc:
+        return _result(root, None, task="adw:local:clean", status="contract-error", exit_code=EXIT_CONTRACT_ERROR,
+                       run_id=run_id, findings=[_finding("project.directory", str(exc))])
     except (FileNotFoundError, json.JSONDecodeError, ValueError) as exc:
         return _result(root, None, task="adw:local:clean", status="blocked", exit_code=EXIT_BLOCKED,
                        run_id=run_id, findings=[_finding("manifest.missing", f"ADW task manifest unavailable ({type(exc).__name__})")])
@@ -1168,7 +1194,7 @@ def require(
             status="contract-error",
             exit_code=EXIT_CONTRACT_ERROR,
             run_id=run_id,
-            findings=[_finding("manifest.invalid", f"ADW task manifest is invalid: {exc}")],
+            findings=[_finding("project.directory", str(exc))] if isinstance(exc, ProjectDirectoryConflict) else [_finding("manifest.invalid", f"ADW task manifest is invalid: {exc}")],
         )
     findings = validate_manifest(manifest)
     findings.extend(_validate_source_files(root, manifest))

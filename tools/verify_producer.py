@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def main() -> int:
     for args in (
+        [sys.executable, "tools/build_skills.py", "--check"],
         [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-q"],
         [sys.executable, "tools/validate_adw_skills.py"],
     ):

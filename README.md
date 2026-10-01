@@ -1,132 +1,159 @@
-# agentic-delivery
+# Agentic Delivery Workflow (ADW)
 
-Agentic Delivery Workflow (ADW) is a Hermes-compatible plugin and skill package for moving software changes through a reviewable delivery pipeline:
+**Agent skills and a fail-closed task contract that take a change from plan to verified deployment, the way a careful senior engineer would, and leave evidence you can check.**
 
-```text
-Plan → Branch → Issue → PR → Review → Preview → Merge → Deploy
+[![Producer quality](https://github.com/smarterworkerai/agentic-delivery/actions/workflows/producer-quality.yml/badge.svg)](https://github.com/smarterworkerai/agentic-delivery/actions/workflows/producer-quality.yml)
+[![Release](https://img.shields.io/github/v/release/smarterworkerai/agentic-delivery)](https://github.com/smarterworkerai/agentic-delivery/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+Works with any agent that supports [Agent Skills](https://agentskills.io): Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot, Hermes Agent and others.
+
+---
+
+## Why
+
+Coding agents are good at writing code and bad at delivering it. They improvise build commands, report "tests passed" when nothing ran, and happily push to production. ADW gives an agent a delivery discipline:
+
+- **The PR is the unit of delivery.** Plan, branch, issue, PR, review, preview, merge and deploy stay linked.
+- **Humans approve the risky steps.** Merge, production deploy, rollback, secrets and destructive work always need an explicit "yes". The agent does the rest.
+- **No improvisation.** Build, test, deploy and verify run only through a versioned task contract (`mise run adw:*`). If the project doesn't declare a capability, ADW reports `blocked` instead of guessing.
+- **Honest results.** `skipped` and `unsupported` are never reported as `passed`. Every task writes redacted JSON evidence.
+
+## How it works
+
+```mermaid
+flowchart LR
+    H((Human)) -->|intent| P["Plan<br/>branch · issue · acceptance criteria"]
+    P --> I["Implement<br/>adw:verify:minimal"]
+    I --> G1{{Approve PR route}}
+    G1 --> R["Review + preview<br/>adw:deploy:apply · adw:test:e2e:fast"]
+    R --> G2{{Approve merge}}
+    G2 --> M[Merge]
+    M --> G3{{Approve deploy target}}
+    G3 --> D["Deploy + verify<br/>adw:validate-deployment"]
+    D -. failure .-> RB[Rollback]
+    classDef gate fill:#fff3cd,stroke:#b58900,color:#3d2e00;
+    class G1,G2,G3 gate;
 ```
 
-The PR is the central unit of delivery. ADW keeps planning, implementation, delegation, review, approval, PR/merge policy, and rollback decisions in the agentic workflow layer. It delegates deterministic project operations to a versioned `adw:*` mise task contract.
+ADW has two halves with a hard boundary between them:
 
-## Package Source of Truth
-
-- `adw_plugin/` — `/adw` command routing and gateway rewrite hook.
-- `skills/adw/` — operational ADW skills.
-- `skills/adw/adw-core/` — shared policy, playbooks, templates, ADRs, diagrams, and the mise contract package.
-- `scripts/install_adw.sh` — profile-aware install and uninstall entrypoint.
-- `tools/` and `tests/` — package, contract, schema, and distribution validation.
-
-Shared artifacts live only under `skills/adw/adw-core/`. Workflow skills reference that package; projects must not depend on obsolete repo-root `playbooks/`, `templates/`, `adr/`, or `docs/` copies.
-
-## ADW and mise Boundary
-
-### Agentic ADW responsibilities
-
-- inspect repository and delivery context;
-- create plans, branches, issues, and PRs;
-- implement or delegate code changes;
-- review diffs and evidence;
-- request approval for merge, deployment, rollback, destructive work, or history rewrites;
-- preserve traceability and report blockers.
-
-These are not mise tasks.
-
-### Deterministic project operations
-
-Projects expose supported build, test, verification, deployment, status, health, readiness, E2E, context-sync, and temporary-hotfix operations through the canonical `adw:*` ABI. The normative v2 package is:
-
-```text
-skills/adw/adw-core/assets/mise/v2/
+```mermaid
+flowchart TB
+    subgraph Judgment["Agent + ADW skills: judgment"]
+        S["plan · implement · review · merge · rollback<br/>approvals · traceability · reports"]
+    end
+    subgraph Contract["Task contract: deterministic, fail-closed"]
+        T["mise run adw:#lt;task#gt; [environment]"]
+        V["adw_contract.py<br/>manifest · checksums · side-effect class"]
+        C[("optional context layer<br/>shared org conventions")]
+        PT["project tasks<br/>your build, test, deploy"]
+        E["#lt;project-dir#gt;/evidence/#lt;run-id#gt;/*.json<br/>redacted evidence"]
+    end
+    S --> T --> V
+    V --> C --> PT
+    V --> PT
+    PT --> E
+    V -.->|no manifest or undeclared capability| B[["blocked, nothing runs"]]
 ```
 
-Each project owns its concrete task implementations and `.hermes/adw-task-manifest.json`. Optional context includes provide only proven shared task definitions and non-secret variables. Include precedence is generic ADW → optional context → project-local override.
+- **Skills** decide *what* should happen and *when a human must decide*.
+- **The contract** decides *how* it runs: 26 canonical tasks with fixed side-effect classes (`read-only`, `local-write`, `remote-write`) and exit classes (`0` ok, `1` failed, `20` blocked, `21` contract error). Each project implements the tasks it supports. Precedence: generic → optional context → project.
 
-Missing or invalid manifests fail closed. ADW does not improvise package-manager, deployment-provider, or infrastructure commands.
+## Quickstart
 
-### Vendored-context freshness
+### 1. Install the skills
 
-A project may support `adw:context:check` with `context_freshness` in its manifest: the trusted `smarterworkerai/agentic-delivery` `main` branch, a safe release-index path, and either `advisory` or `require-current-compatible` policy. The strict policy is suitable for fast-feedback CI: `mise run adw:context:check` fails when the vendor pin is stale or the trusted upstream lookup is unavailable. Index releases must name exact immutable Git SHAs; a branch or tag is never accepted as the resolved release. `adw:context:sync` explicitly downloads the selected immutable GitHub codeload archive, safely stages only the declared snapshot subtree, verifies its canonical `tasks.toml` checksum, then locally replaces the vendor snapshot and updates the manifest. Neither task commits or opens a PR.
+| Your agent | Install |
+|---|---|
+| **Any Agent Skills client** | Download the latest [release](https://github.com/smarterworkerai/agentic-delivery/releases) archive, verify it against `SHA256SUMS`, and copy each skill directory under `skills/adw/` into your agent's skills directory (Claude Code: `~/.claude/skills/` or `<repo>/.claude/skills/`). |
+| **Claude Code (plugin)** | `/plugin marketplace add smarterworkerai/agentic-delivery`, then `/plugin install agentic-delivery@agentic-delivery` |
+| **Hermes Agent** | Use the pinned command from the [latest release notes](https://github.com/smarterworkerai/agentic-delivery/releases/latest). It includes the exact commit SHA and archive checksum; see [integrations/hermes](integrations/hermes/README.md). |
 
-## Install
+### 2. Adopt ADW in a repository
 
-Requirements:
+Ask your agent:
 
-- Hermes Agent available as `hermes`;
-- `curl` and `tar` for remote installation.
+> Use adw-core to generate an ADW adapter for this repository.
 
-Install an explicitly reviewed immutable commit:
+It inspects the repo and proposes a **reviewable diff**, with nothing executed except `adw:check`:
+
+```text
+mise.toml                          # includes the generic task contract
+.adw/adw-task-manifest.json        # which tasks you support, environments, verification graphs
+.adw/ADW.md                     # short narrative policy for humans and agents
+mise-helper/                       # your task implementations (existing scripts can be reused)
+mise-helper/vendor/agentic-delivery/  # pinned, checksummed contract snapshot
+```
+
+Review it, commit it, then:
 
 ```bash
-ADW_REF=0123456789abcdef0123456789abcdef01234567
-ADW_ARCHIVE_SHA256=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-curl -fsSL "https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/${ADW_REF}/scripts/install_adw.sh" | ADW_REF="${ADW_REF}" ADW_ARCHIVE_SHA256="${ADW_ARCHIVE_SHA256}" bash
+mise run adw:check        # validates manifest, sources, checksums, side-effect classes
+mise run adw:describe     # prints capabilities and environments as JSON
 ```
 
-Replace the example values with the reviewed commit SHA and its published codeload archive SHA-256. Branch names, tags, uppercase SHA text, a missing archive checksum, and an omitted `ADW_REF` are rejected.
-
-The installer downloads and validates the full source before touching active paths, stages on the profile filesystem, installs only the runtime plugin files plus the 14 skill packages, marks owned paths, and restores prior paths if activation or post-install Doctor validation fails. An unmanaged collision is refused unless `ADW_REPLACE_UNMANAGED=yes` is explicitly set after review. Non-interactive automation must set profile and `SOUL.md` choices explicitly. The installer does not request or print secrets.
-
-After installing or updating the plugin, restart the Hermes gateway from a separate shell before using `/adw` through a gateway platform.
-
-## Uninstall
-
-```bash
-ADW_REF=0123456789abcdef0123456789abcdef01234567
-curl -fsSL "https://raw.githubusercontent.com/smarterworkerai/agentic-delivery/${ADW_REF}/scripts/install_adw.sh" | bash -s -- --uninstall
-```
-
-Uninstall removes only marker-owned `adw` plugin and skill paths. It does not delete unproven legacy aliases or unrelated same-named directories. Profile-level `SOUL.md` removal requires an explicit option or prompt and an exact content match with the installed package copy.
-
-## `/adw` Command
-
-The root plugin registers:
+### 3. Deliver a change
 
 ```text
-/adw <workflow> <payload>
+Plan the feature "export to CSV".
+Implement it.
+Test PR #42 on the preview environment.
+Merge PR #42.
 ```
 
-Examples:
+The agent picks the matching skill, stops at every approval gate, and reports in a fixed format (status, completed, risks, next).
 
-```text
-/adw plan-feature add export support
-/adw do-impl issue #42
-/adw test-feature PR #42
-/adw merge-feature PR #42 to <approved-target>
-/adw chain plan impl test merge <scope>
-```
+## Skills
 
-An unknown workflow is rejected. `/adw` without arguments lists current workflow tokens.
+<!-- skills:start -->
+| Skill | Use it to | Human gate |
+|---|---|---|
+| `adw-core` | Loads ADW delivery rules, project adapter resolution, shared playbooks, and the fail-closed mise task contract. Use before another ADW skill, when adopting ADW in a repository, or when working with .adw/adw-task-manifest.json or the legacy .hermes project directory. | — |
+| `adw-analyze-production` | Triages production feedback, logs, metrics, and incidents into continue, fix-forward, or rollback recommendations. Use when a deployment misbehaves, users report a live defect, or runtime evidence needs structured analysis. | Rollback or other remote mutation |
+| `adw-audit-dependencies` | Audits dependency, build-tool, and toolchain changes for security, maintenance, compatibility, and release risk. Use for upgrade PRs, lockfile changes, supply-chain review, or dependency health checks. | — |
+| `adw-chain` | Coordinates a bounded multi-stage ADW delivery sequence while preserving every quality and approval gate. Use when the user requests plan-through-merge, full rollout, or another explicit chain of delivery stages. | Confirm the exact chain proposal |
+| `adw-create-adr` | Creates a reviewable Architecture Decision Record with context, options, decision, and consequences. Use for architectural, security-boundary, platform, or long-lived delivery decisions that need durable rationale. | — |
+| `adw-do-impl` | Implements an approved plan, runs manifest-declared minimal verification, and prepares a reviewable commit or pull request. Use when coding a planned ADW change directly in a repository with an ADW task manifest. | Exact PR source and target route |
+| `adw-do-impl-delegate` | Delegates an approved implementation through a backend-neutral brief and independently verifies the returned change. Use when another agent or worker should implement an ADW plan while the orchestrator retains delivery gates. | Exact PR source and target route |
+| `adw-merge-feature` | Merges a validated pull request into an explicitly approved destination and deploys only when separately requested and gated. Use after review evidence is complete or when the user asks to merge or deliver an approved PR. | Merge and any deployment target |
+| `adw-plan` | Plans a feature or bugfix as a reviewable delivery unit with branch, issue, acceptance criteria, verification, and rollback notes. Use when scoping a new capability, investigating a defect, or preparing non-trivial ADW work. | Plan approval when repository policy requires it |
+| `adw-rollback-deployment` | Restores a failed deployment with the repository-declared rollback strategy and verifies the restored identity and health. Use for incident recovery or when an approved release must be rolled back safely. | Always before rollback |
+| `adw-self-improve` | Persists an explicitly requested workflow improvement in the correct ADW, context, or project layer through a reviewable pull request. Use when the user asks the delivery system to learn, improve, or codify a recurring lesson. | Confirm the improvement proposal |
+| `adw-test-feature` | Reviews and validates a pull request with local quality, preview deployment, smoke checks, and optional E2E evidence. Use before merge or when asked to test a feature branch, PR, or preview environment. | Preview deployment and each E2E run |
+| `adw-validate-regression` | Runs targeted or broad regression checks against a pull request, branch, deployment, or release candidate and records honest evidence. Use for risk-based validation, regression investigation, or pre-release confidence. | Any remote-write or billable test |
+<!-- skills:end -->
 
-## Workflow Skills
+## Safety model
 
-- `adw-plan-feature`
-- `adw-plan-bugfix`
-- `adw-do-impl`
-- `adw-do-impl-delegate`
-- `adw-test-feature`
-- `adw-merge-feature`
-- `adw-validate-regression`
-- `adw-rollback-deployment`
-- `adw-create-adr`
-- `adw-audit-dependencies`
-- `adw-analyze-production`
-- `adw-chain`
-- `adw-self-improve`
-- `adw-core`
+| Rule | Enforced by |
+|---|---|
+| No manifest, invalid manifest, or undeclared capability → `blocked` | `adw_contract.py` |
+| Side-effect class is fixed per task name and cannot be overridden | contract + validator |
+| `unsupported`/`skipped` never counts as `passed`; aggregates need fresh child evidence from the same run | contract |
+| Contract snapshots are pinned to immutable commit SHAs and verified by SHA-256 | `adw:check`, `adw:context:check` |
+| Merge, production, rollback, secrets, destructive changes, history rewrites need explicit approval | skills (and your agent's permission settings) |
+| Secrets never appear in manifests, adapters, evidence or chat | skills + evidence redaction |
 
-Repository metadata, the project adapter, and explicit human input determine branch names, release targets, environment mappings, and deployment strategy. Generic ADW does not hardcode them.
+Full specification: [contract.md](skills/adw/adw-core/assets/mise/v2/contract.md).
 
-## Validation
+## Context layers (optional)
 
-The **Required producer quality** check runs `python3 tools/verify_producer.py` on GitHub Actions for branch pushes and PRs. It covers the unit/distribution suite, skill validator, and direct plugin-package tests without a Hermes runtime; this producer-repository check is distinct from the `adw:verify:full` task graph required of consuming projects. It does not claim to run the Hermes Plugin Doctor or live deployments.
+An organization can publish a **context package** with shared, proven task implementations and conventions (for example, a common deploy backend). Projects pin it like the generic contract. Precedence stays generic → context → project, and `adw:context:check` reports when a pin is stale. The context never carries project facts or secrets.
 
-Run from the repository root:
+## Versioning
+
+- Semantic versioning for the whole package ([CHANGELOG](CHANGELOG.md)). The task contract is `v2`; breaking task, manifest, evidence or status changes require a new major version.
+- Every release is a Git tag, a GitHub Release with checksums, and an entry in [`releases/adw-mise-v2.json`](releases/adw-mise-v2.json), the index that `adw:context:check` uses.
+
+## Contributing
 
 ```bash
-python3 tools/verify_producer.py
-/path/to/hermes/venv/bin/python tools/validate_adw_plugin_package.py
+python3 tools/verify_producer.py      # unit, contract, distribution and skill-spec checks
 ```
 
-The plugin validator runs the real `hermes plugins doctor --ci` contract and isolated runtime-only discovery. Run it with a Python interpreter from the Hermes environment so `hermes_cli` is importable; `HERMES_BIN` may select the Doctor executable but does not replace that interpreter requirement.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the Hermes Doctor check, how to add a skill, and the generated sections. Security reports: [SECURITY.md](SECURITY.md).
 
-Generated task evidence belongs under `.hermes/evidence/<run-id>/` and is Git-ignored.
+## License
+
+MIT

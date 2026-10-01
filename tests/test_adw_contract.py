@@ -81,10 +81,10 @@ def valid_manifest() -> dict:
         },
     })
     return {
-        "schema_version": "2.1.2",
+        "schema_version": "2.2.0",
         "contract": {
             "name": "adw-mise-task-contract",
-            "version": "2.1.2",
+            "version": "2.2.0",
             "compatible": ">=2.0.0,<3.0.0",
         },
         "project": {"id": "example/service"},
@@ -147,6 +147,19 @@ class ContractTests(unittest.TestCase):
         path.write_text(json.dumps(value), encoding="utf-8")
         return path
 
+    def use_adw_project_directory(self) -> Path:
+        legacy = self.root / ".hermes"
+        modern = self.root / ".adw"
+        modern.mkdir()
+        legacy_manifest = legacy / "adw-task-manifest.json"
+        if legacy_manifest.exists():
+            value = json.loads(legacy_manifest.read_text(encoding="utf-8"))
+            value["evidence"]["root"] = ".adw/evidence"
+            (modern / "adw-task-manifest.json").write_text(json.dumps(value), encoding="utf-8")
+            legacy_manifest.unlink()
+        legacy.rmdir()
+        return modern
+
     def catalog_metadata(self, manifest: dict | None = None) -> tuple[set[str], dict[str, str], dict[str, str]]:
         value = manifest or valid_manifest()
         names = set(value["capabilities"])
@@ -179,7 +192,7 @@ class ContractTests(unittest.TestCase):
 
         self.assertEqual(0, result.exit_code)
         self.assertTrue(result.payload["migrated"])
-        self.assertEqual("2.1.2", saved["schema_version"])
+        self.assertEqual("2.2.0", saved["schema_version"])
         self.assertEqual({"generic", "project"}, set(saved["sources"]))
         self.assertTrue(all(isinstance(value["source"], str) for value in saved["capabilities"].values()))
         self.assertEqual([], self.contract.validate_manifest(saved))
@@ -195,8 +208,8 @@ class ContractTests(unittest.TestCase):
 
         self.assertEqual(0, result.exit_code)
         self.assertTrue(result.payload["migrated"])
-        self.assertEqual("2.1.2", saved["schema_version"])
-        self.assertEqual("2.1.2", saved["contract"]["version"])
+        self.assertEqual("2.2.0", saved["schema_version"])
+        self.assertEqual("2.2.0", saved["contract"]["version"])
         self.assertEqual(manifest["sources"], saved["sources"])
 
     def test_v211_manifest_migration_updates_only_patch_version(self) -> None:
@@ -210,9 +223,23 @@ class ContractTests(unittest.TestCase):
 
         self.assertEqual(0, result.exit_code)
         self.assertTrue(result.payload["migrated"])
-        self.assertEqual("2.1.2", saved["schema_version"])
-        self.assertEqual("2.1.2", saved["contract"]["version"])
+        self.assertEqual("2.2.0", saved["schema_version"])
+        self.assertEqual("2.2.0", saved["contract"]["version"])
         self.assertEqual(manifest["sources"], saved["sources"])
+
+    def test_v212_manifest_migration_updates_only_patch_version(self) -> None:
+        manifest = valid_manifest()
+        manifest["schema_version"] = "2.1.2"
+        manifest["contract"]["version"] = "2.1.2"
+        self.write_manifest(manifest)
+
+        result = self.contract.manifest_migrate(self.root, run_id="run-v212-migrate")
+        saved = json.loads((self.root / ".hermes" / "adw-task-manifest.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(0, result.exit_code)
+        self.assertTrue(result.payload["migrated"])
+        self.assertEqual("2.2.0", saved["schema_version"])
+        self.assertEqual("2.2.0", saved["contract"]["version"])
 
     def test_local_clean_contract_enforces_scoped_and_aggressive_modes(self) -> None:
         self.write_manifest()
@@ -396,6 +423,52 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(self.contract.EXIT_BLOCKED, result.exit_code)
         self.assertEqual("blocked", result.evidence["status"])
         self.assertIn("manifest", result.evidence["findings"][0]["message"].lower())
+
+    def test_adw_only_manifest_and_evidence_use_modern_project_directory(self) -> None:
+        self.write_manifest()
+        modern = self.use_adw_project_directory()
+        task_names, task_sources, task_usages = self.catalog_metadata()
+
+        result = self.contract.check(
+            self.root, task_names=task_names, task_sources=task_sources,
+            task_usages=task_usages, run_id="run-adw-only",
+        )
+
+        self.assertEqual(0, result.exit_code)
+        self.assertTrue((modern / "evidence" / "run-adw-only" / "adw_check.json").is_file())
+        self.assertFalse((self.root / ".hermes").exists())
+
+    def test_both_project_directories_are_a_contract_error(self) -> None:
+        legacy_manifest = self.write_manifest()
+        modern = self.root / ".adw"
+        modern.mkdir()
+        (modern / "adw-task-manifest.json").write_text(legacy_manifest.read_text(), encoding="utf-8")
+
+        result = self.contract.check(self.root, task_names=self.contract.CANONICAL_TASKS, run_id="run-dir-conflict")
+
+        self.assertEqual(self.contract.EXIT_CONTRACT_ERROR, result.exit_code)
+        self.assertEqual("contract-error", result.evidence["status"])
+        self.assertEqual("project.directory", result.evidence["findings"][0]["code"])
+
+    def test_neither_project_directory_is_blocked(self) -> None:
+        (self.root / ".hermes").rmdir()
+
+        result = self.contract.check(self.root, task_names=self.contract.CANONICAL_TASKS, run_id="run-no-dir")
+
+        self.assertEqual(self.contract.EXIT_BLOCKED, result.exit_code)
+        self.assertEqual("blocked", result.evidence["status"])
+        self.assertTrue((self.root / ".adw" / "evidence" / "run-no-dir" / "adw_check.json").is_file())
+
+    def test_adw_run_id_containment_uses_modern_evidence_root(self) -> None:
+        self.write_manifest()
+        modern = self.use_adw_project_directory()
+        outside = self.root.parent / "adw-outside-run-id"
+
+        result = self.contract.describe(self.root, run_id="../../adw-outside-run-id")
+
+        self.assertEqual(self.contract.EXIT_CONTRACT_ERROR, result.exit_code)
+        self.assertFalse(outside.exists())
+        self.assertTrue((modern / "evidence" / result.evidence["run_id"] / "adw_describe.json").is_file())
 
     def test_check_validates_declared_tasks_and_aggregate_requirements(self) -> None:
         self.write_manifest()
@@ -772,7 +845,7 @@ class ContractTests(unittest.TestCase):
 
         self.assertEqual(self.contract.EXIT_CONTRACT_ERROR, result.exit_code)
         self.assertTrue(any("evidence.root" in finding["message"] for finding in result.evidence["findings"]))
-        self.assertTrue((self.root / ".hermes" / "evidence" / "run-path-escape" / "adw_check.json").exists())
+        self.assertTrue((self.root / ".adw" / "evidence" / "run-path-escape" / "adw_check.json").exists())
         self.assertFalse((self.root.parent / "outside").exists())
 
     def test_run_command_records_pass_and_failure_without_arguments(self) -> None:

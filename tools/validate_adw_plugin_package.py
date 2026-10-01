@@ -18,8 +18,8 @@ import tempfile
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_WORKFLOWS = {
-    "plan-feature": "adw-plan-feature",
-    "plan-bugfix": "adw-plan-bugfix",
+    "plan-feature": "adw-plan",
+    "plan-bugfix": "adw-plan",
     "do-impl": "adw-do-impl",
     "do-impl-delegate": "adw-do-impl-delegate",
     "test-feature": "adw-test-feature",
@@ -92,7 +92,7 @@ def validate_manifest_and_entrypoint() -> None:
         raise AssertionError("missing root plugin.yaml")
     data = parse_simple_yaml(manifest)
     assert data.get("name") == "adw", data
-    assert data.get("version") == "2.1.2", data
+    assert data.get("version") == "2.2.0", data
     assert data.get("kind") == "standalone", data
     manifest_text = manifest.read_text(encoding="utf-8")
     assert_contains(manifest_text, "Agentic Delivery Workflow")
@@ -102,7 +102,7 @@ def validate_manifest_and_entrypoint() -> None:
     if not init_file.exists():
         raise AssertionError("missing root __init__.py")
     root_text = init_file.read_text(encoding="utf-8")
-    assert_contains(root_text, "from .adw_plugin.router import register")
+    assert_contains(root_text, "from .integrations.hermes.adw_plugin.router import register")
     if "sys.path" in root_text:
         raise AssertionError("root plugin entrypoint must not mutate sys.path")
 
@@ -117,13 +117,13 @@ def validate_manifest_and_entrypoint() -> None:
     root_module = importlib.util.module_from_spec(spec)
     sys.modules[package_name] = root_module
     spec.loader.exec_module(root_module)
-    router = importlib.import_module(f"{package_name}.adw_plugin.router")
+    router = importlib.import_module(f"{package_name}.integrations.hermes.adw_plugin.router")
     assert getattr(root_module, "register") is getattr(router, "register")
 
 
 def validate_registry_and_skills() -> None:
     sys.path.insert(0, str(REPO_ROOT))
-    registry = importlib.import_module("adw_plugin.registry")
+    registry = importlib.import_module("integrations.hermes.adw_plugin.registry")
 
     assert registry.WORKFLOWS == EXPECTED_WORKFLOWS
     for workflow, skill_name in registry.WORKFLOWS.items():
@@ -149,9 +149,9 @@ def validate_registry_and_skills() -> None:
 
 def validate_router_behavior() -> None:
     sys.path.insert(0, str(REPO_ROOT))
-    router = importlib.import_module("adw_plugin.router")
-    prompts = importlib.import_module("adw_plugin.prompts")
-    registry = importlib.import_module("adw_plugin.registry")
+    router = importlib.import_module("integrations.hermes.adw_plugin.router")
+    prompts = importlib.import_module("integrations.hermes.adw_plugin.prompts")
+    registry = importlib.import_module("integrations.hermes.adw_plugin.registry")
 
     assert registry.parse_route("plan requested feature") is None
 
@@ -160,9 +160,12 @@ def validate_router_behavior() -> None:
     prompt = prompts.build_invocation_prompt(route)
     assert not prompt.startswith("/")
     assert_contains(prompt, "Workflow: plan-feature")
-    assert_contains(prompt, "Operational skill: adw-plan-feature")
+    assert_contains(prompt, "Operational skill: adw-plan")
     assert_contains(prompt, "Load the installed `adw-core` skill")
-    assert_contains(prompt, "installed `adw-plan-feature` skill")
+    assert_contains(prompt, "installed `adw-plan` skill")
+    assert_contains(prompt, "Preset input: type=feature")
+    bugfix = registry.parse_route("plan-bugfix login timeout")
+    assert bugfix is not None and bugfix.skill == "adw-plan" and bugfix.preset == "type=bugfix"
     if "## Embedded ADW Core Skill" in prompt:
         raise AssertionError("router prompt must not duplicate packaged skill bodies")
 
@@ -175,7 +178,7 @@ def validate_router_behavior() -> None:
     help_text = ctx.commands["adw"]["handler"]("")
     assert_contains(help_text, "Usage: `/adw <workflow> <payload>`")
     assert_contains(help_text, "plan-feature")
-    assert_contains(help_text, "Plan a new feature")
+    assert_contains(help_text, "Plans a feature or bugfix")
     assert "Common aliases" not in help_text
     assert len(ctx.injected) == 0
 
@@ -240,29 +243,31 @@ def hermes_executable() -> str:
 
 
 def copy_runtime_plugin(target: Path) -> None:
+    source = REPO_ROOT / "integrations" / "hermes"
     target.mkdir(parents=True)
-    for name in ("plugin.yaml", "__init__.py"):
-        shutil.copy2(REPO_ROOT / name, target / name)
+    for name in ("plugin.yaml", "__init__.py", "SOUL.md"):
+        shutil.copy2(source / name, target / name)
     shutil.copytree(
-        REPO_ROOT / "adw_plugin",
+        source / "adw_plugin",
         target / "adw_plugin",
         ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
     )
 
 
 def validate_plugin_doctor() -> None:
-    completed = subprocess.run(
-        [hermes_executable(), "plugins", "doctor", str(REPO_ROOT), "--ci"],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    if completed.returncode != 0 or "WARN:" in completed.stdout:
-        raise AssertionError(
-            "Hermes Plugin Doctor validation failed or warned\n"
-            f"STDOUT:\n{completed.stdout}\nSTDERR:\n{completed.stderr}"
+    for plugin_root in (REPO_ROOT, REPO_ROOT / "integrations" / "hermes"):
+        completed = subprocess.run(
+            [hermes_executable(), "plugins", "doctor", str(plugin_root), "--ci"],
+            text=True,
+            capture_output=True,
+            check=False,
         )
-    print(completed.stdout.strip())
+        if completed.returncode != 0 or "WARN:" in completed.stdout:
+            raise AssertionError(
+                f"Hermes Plugin Doctor validation failed or warned for {plugin_root}\n"
+                f"STDOUT:\n{completed.stdout}\nSTDERR:\n{completed.stderr}"
+            )
+        print(completed.stdout.strip())
 
 
 def validate_hermes_discovery() -> None:
@@ -277,7 +282,7 @@ assert handler is not None
 assert commands['adw']['args_hint'] == '<workflow> <payload>'
 help_text = handler('')
 assert 'plan-feature' in help_text
-assert 'Plan a new feature' in help_text
+assert 'Plans a feature or bugfix' in help_text
 assert 'chain' in help_text
 assert 'Common aliases' not in help_text
 

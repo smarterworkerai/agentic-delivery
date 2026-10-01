@@ -112,7 +112,7 @@ class DistributionTests(unittest.TestCase):
     def test_fixtures_conform_to_validator_and_have_all_tasks(self) -> None:
         for fixture_name in ("library", "service"):
             fixture = CONTRACT_ROOT / "fixtures" / fixture_name
-            manifest = json.loads((fixture / ".hermes" / "adw-task-manifest.json").read_text())
+            manifest = json.loads((fixture / ".adw" / "adw-task-manifest.json").read_text())
             task_names = set(json.loads((fixture / "task-names.json").read_text()))
 
             self.assertEqual([], self.contract.validate_manifest(manifest), fixture_name)
@@ -123,7 +123,7 @@ class DistributionTests(unittest.TestCase):
 
         self.assertEqual("2026.9.5", template["min_version"]["hard"])
         self.assertEqual("2026.9.5", template["vars"]["adw_mise_tested_version"])
-        self.assertEqual("2.1.2", template["vars"]["adw_contract_version"])
+        self.assertEqual("2.2.0", template["vars"]["adw_contract_version"])
         self.assertEqual(
             [
                 "mise-helper/vendor/agentic-delivery/tasks.toml",
@@ -150,10 +150,10 @@ class DistributionTests(unittest.TestCase):
         guide = (CONTRACT_ROOT / "generation-guide.md").read_text()
 
         for token in (
-            ".hermes/adw-task-manifest.json",
+            ".adw/adw-task-manifest.json",
             "mise-helper/",
             "mise-helper/vendor/agentic-delivery/",
-            ".hermes/evidence/",
+            ".adw/evidence/",
             "adw:check",
             "unsupported",
             "reviewable diff",
@@ -183,14 +183,14 @@ class DistributionTests(unittest.TestCase):
             ROOT
             / "skills"
             / "adw"
-            / "adw-core"
-            / "templates"
+            / "adw-do-impl-delegate"
+            / "assets"
             / "delegation"
             / "status.schema.json"
         )
         schema = json.loads(schema_path.read_text())
         self.assertEqual(schema["$schema"], "https://json-schema.org/draft/2020-12/schema")
-        self.assertTrue(schema["$id"].endswith("/skills/adw/adw-core/templates/delegation/status.schema.json"))
+        self.assertTrue(schema["$id"].endswith("/skills/adw/adw-do-impl-delegate/assets/delegation/status.schema.json"))
         self.assertFalse(schema["additionalProperties"])
         self.assertEqual(
             schema["properties"]["run_id"]["pattern"],
@@ -200,14 +200,14 @@ class DistributionTests(unittest.TestCase):
     def test_operational_skills_use_contract_tasks_without_provider_commands(self) -> None:
         skills_root = ROOT / "skills" / "adw"
         core = (skills_root / "adw-core" / "SKILL.md").read_text()
-        implementation = (skills_root / "do-impl" / "SKILL.md").read_text()
-        delegated = (skills_root / "do-impl-delegate" / "SKILL.md").read_text()
-        testing = (skills_root / "test-feature" / "SKILL.md").read_text()
-        merging = (skills_root / "merge-feature" / "SKILL.md").read_text()
-        regression = (skills_root / "validate-regression" / "SKILL.md").read_text()
-        rollback = (skills_root / "rollback-deployment" / "SKILL.md").read_text()
-        adapter_template = (skills_root / "adw-core" / "templates" / "project_adw_adapter.md").read_text()
-        delegation_brief = (skills_root / "adw-core" / "templates" / "delegation" / "task_brief.md").read_text()
+        implementation = (skills_root / "adw-do-impl" / "SKILL.md").read_text()
+        delegated = (skills_root / "adw-do-impl-delegate" / "SKILL.md").read_text()
+        testing = (skills_root / "adw-test-feature" / "SKILL.md").read_text()
+        merging = (skills_root / "adw-merge-feature" / "SKILL.md").read_text()
+        regression = (skills_root / "adw-validate-regression" / "SKILL.md").read_text()
+        rollback = (skills_root / "adw-rollback-deployment" / "SKILL.md").read_text()
+        adapter_template = (skills_root / "adw-core" / "assets" / "project_adw_adapter.md").read_text()
+        delegation_brief = (skills_root / "adw-do-impl-delegate" / "assets" / "delegation" / "task_brief.md").read_text()
 
         self.assertIn("assets/mise/v2/generation-guide.md", core)
         self.assertIn("There is no ad-hoc fallback", core)
@@ -232,17 +232,17 @@ class DistributionTests(unittest.TestCase):
         self.assertIn("adw:test:e2e:fast", regression)
         self.assertIn("adw:deploy:config:plan", rollback)
         self.assertIn("adw:deploy:apply", rollback)
-        self.assertIn(".hermes/adw-task-manifest.json", adapter_template)
+        self.assertIn(".adw/adw-task-manifest.json", adapter_template)
         self.assertIn("mise run adw:check", adapter_template)
         self.assertNotIn("Dokploy", merging)
         self.assertNotIn("Dokploy", rollback)
 
     def test_v2_package_metadata_is_consistent(self) -> None:
-        self.assertIn("version: 2.1.2", (ROOT / "plugin.yaml").read_text())
+        self.assertIn("version: 2.2.0", (ROOT / "plugin.yaml").read_text())
         skills = sorted((ROOT / "skills" / "adw").glob("*/SKILL.md"))
-        self.assertEqual(14, len(skills))
+        self.assertEqual(13, len(skills))
         for skill in skills:
-            self.assertIn("version: 2.1.2", skill.read_text(), str(skill))
+            self.assertIn('version: "2.2.0"', skill.read_text(), str(skill))
 
     def test_producer_pr_quality_is_required_and_portable(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "producer-quality.yml").read_text()
@@ -252,15 +252,15 @@ class DistributionTests(unittest.TestCase):
         self.assertIn("Required producer quality", workflow)
         self.assertIn("python3 tools/verify_producer.py", workflow)
         self.assertIn("fetch-depth: 0", workflow)  # historical snapshot and legacy audit tests
-        for required in ("unittest", "validate_adw_skills.py", "validate_manifest_and_entrypoint", "validate_registry_and_skills", "validate_router_behavior"):
+        for required in ("unittest", "build_skills.py", "validate_adw_skills.py", "validate_manifest_and_entrypoint", "validate_registry_and_skills", "validate_router_behavior"):
             self.assertIn(required, runner)
         self.assertNotIn("validate_plugin_doctor()", runner)
 
     def test_chain_full_rollout_requires_bounded_upfront_authorization_and_every_gate(self) -> None:
         skills_root = ROOT / "skills" / "adw"
-        chain = (skills_root / "chain" / "SKILL.md").read_text()
-        merging = (skills_root / "merge-feature" / "SKILL.md").read_text()
-        gates = (skills_root / "adw-core" / "references" / "playbooks" / "deployment_gates.md").read_text()
+        chain = (skills_root / "adw-chain" / "SKILL.md").read_text()
+        merging = (skills_root / "adw-merge-feature" / "SKILL.md").read_text()
+        gates = (skills_root / "adw-core" / "references" / "deployment_gates.md").read_text()
         for term in (
             "full-rollout opt-in", "single upfront authorization", "exact release route",
             "demo", "main", "new, explicit proposal and authorization",
@@ -279,69 +279,26 @@ class DistributionTests(unittest.TestCase):
         self.assertIn("failed, pending, or stale", chain)
         self.assertIn("Never silently waive a gate", chain)
         self.assertNotIn("A generic chain command authorizes full rollout", chain)
-        preview = (skills_root / "adw-core" / "references" / "playbooks" / "preview_deployments.md").read_text()
-        release = (skills_root / "adw-core" / "references" / "playbooks" / "release_targets.md").read_text()
-        diagram = (skills_root / "adw-core" / "assets" / "diagrams" / "adw-complete-workflow.puml").read_text()
+        preview = (skills_root / "adw-core" / "references" / "preview_deployments.md").read_text()
+        release = (skills_root / "adw-core" / "references" / "release_targets.md").read_text()
+        architecture = (ROOT / "docs" / "architecture.md").read_text()
         self.assertIn("exact, still-valid upfront chain authorization", preview)
         self.assertIn("preview-only grant never expands", preview)
         self.assertIn("first confirmed proposal", release)
         self.assertIn("no unapproved drift", release)
-        self.assertIn("at this first confirmation", diagram)
-        self.assertIn("continue without repeat confirmation", diagram)
-        decision = diagram.index("if (Exact full-rollout grant still valid?)")
-        yes = diagram.index("continue without repeat confirmation", decision)
-        no = diagram.index("else (no)", decision)
-        exceptional = diagram.index("if (Full rollout requested but exact grant cannot be verified or route changed?)", no)
-        renewed = diagram.index("Explicitly authorize the new exact route and deployment consequences", exceptional)
-        ordinary = diagram.index("else (ordinary chain)", renewed)
-        approval = diagram.index("Explicitly approve exact merge target", ordinary)
-        end = diagram.index("endif", ordinary)
-        self.assertLess(yes, no)
-        self.assertLess(no, exceptional)
-        self.assertLess(exceptional, renewed)
-        self.assertLess(renewed, ordinary)
-        self.assertLess(ordinary, approval)
-        self.assertLess(approval, end)
-        self.assertNotIn("partition Human {", diagram[decision:no])
-        from xml.etree import ElementTree
-        import re
-        import zlib
-        svg = skills_root / "adw-core" / "assets" / "diagrams" / "adw-complete-workflow.svg"
-        rendered = svg.read_text()
-        labels = [node.text or "" for node in ElementTree.fromstring(rendered).iter() if node.tag.endswith("text")]
-        for label in (
-            "at this first confirmation", "continue without repeat confirmation",
-            "Explicitly authorize the new exact route and deployment consequences",
-            "Explicitly approve exact merge target",
-            "optional E2E only with explicit run authorization",
-        ):
-            self.assertTrue(any(label in text for text in labels), label)
-        # PlantUML embeds its compressed source in the SVG. Comparing the decoded
-        # source catches stale renderings even if all of the expected labels remain.
-        encoded = re.search(r"<\?plantuml-src ([^?]+)\?>", rendered)
-        if encoded is None:
-            self.fail("Rendered SVG has no embedded PlantUML source")
-        alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_"
-        data = bytearray()
-        for offset in range(0, len(encoded.group(1)) - 3, 4):
-            a, b, c, d = (alphabet.index(char) for char in encoded.group(1)[offset:offset + 4])
-            data.extend(((a << 2) | (b >> 4), ((b << 4) & 240) | (c >> 2), ((c << 6) & 192) | d))
-        embedded = zlib.decompress(data, -15).decode()
-        self.assertEqual(embedded.strip(), diagram.split("\n", 1)[1].rsplit("@enduml", 1)[0].strip())
+        self.assertIn('{{"Approve exact PR route"}}', architecture)
+        self.assertIn('{{"Approve merge"}}', architecture)
+        self.assertIn('{{"Approve deploy target"}}', architecture)
+        self.assertNotIn(".puml", architecture)
+        self.assertNotIn(".svg", architecture)
 
     def test_workflow_policy_requires_exact_pr_route_and_keeps_deployment_optional(self) -> None:
         skills_root = ROOT / "skills" / "adw"
-        diagram = (skills_root / "adw-core" / "assets" / "diagrams" / "adw-complete-workflow.puml").read_text()
-        merging = (skills_root / "merge-feature" / "SKILL.md").read_text()
-        traceability = (skills_root / "adw-core" / "references" / "playbooks" / "github_traceability.md").read_text()
+        implementation = (skills_root / "adw-do-impl" / "SKILL.md").read_text()
+        merging = (skills_root / "adw-merge-feature" / "SKILL.md").read_text()
+        traceability = (skills_root / "adw-core" / "references" / "github_traceability.md").read_text()
 
-        approval = "Explicitly approve the exact PR source branch, target branch, and replacement/deletion effect"
-        creation = "Create or update the linked PR only for the approved exact route"
-        self.assertIn(approval, diagram)
-        self.assertIn(creation, diagram)
-        self.assertLess(diagram.index(approval), diagram.index(creation))
-        self.assertIn("Deployment explicitly requested?", diagram)
-        self.assertIn("Record verified merge-only result", diagram)
+        self.assertIn("exact route is explicitly approved", implementation)
         self.assertIn("If deployment was not explicitly requested, report the merge result and stop", merging)
         self.assertIn("when deployment is requested", merging)
         self.assertIn("Do not infer completion from branch names or prefixes", traceability)

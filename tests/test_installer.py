@@ -11,11 +11,11 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-INSTALLER = ROOT / "scripts" / "install_adw.sh"
+INSTALLER = ROOT / "integrations" / "hermes" / "install_adw.sh"
 REF = "1" * 40
 OWNER_MARKER = ".agentic-delivery-owner"
 OWNER_VALUE = "agentic-delivery/v1"
-SKILL_COUNT = 14
+SKILL_COUNT = 13
 
 
 class InstallerTests(unittest.TestCase):
@@ -261,6 +261,34 @@ exit 2
         self.assertFalse((profile / "plugins" / "adw").exists())
         self.assertFalse(any((profile / "skills" / "adw").glob("adw-*")))
         self.assertEqual(self.log.read_text().splitlines()[-1], "disable")
+
+    def test_upgrade_removes_previous_marker_owned_skill_layout(self) -> None:
+        profile = self.base / "profile"
+        old_root = profile / "skills" / "adw"
+        for name in ("adw-plan-feature", "adw-plan-bugfix", "plan-feature", "do-impl"):
+            target = old_root / name
+            target.mkdir(parents=True)
+            (target / OWNER_MARKER).write_text(f"{OWNER_VALUE}\n")
+            (target / "sentinel").write_text("v2.1.2-layout\n")
+
+        self._run(profile)
+
+        for name in ("adw-plan-feature", "adw-plan-bugfix", "plan-feature", "do-impl"):
+            self.assertFalse((old_root / name).exists(), name)
+        self.assertTrue((old_root / "adw-plan" / OWNER_MARKER).is_file())
+
+    def test_failed_upgrade_restores_previous_marker_owned_skill_layout(self) -> None:
+        profile = self.base / "profile"
+        old_plan = profile / "skills" / "adw" / "adw-plan-feature"
+        old_plan.mkdir(parents=True)
+        (old_plan / OWNER_MARKER).write_text(f"{OWNER_VALUE}\n")
+        (old_plan / "sentinel").write_text("old-plan\n")
+
+        result = self._run(profile, check=False, TEST_FAIL_POST="yes")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual((old_plan / "sentinel").read_text(), "old-plan\n")
+        self.assertFalse((profile / "skills" / "adw" / "adw-plan").exists())
 
     def test_update_post_failure_restores_files_and_enabled_state(self) -> None:
         profile = self.base / "profile"

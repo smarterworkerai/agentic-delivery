@@ -42,10 +42,6 @@ jobs:
           sha256sum "$archive" > SHA256SUMS
           curl -fsSL --retry 3 "https://codeload.github.com/${GITHUB_REPOSITORY}/tar.gz/${GITHUB_SHA}" -o source.tar.gz
           source_sha=$(sha256sum source.tar.gz | cut -d' ' -f1)
-          awk -v version="$version" '
-            $0 ~ "^## \[" version "\]( - [0-9]{4}-[0-9]{2}-[0-9]{2})?$" {emit=1; next}
-            emit && /^## \[/ {exit}
-            emit {print}
-          ' CHANGELOG.md > release-notes.md
+          python3 tools/release_notes.py "$version" > release-notes.md
           printf '\n## Hermes install\n\n```bash\nADW_REF=%s ADW_ARCHIVE_SHA256=%s bash -c "$(curl -fsSL https://raw.githubusercontent.com/%s/%s/integrations/hermes/install_adw.sh)"\n```\n' "$GITHUB_SHA" "$source_sha" "$GITHUB_REPOSITORY" "$GITHUB_SHA" >> release-notes.md
           gh release create "$GITHUB_REF_NAME" "$archive" SHA256SUMS --title "$GITHUB_REF_NAME" --notes-file release-notes.md

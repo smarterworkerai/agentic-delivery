@@ -81,10 +81,10 @@ def valid_manifest() -> dict:
         },
     })
     return {
-        "schema_version": "2.2.0",
+        "schema_version": "2.3.0",
         "contract": {
             "name": "adw-mise-task-contract",
-            "version": "2.2.0",
+            "version": "2.3.0",
             "compatible": ">=2.0.0,<3.0.0",
         },
         "project": {"id": "example/service"},
@@ -192,7 +192,7 @@ class ContractTests(unittest.TestCase):
 
         self.assertEqual(0, result.exit_code)
         self.assertTrue(result.payload["migrated"])
-        self.assertEqual("2.2.0", saved["schema_version"])
+        self.assertEqual("2.3.0", saved["schema_version"])
         self.assertEqual({"generic", "project"}, set(saved["sources"]))
         self.assertTrue(all(isinstance(value["source"], str) for value in saved["capabilities"].values()))
         self.assertEqual([], self.contract.validate_manifest(saved))
@@ -208,8 +208,8 @@ class ContractTests(unittest.TestCase):
 
         self.assertEqual(0, result.exit_code)
         self.assertTrue(result.payload["migrated"])
-        self.assertEqual("2.2.0", saved["schema_version"])
-        self.assertEqual("2.2.0", saved["contract"]["version"])
+        self.assertEqual("2.3.0", saved["schema_version"])
+        self.assertEqual("2.3.0", saved["contract"]["version"])
         self.assertEqual(manifest["sources"], saved["sources"])
 
     def test_v211_manifest_migration_updates_only_patch_version(self) -> None:
@@ -223,8 +223,8 @@ class ContractTests(unittest.TestCase):
 
         self.assertEqual(0, result.exit_code)
         self.assertTrue(result.payload["migrated"])
-        self.assertEqual("2.2.0", saved["schema_version"])
-        self.assertEqual("2.2.0", saved["contract"]["version"])
+        self.assertEqual("2.3.0", saved["schema_version"])
+        self.assertEqual("2.3.0", saved["contract"]["version"])
         self.assertEqual(manifest["sources"], saved["sources"])
 
     def test_v212_manifest_migration_updates_only_patch_version(self) -> None:
@@ -238,8 +238,8 @@ class ContractTests(unittest.TestCase):
 
         self.assertEqual(0, result.exit_code)
         self.assertTrue(result.payload["migrated"])
-        self.assertEqual("2.2.0", saved["schema_version"])
-        self.assertEqual("2.2.0", saved["contract"]["version"])
+        self.assertEqual("2.3.0", saved["schema_version"])
+        self.assertEqual("2.3.0", saved["contract"]["version"])
 
     def test_local_clean_contract_enforces_scoped_and_aggressive_modes(self) -> None:
         self.write_manifest()

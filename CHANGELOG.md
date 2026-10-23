@@ -2,6 +2,12 @@
 
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and Semantic Versioning.
 
+## [2.3.0] - 2026-10-23
+
+### Changed
+
+- Raised the project template's hard mise floor and tested version from `2026.9.5` to `2026.10.17`. Mise `2026.9.16` and newer write `mise.lock` format 3, which older releases cannot read; the new floor keeps operators and CI on a mise that reads each other's locks. Task names, schemas, statuses and exit classes are unchanged.
+
 ## [2.2.0] - 2026-10-01
 
 ### Added

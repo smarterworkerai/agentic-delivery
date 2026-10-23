@@ -6,7 +6,7 @@ license: MIT
 compatibility: Requires git and the GitHub CLI. Deterministic steps require mise and an ADW task manifest.
 metadata:
   suite: agentic-delivery
-  version: "2.2.0"
+  version: "2.3.0"
   author: smarterworkerai
   requires: adw-core
   router-tokens: "do-impl"

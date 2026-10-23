@@ -45,7 +45,7 @@ class BuildSkillsTests(unittest.TestCase):
                 root / "skills/adw/adw-plan/SKILL.md", "Inference is never approval.", "Inference may be approval."
             ),
             "version": lambda root: self.replace(
-                root / "skills/adw/adw-plan/SKILL.md", 'version: "2.2.0"', 'version: "9.9.9"'
+                root / "skills/adw/adw-plan/SKILL.md", 'version: "2.3.0"', 'version: "9.9.9"'
             ),
             "registry": lambda root: (root / "integrations/hermes/adw_plugin/registry.py").write_text("stale\n"),
             "readme": lambda root: self.replace(
